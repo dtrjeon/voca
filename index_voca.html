@@ -466,7 +466,7 @@ async function refreshWords(silent) {
   try {
     const j = await api('list');
     words = j.words || []; saveCache();
-    renderList(); updateCount(); updateSetupInfo();
+    renderList(); updateCount(); updateSetupInfo(); setTimeout(() => prefetchAudio(), 800);
   } catch (e) { if (!silent) toast(e.message); }
 }
 
@@ -629,9 +629,51 @@ $('#btnResDel').addEventListener('click', async () => {
 });
 
 /* ====== 단어장 ====== */
-function speak(t) {
-  try { const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+/* ---- 발음: 사람 녹음(무료 사전 API) 우선, 없으면 가장 자연스러운 기기 음성 ---- */
+const audioCache = {};           // word -> url | '' (없음) | Promise
+let curAudio = null, bestVoice = null;
+function pickVoice() {
+  try {
+    const vs = speechSynthesis.getVoices().filter(v => /^en[-_]/i.test(v.lang));
+    if (!vs.length) return;
+    const score = v => (/natural|neural|enhanced|premium|online/i.test(v.name) ? 50 : 0) + (/google/i.test(v.name) ? 30 : 0) +
+      (/en[-_]US/i.test(v.lang) ? 10 : 0) + (v.localService ? 0 : 5);
+    bestVoice = vs.slice().sort((a, b) => score(b) - score(a))[0];
+  } catch (e) {}
 }
+try { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) {}
+function humanAudio(word) {
+  const k = word.toLowerCase().trim();
+  if (!/^[a-z][a-z'-]*$/.test(k)) return Promise.resolve('');
+  if (k in audioCache) return Promise.resolve(audioCache[k]);
+  const p = fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(k))
+    .then(r => r.ok ? r.json() : [])
+    .then(j => {
+      const urls = []; (j || []).forEach(e => (e.phonetics || []).forEach(p => p.audio && urls.push(p.audio)));
+      const u = urls.find(x => /-us\./i.test(x)) || urls[0] || '';
+      return (audioCache[k] = u ? u.replace(/^http:/, 'https:') : '');
+    }).catch(() => { delete audioCache[k]; return ''; });
+  audioCache[k] = p; return p;
+}
+function ttsSpeak(t) {
+  try {
+    const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.85; u.pitch = 1;
+    if (bestVoice) { u.voice = bestVoice; u.lang = bestVoice.lang; }
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function speak(t) {
+  try { speechSynthesis.cancel(); if (curAudio) curAudio.pause(); } catch (e) {}
+  let done = false;
+  const fallback = () => { if (!done) { done = true; ttsSpeak(t); } };
+  humanAudio(t).then(url => {
+    if (!url) return fallback();
+    const a = new Audio(url); curAudio = a;
+    a.addEventListener('error', fallback);
+    const pr = a.play(); if (pr && pr.catch) pr.catch(fallback);
+  });
+}
+function prefetchAudio() { words.slice(0, 80).forEach((w, i) => setTimeout(() => humanAudio(w.word), i * 120)); }
 
 function dotsOf(w) { const b = Math.min(w.box || 0, 5); return '●'.repeat(b) + '○'.repeat(5 - b); }
 function stageLabel(w) {
