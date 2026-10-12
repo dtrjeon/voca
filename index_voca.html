@@ -131,6 +131,17 @@ dialog{border:0;border-radius:18px;padding:18px;width:min(92vw,460px);box-shadow
 dialog::backdrop{background:rgba(20,22,40,.45)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
+/* 난이도 */
+.lv{display:inline-block;border-radius:6px;padding:0 7px;font-size:12px;font-weight:700;white-space:nowrap;letter-spacing:.3px}
+.lv1{background:#e1f6ec;color:#0f6b41}
+.lv2{background:#def5f3;color:#0b6a63}
+.lv3{background:#e8ebff;color:#3b4cca}
+.lv4{background:#fff1e0;color:#b45f06}
+.lv5{background:#fde8e6;color:#b3261e}
+.rate{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.rate .spinner{border-color:#cfd3ea;border-top-color:var(--accent);vertical-align:-2px}
+select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+
 /* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
 .res-empty,.recent{display:none}
 @media (min-width:768px){
@@ -209,7 +220,7 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
   <section id="tab-write" class="active">
     <div class="w-right">
     <div class="card result" id="resultCard" style="display:none">
-      <div class="res-head"><span class="result-word" id="rWordTxt"></span><span class="w-pos" id="rPosTxt"></span><button class="speak" id="rSpeak" aria-label="발음">🔊</button><span class="badge" id="rBadge"></span></div>
+      <div class="res-head"><span class="result-word" id="rWordTxt"></span><span class="w-pos" id="rPosTxt"></span><span id="rLvTxt"></span><button class="speak" id="rSpeak" aria-label="발음">🔊</button><span class="badge" id="rBadge"></span></div>
       <div class="res-mean" id="rMeaningTxt"></div>
       <div class="res-ex" id="rExampleTxt"></div>
       <div class="res-exko" id="rExampleKoTxt"></div>
@@ -251,7 +262,9 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
       <button class="chip on" data-sort="new">최신순</button>
       <button class="chip" data-sort="wrong">오답순</button>
       <button class="chip" data-sort="due">복습순</button>
+      <button class="chip" data-sort="level">난이도순</button>
     </div>
+    <div id="rateBar"></div>
     <div id="list"></div>
   </section>
 
@@ -281,6 +294,13 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
           <button class="chip" data-v="10">10</button>
           <button class="chip on" data-v="20">20</button>
           <button class="chip" data-v="0">전부</button>
+        </div>
+        <label class="lbl">난이도</label>
+        <div class="row" id="optLevel">
+          <button class="chip on" data-v="all">전체</button>
+          <button class="chip" data-v="low">★1~2 기초·기본</button>
+          <button class="chip" data-v="mid">★3 보통</button>
+          <button class="chip" data-v="high">★4~5 어려움</button>
         </div>
         <div id="setupInfo" style="margin:12px 0 0;color:var(--sub);font-size:14px"></div>
         <button class="btn primary block" id="btnStart" style="margin-top:12px">시작하기</button>
@@ -332,6 +352,15 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
   <label class="lbl">예문</label><textarea id="eExample" rows="2"></textarea>
   <label class="lbl">예문 뜻</label><textarea id="eExampleKo" rows="2"></textarea>
   <label class="lbl">어근·외우기 팁</label><input type="text" id="eTip">
+  <label class="lbl">난이도 (수능 기준)</label>
+  <select id="eLevel">
+    <option value="0">미정</option>
+    <option value="1">★☆☆☆☆ 기초 · 중학 수준</option>
+    <option value="2">★★☆☆☆ 기본 · 고1 기본</option>
+    <option value="3">★★★☆☆ 보통 · 고2·3 필수, 수능 빈출</option>
+    <option value="4">★★★★☆ 어려움 · 수능 고난도</option>
+    <option value="5">★★★★★ 최상 · 상위권·심화</option>
+  </select>
   <div class="row" style="margin-top:14px">
     <button class="btn" id="eCancel">취소</button>
     <button class="btn primary grow" id="eSave">저장</button>
@@ -415,6 +444,15 @@ function streak() {
   const set = new Set(studyDays()); let s = todayStr(); if (!set.has(s)) s = addDays(s, -1);
   let n = 0; while (set.has(s)) { n++; s = addDays(s, -1); } return n;
 }
+
+/* ====== 난이도 (수능 기준 ★1~5) ====== */
+const LV = { 1: ['기초', '중학 수준'], 2: ['기본', '고1 기본'], 3: ['보통', '고2·3 필수·수능 빈출'], 4: ['어려움', '수능 고난도'], 5: ['최상', '상위권·심화'] };
+function clampLv(v) { v = parseInt(v, 10); return v >= 1 && v <= 5 ? v : 0; }
+function lvChip(l) {
+  l = clampLv(l); if (!l) return '';
+  return '<span class="lv lv' + l + '" title="' + esc(LV[l][1]) + '">' + '★'.repeat(l) + '☆'.repeat(5 - l) + ' ' + LV[l][0] + '</span>';
+}
+function lvGroup(w) { const l = clampLv(w.level); return !l ? 'none' : (l <= 2 ? 'low' : (l === 3 ? 'mid' : 'high')); }
 
 /* ====== 상태 ====== */
 let words = [];
@@ -524,6 +562,7 @@ function renderResult(badge) {
   $('#rMeaningTxt').textContent = r.meaning || '';
   $('#rExampleTxt').textContent = r.example || '';
   $('#rExampleKoTxt').textContent = r.example_ko || '';
+  $('#rLvTxt').innerHTML = lvChip(r.level);
   const tp = $('#rTipTxt'); tp.textContent = r.tip ? '💡 ' + r.tip : ''; tp.style.display = r.tip ? 'block' : 'none';
   const b = $('#rBadge');
   b.textContent = badge || (r.saved ? '✓ 단어장에 저장됨' : '아직 저장 안 됨');
@@ -536,9 +575,9 @@ function renderResult(badge) {
 async function saveCurrent() {
   const r = curResult; if (!r || r.saved) return;
   try {
-    const j = await api('add', { word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip });
+    const j = await api('add', { word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip, level: r.level });
     r.id = j.id; r.saved = true;
-    words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', added: new Date().toISOString(), right: 0, wrong: 0, last: '', box: 0, due: '' });
+    words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: new Date().toISOString(), right: 0, wrong: 0, last: '', box: 0, due: '' });
     saveCache(); renderList(); updateCount(); updateSetupInfo();
     renderResult();
   } catch (e) {
@@ -560,7 +599,7 @@ $('#btnRecog').addEventListener('click', async () => {
     const r = j.result || {};
     const word = String(r.word || '').trim().toLowerCase();
     if (!word) { toast('글자를 읽지 못했어요. 더 크고 또박또박 써 보세요.', 3000); return; }
-    curResult = { id: null, saved: false, word: word, pos: r.pos || '', meaning: r.meaning || '', example: r.example || '', example_ko: r.example_ko || '', tip: r.tip || '', lowConf: typeof r.confidence === 'number' && r.confidence < 0.7 };
+    curResult = { id: null, saved: false, word: word, pos: r.pos || '', meaning: r.meaning || '', example: r.example || '', example_ko: r.example_ko || '', tip: r.tip || '', level: clampLv(r.level), lowConf: typeof r.confidence === 'number' && r.confidence < 0.7 };
     strokes = []; redraw();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (curResult.lowConf) renderResult('철자를 확인해 주세요');
@@ -575,7 +614,7 @@ $('#btnResEdit').addEventListener('click', () => {
   const r = curResult; if (!r) return;
   editId = r.saved ? r.id : '__new__';
   $('#eWord').value = r.word; $('#ePos').value = r.pos || ''; $('#eMeaning').value = r.meaning || '';
-  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || '';
+  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || ''; $('#eLevel').value = String(r.level || 0);
   $('#dlgEdit').showModal();
 });
 $('#btnResDel').addEventListener('click', async () => {
@@ -614,11 +653,40 @@ function renderRecent() {
   el.innerHTML = arr.length ? arr.map(w => '<div class="rc-item"><b>' + esc(w.word) + '</b><span>' + esc(w.meaning) + '</span></div>').join('') : '<div class="rc-empty">아직 저장한 단어가 없어요</div>';
 }
 
+const unrated = () => words.filter(w => !clampLv(w.level));
+let rating = false, ratingMsg = '';
+function renderRateBar() {
+  const el = $('#rateBar'); if (!el) return;
+  const n = unrated().length;
+  if (rating) el.innerHTML = '<div class="card rate"><span><span class="spinner"></span> 난이도 매기는 중… ' + esc(ratingMsg) + '</span></div>';
+  else el.innerHTML = n ? '<div class="card rate"><span>난이도가 없는 단어 <b>' + n + '</b>개</span><button class="btn" id="btnRate">난이도 채우기</button></div>' : '';
+  const b = $('#btnRate'); if (b) b.addEventListener('click', rateAll);
+}
+async function rateAll() {
+  if (rating) return;
+  rating = true;
+  try {
+    const total = unrated().length; let done = 0; const tried = new Set();
+    for (;;) {
+      const batch = unrated().filter(w => !tried.has(w.id)).slice(0, 20);
+      if (!batch.length) break;
+      ratingMsg = done + ' / ' + total; renderRateBar();
+      const j = await api('rate', { items: batch.map(w => ({ id: w.id, word: w.word, meaning: w.meaning })) });
+      const lv = j.levels || {};
+      batch.forEach(w => { tried.add(w.id); const v = clampLv(lv[w.id]); if (v) w.level = v; });
+      done += batch.length; saveCache(); renderList();
+    }
+    toast('난이도를 채웠어요');
+  } catch (e) { toast(e.message, 3500); }
+  finally { rating = false; renderList(); }
+}
+
 function renderList() {
-  renderRecent();
+  renderRecent(); renderRateBar();
   const q = $('#search').value.trim().toLowerCase();
   let arr = words.filter(w => !q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0);
   arr = arr.slice().sort((a, b) => {
+    if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
     if (sortMode === 'wrong') return (b.wrong || 0) - (a.wrong || 0) || (a.right || 0) - (b.right || 0);
     if (sortMode === 'due') {
       const ka = isNew(a) ? '9999' : (a.due || '0000'), kb = isNew(b) ? '9999' : (b.due || '0000');
@@ -635,7 +703,7 @@ function renderList() {
       '<button class="speak" data-act="speak" aria-label="발음">🔊</button>' +
       '<span class="stat">✓<b class="ok">' + (w.right || 0) + '</b> ✗<b class="bad">' + (w.wrong || 0) + '</b></span></div>' +
       '<div class="w-mean">' + esc(w.meaning) + '</div>' +
-      '<div class="w-sched">' + stageLabel(w) + '<span>' + dueLabel(w) + '</span></div>' +
+      '<div class="w-sched">' + stageLabel(w) + '<span>' + dueLabel(w) + '</span>' + lvChip(w.level) + '</div>' +
       '<div class="w-detail">' +
         (w.example ? '<div class="w-ex">' + esc(w.example) + '</div>' : '') +
         (w.example_ko ? '<div class="w-exko">' + esc(w.example_ko) + '</div>' : '') +
@@ -676,7 +744,7 @@ $('#list').addEventListener('click', async e => {
   if (act === 'say') { sayWord(w.word, $('.say-out', item)); return; }
   if (act === 'edit') {
     editId = w.id; $('#eWord').value = w.word; $('#ePos').value = w.pos || ''; $('#eMeaning').value = w.meaning || '';
-    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#dlgEdit').showModal(); return;
+    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#eLevel').value = String(w.level || 0); $('#dlgEdit').showModal(); return;
   }
   if (act === 'del') {
     if (!confirm('“' + w.word + '” 을(를) 삭제할까요?')) return;
@@ -688,9 +756,9 @@ $('#list').addEventListener('click', async e => {
 });
 $('#eCancel').addEventListener('click', () => $('#dlgEdit').close());
 $('#eSave').addEventListener('click', async () => {
-  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim() };
+  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim(), level: parseInt($('#eLevel').value, 10) || 0 };
   if (!d.word) { toast('단어를 입력해 주세요'); return; }
-  const patch = { word: d.word.toLowerCase(), pos: d.pos, meaning: d.meaning, example: d.example, example_ko: d.example_ko, tip: d.tip };
+  const patch = { word: d.word.toLowerCase(), pos: d.pos, meaning: d.meaning, example: d.example, example_ko: d.example_ko, tip: d.tip, level: d.level };
   if (editId === '__new__') {
     if (curResult) { Object.assign(curResult, patch, { lowConf: false }); renderResult(); }
     $('#dlgEdit').close(); await saveCurrent(); return;
@@ -705,8 +773,8 @@ $('#eSave').addEventListener('click', async () => {
 });
 
 /* ====== 암기 점검 ====== */
-const opt = { mode: 'mix', scope: 'all', count: '20' };
-[['#optMode', 'mode'], ['#optScope', 'scope'], ['#optCount', 'count']].forEach(([sel, key]) => {
+const opt = { mode: 'mix', scope: 'all', count: '20', level: 'all' };
+[['#optMode', 'mode'], ['#optScope', 'scope'], ['#optCount', 'count'], ['#optLevel', 'level']].forEach(([sel, key]) => {
   $$(sel + ' .chip').forEach(b => b.addEventListener('click', () => {
     opt[key] = b.dataset.v; $$(sel + ' .chip').forEach(x => x.classList.toggle('on', x === b)); updateCustomInfo();
   }));
@@ -781,6 +849,7 @@ function pool() {
   let arr = words.slice();
   if (opt.scope === 'wrong') arr = arr.filter(w => (w.wrong || 0) > 0);
   if (opt.scope === 'new') arr = arr.filter(isNew);
+  if (opt.level !== 'all') arr = arr.filter(w => lvGroup(w) === opt.level);
   if (opt.mode === 'cloze') arr = arr.filter(w => clozeOf(w));
   return arr;
 }
@@ -899,7 +968,7 @@ function answer(ok, btn, correct, mine) {
   });
   $('#qFb').innerHTML = '<div class="fb ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '⭕ 정답!' : '❌ 오답') +
     (!ok && mine ? '<div style="font-size:14px">내 답: ' + esc(mine) + '</div>' : '') +
-    '<div class="ans">' + esc(w.word) + ' <button class="speak" id="fbSpeak">🔊</button>' + (SR ? '<button class="speak" id="fbSay" title="따라 말하기">🎤</button>' : '') + '</div>' +
+    '<div class="ans">' + esc(w.word) + ' ' + lvChip(w.level) + ' <button class="speak" id="fbSpeak">🔊</button>' + (SR ? '<button class="speak" id="fbSay" title="따라 말하기">🎤</button>' : '') + '</div>' +
     '<div id="fbSayOut" style="font-size:14px"></div>' +
     '<div>' + esc(w.pos ? '[' + w.pos + '] ' : '') + esc(w.meaning) + '</div>' +
     (w.example ? '<div style="margin-top:6px">' + esc(w.example) + '</div><div style="opacity:.8;font-size:14px">' + esc(w.example_ko || '') + '</div>' : '') +
