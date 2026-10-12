@@ -175,6 +175,36 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .cv-empty{margin:auto;color:var(--sub);text-align:center;line-height:1.8;padding:30px}
 @media (min-width:768px){.cv-word{font-size:64px}.cv-ipa{font-size:24px}.cv-mean{font-size:34px}.cv-ex{font-size:22px}.cv-exko{font-size:17px}}
 
+/* 달력 탭 */
+#tab-cal{max-width:760px;margin:0 auto}
+.cal-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cal-head .ttl{flex:1;text-align:center;font-weight:800;font-size:20px}
+.cal-nav{border:1px solid var(--line);background:#fff;border-radius:12px;width:44px;height:44px;font-size:22px;color:var(--ink)}
+.cal-quick{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.cal-wd,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-wd div{text-align:center;font-size:13px;color:var(--sub);padding:4px 0}
+.cal-wd div:first-child,.cal-d.sun .n{color:#d6453d}
+.cal-wd div:last-child,.cal-d.sat .n{color:#3b4cca}
+.cal-d{position:relative;min-height:62px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:5px 6px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;font:inherit;color:var(--ink)}
+.cal-d.off{background:transparent;border-color:transparent;pointer-events:none}
+.cal-d .n{font-size:15px;font-weight:600}
+.cal-d.today .n{background:var(--accent);color:#fff;border-radius:999px;display:inline-block;min-width:24px;text-align:center}
+.cal-d .bd{display:flex;gap:4px;flex-wrap:wrap}
+.cal-d .c1,.cal-d .c2{font-size:11px;font-weight:700;border-radius:999px;padding:0 6px;line-height:18px}
+.cal-d .c1{background:var(--accent-soft);color:var(--accent)}
+.cal-d .c2{background:#fff1e0;color:#b45f06}
+.cal-d.in{background:#eef0ff;border-color:#c9cffa}
+.cal-d.edge{background:var(--accent);border-color:var(--accent);color:#fff}
+.cal-d.edge .n{color:#fff;background:none}
+.cal-d.edge .c1{background:#fff;color:var(--accent)}
+.cal-legend{font-size:12px;color:var(--sub);margin:8px 2px 0}
+.cal-sum{margin-top:14px}
+.cal-sum h3{margin:0 0 4px;font-size:18px}
+.cal-ws{margin-top:10px;max-height:240px;overflow:auto;border-top:1px solid var(--line)}
+.cal-ws div{display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid var(--line)}
+.cal-ws span{color:var(--sub);text-align:right}
+@media (min-width:1024px){#tab-cal{max-width:none;display:none;grid-template-columns:minmax(0,1.3fr) minmax(320px,1fr);gap:24px;align-items:start}#tab-cal.active{display:grid}.cal-sum{margin-top:0}.cal-d{min-height:74px}}
+
 /* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
 .res-empty,.recent{display:none}
 @media (min-width:768px){
@@ -302,6 +332,20 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
     <div id="list"></div>
   </section>
 
+  <!-- 달력 -->
+  <section id="tab-cal">
+    <div>
+      <div class="cal-head"><button class="cal-nav" id="calPrev" aria-label="이전 달">‹</button><div class="ttl" id="calTitle"></div><button class="cal-nav" id="calNext" aria-label="다음 달">›</button></div>
+      <div class="cal-quick" id="calQuick">
+        <button class="chip" data-q="today">오늘</button><button class="chip" data-q="week">최근 7일</button><button class="chip" data-q="month">이번 달</button><button class="chip" data-q="all">선택 해제</button>
+      </div>
+      <div class="cal-wd"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">파란 숫자 = 그날 등록한 단어 · 주황 숫자 = 그날 복습할 단어<br>날짜를 한 번 누르면 시작일, 다른 날짜를 한 번 더 누르면 끝나는 날이에요.</div>
+    </div>
+    <div class="card cal-sum" id="calSum"></div>
+  </section>
+
   <!-- 퀴즈 -->
   <section id="tab-quiz">
     <div id="quizSetup">
@@ -372,6 +416,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <button data-tab="write" class="active"><span class="ic">✍️</span>쓰기</button>
   <button data-tab="list"><span class="ic">📒</span>단어장</button>
   <button data-tab="quiz"><span class="ic">🎯</span>암기점검<span class="nbadge" id="navBadge" style="display:none"></span></button>
+  <button data-tab="cal"><span class="ic">📅</span>달력</button>
 </nav>
 
 <div id="toast"></div>
@@ -409,7 +454,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
     <button class="cv-ibtn" id="cvShuf" aria-label="섞기">🔀</button>
   </div>
   <div class="cv-bar">
-    <button class="cv-pill" id="cvOpt">반복 설정</button>
+    <div style="display:flex;gap:8px"><button class="cv-pill" id="cvOpt">반복 설정</button><button class="cv-pill" id="cvCal" aria-label="날짜로 고르기">📅 날짜</button></div>
     <button class="cv-play" id="cvPlay" aria-label="자동 재생">▶</button>
   </div>
   <div class="cv-track" id="cvTrack"></div>
@@ -473,7 +518,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '2.7', APP_DATE = '2026-10-12', SERVER_NEED = 4;
+const APP_VERSION = '2.9', APP_DATE = '2026-10-12', SERVER_NEED = 4;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -571,6 +616,7 @@ $$('nav button').forEach(b => b.addEventListener('click', () => {
   $$('main section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + b.dataset.tab));
   if (b.dataset.tab === 'list') renderList();
   if (b.dataset.tab === 'quiz') updateSetupInfo();
+  if (b.dataset.tab === 'cal') { calInit(); renderCal(); }
   window.scrollTo(0, 0);
 }));
 
@@ -1364,6 +1410,12 @@ function cvDatesShow() { $('#cvDates').style.display = $('#cvScope').value === '
 $('#cvScope').addEventListener('change', cvDatesShow);
 $('#cvFromToday').addEventListener('click', () => { $('#cvFrom').value = todayStr(); });
 $('#cvFromWeek').addEventListener('click', () => { $('#cvFrom').value = addDays(todayStr(), -6); $('#cvTo').value = ''; });
+$('#cvCal').addEventListener('click', () => {
+  cvSyncOpts(); $('#cvScope').value = 'range'; cvDatesShow();
+  if (!$('#cvFrom').value) $('#cvFrom').value = addDays(todayStr(), -6);
+  $('#dlgCv').showModal();
+  try { $('#cvFrom').showPicker(); } catch (e) {}
+});
 $('#cvOpt').addEventListener('click', () => { cvSyncOpts(); $('#dlgCv').showModal(); });
 $('#cvOptOk').addEventListener('click', () => {
   lsSet('vn_cv_from', $('#cvFrom').value); lsSet('vn_cv_to', $('#cvTo').value);
@@ -1372,6 +1424,69 @@ $('#cvOptOk').addEventListener('click', () => {
   lsSet('vn_cv_mean', $('#cvShowMean .on').dataset.v); lsSet('vn_cv_loop', $('#cvLoop .on').dataset.v); lsSet('vn_cv_auto', $('#cvAuto .on').dataset.v);
   $('#dlgCv').close(); cvStop(); buildDeck(); cvRender(false);
 });
+
+/* ====== 달력 ====== */
+const cal = { y: 0, m: 0, from: '', to: '' };
+function calInit() {
+  const t = todayStr().split('-').map(Number); cal.y = t[0]; cal.m = t[1] - 1;
+  cal.from = lsGet('vn_cv_from', ''); cal.to = lsGet('vn_cv_to', '');
+  if (lsGet('vn_cv_scope', 'all') !== 'range') { cal.from = ''; cal.to = ''; }
+}
+function calSave() {
+  if (cal.from) { lsSet('vn_cv_from', cal.from); lsSet('vn_cv_to', cal.to && cal.to !== cal.from ? cal.to : cal.from); lsSet('vn_cv_scope', 'range'); }
+  else { lsSet('vn_cv_from', ''); lsSet('vn_cv_to', ''); if (lsGet('vn_cv_scope', 'all') === 'range') lsSet('vn_cv_scope', 'all'); }
+}
+const pad2 = n => String(n).padStart(2, '0');
+const calKey = (y, m, d) => y + '-' + pad2(m + 1) + '-' + pad2(d);
+function calRange() { if (!cal.from) return null; const a = cal.from, b = cal.to || cal.from; return a <= b ? [a, b] : [b, a]; }
+function calWords() { const r = calRange(); return r ? words.filter(w => { const d = addedYmd(w); return d >= r[0] && d <= r[1]; }) : []; }
+function renderCal() {
+  const first = new Date(cal.y, cal.m, 1), dim = new Date(cal.y, cal.m + 1, 0).getDate(), lead = first.getDay(), td = todayStr(), r = calRange();
+  const added = {}, due = {};
+  words.forEach(w => { const d = addedYmd(w); added[d] = (added[d] || 0) + 1; if (!isNew(w) && w.due) due[w.due] = (due[w.due] || 0) + 1; });
+  $('#calTitle').textContent = cal.y + '년 ' + (cal.m + 1) + '월';
+  let h = ''; for (let i = 0; i < lead; i++) h += '<div class="cal-d off"></div>';
+  for (let d = 1; d <= dim; d++) {
+    const k = calKey(cal.y, cal.m, d), dow = (lead + d - 1) % 7;
+    const cls = ['cal-d', dow === 0 ? 'sun' : '', dow === 6 ? 'sat' : '', k === td ? 'today' : '', r && k >= r[0] && k <= r[1] ? 'in' : '', r && (k === r[0] || k === r[1]) ? 'edge' : ''].filter(Boolean).join(' ');
+    h += '<button class="' + cls + '" data-k="' + k + '"><span class="n">' + d + '</span><span class="bd">' + (added[k] ? '<span class="c1">' + added[k] + '</span>' : '') + (due[k] ? '<span class="c2">' + due[k] + '</span>' : '') + '</span></button>';
+  }
+  $('#calGrid').innerHTML = h;
+  renderCalSum();
+}
+function renderCalSum() {
+  const el = $('#calSum'), r = calRange();
+  if (!r) { el.innerHTML = '<h3>기간을 골라 보세요</h3><div style="color:var(--sub)">달력에서 시작일(과 끝나는 날)을 누르면 그 기간에 등록한 단어로 카드와 퀴즈를 바로 시작할 수 있어요.<br><br>등록한 단어 전체: <b>' + words.length + '</b>개</div>'; return; }
+  const ws = calWords(), nn = ws.filter(isNew).length, dd = ws.filter(isDue).length;
+  const f = x => x.slice(5).replace('-', '/');
+  el.innerHTML = '<h3>' + (r[0] === r[1] ? f(r[0]) : f(r[0]) + ' ~ ' + f(r[1])) + ' · 단어 ' + ws.length + '개</h3>' +
+    '<div style="color:var(--sub);margin-bottom:12px">새 단어 ' + nn + ' · 오늘 복습할 것 ' + dd + '</div>' +
+    '<div class="row"><button class="btn primary grow" id="calCards"' + (ws.length ? '' : ' disabled') + '>🃏 카드로 보기</button><button class="btn grow" id="calQuiz"' + (ws.length ? '' : ' disabled') + '>🎯 퀴즈</button></div>' +
+    '<div class="cal-ws">' + (ws.length ? ws.slice().sort((a, b) => String(b.added).localeCompare(String(a.added))).slice(0, 80).map(w => '<div><b>' + esc(w.word) + '</b><span>' + esc(w.meaning) + '</span></div>').join('') : '<div style="color:var(--sub)">이 기간에 등록한 단어가 없어요</div>') + '</div>';
+  const c = $('#calCards'); if (c) c.addEventListener('click', () => { lsSet('vn_cv_scope', 'range'); cvOpen(); });
+  const q = $('#calQuiz'); if (q) q.addEventListener('click', () => {
+    const arr = calWords().sort(() => Math.random() - .5).slice(0, SESSION_MAX);
+    const b = $('nav button[data-tab="quiz"]'); b.click(); startQuiz(arr, 'mix');
+  });
+}
+$('#calGrid').addEventListener('click', e => {
+  const b = e.target.closest('.cal-d[data-k]'); if (!b) return; const k = b.dataset.k;
+  if (!cal.from || (cal.to && cal.to !== cal.from)) { cal.from = k; cal.to = k; }
+  else { cal.to = k; if (cal.to < cal.from) { const t = cal.from; cal.from = cal.to; cal.to = t; } }
+  calSave(); renderCal();
+});
+$('#calPrev').addEventListener('click', () => { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } renderCal(); });
+$('#calNext').addEventListener('click', () => { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCal(); });
+$('#calQuick').addEventListener('click', e => {
+  const b = e.target.closest('[data-q]'); if (!b) return; const td = todayStr(), q = b.dataset.q;
+  if (q === 'today') { cal.from = cal.to = td; }
+  else if (q === 'week') { cal.from = addDays(td, -6); cal.to = td; }
+  else if (q === 'month') { const t = td.split('-').map(Number); cal.from = calKey(t[0], t[1] - 1, 1); cal.to = td; }
+  else { cal.from = ''; cal.to = ''; }
+  const t = td.split('-').map(Number); cal.y = t[0]; cal.m = t[1] - 1;
+  calSave(); renderCal();
+});
+calInit();
 
 /* ====== 시작 ====== */
 // 서버를 미리 깨워 두면 첫 인식이 빨라진다 (Apps Script 콜드 스타트 방지)
