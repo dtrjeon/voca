@@ -142,6 +142,39 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
 .rate .spinner{border-color:#cfd3ea;border-top-color:var(--accent);vertical-align:-2px}
 select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
 
+/* 카드 보기 */
+#cardView{position:fixed;inset:0;z-index:40;background:#f0f0f0;display:none;flex-direction:column}
+#cardView.open{display:flex}
+.cv-top{display:flex;align-items:center;gap:6px;padding:calc(10px + env(safe-area-inset-top)) 14px 8px;background:#fff}
+.cv-top .ttl{font-weight:700;font-size:20px;flex:1}
+.cv-ibtn{border:0;background:none;font-size:15px;color:var(--ink);padding:8px 10px;border-radius:10px;display:flex;align-items:center;gap:4px}
+.cv-ibtn.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.cv-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid var(--line)}
+.cv-pill{border:2px solid var(--ink);background:#fff;border-radius:999px;padding:8px 18px;font-size:15px;font-weight:600;color:var(--ink)}
+.cv-play{width:88px;height:48px;border:0;border-radius:999px;background:#07b0cc;color:#fff;font-size:22px}
+.cv-track{flex:1;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:14px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.cv-track::-webkit-scrollbar{display:none}
+.cv-card{flex:none;scroll-snap-align:center;background:#fff;border-radius:14px;border:1px solid var(--line);position:relative;display:flex;flex-direction:column;align-items:center;padding:56px 18px 50px;overflow-y:auto;cursor:pointer}
+.cv-bm{position:absolute;top:12px;right:14px;border:0;background:none;font-size:28px;line-height:1;color:#e9a21c;padding:4px 6px}
+.cv-say{position:absolute;top:12px;left:12px;border:0;background:none;font-size:24px;padding:4px 6px}
+.cv-word{font-size:44px;font-weight:800;margin-top:7vh;text-align:center;word-break:break-word;line-height:1.15}
+.cv-ipa{color:#999;font-size:19px;margin-top:8px;min-height:28px;text-align:center}
+.cv-meta{margin-top:10px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;color:var(--sub)}
+.cv-back{margin-top:22px;width:100%;visibility:hidden;text-align:center}
+.cv-card.show .cv-back{visibility:visible}
+.cv-mean{font-size:26px;font-weight:700}
+.cv-ex{margin-top:14px;font-size:18px;color:#333}
+.cv-exko{margin-top:4px;font-size:15px;color:var(--sub)}
+.cv-tip{margin-top:12px;font-size:14px;color:#7a5a00;background:#fff8e1;border-radius:10px;padding:8px 12px;display:inline-block;text-align:left}
+.cv-hint{position:absolute;bottom:14px;left:18px;font-size:13px;color:#aaa}
+.cv-dict{position:absolute;bottom:12px;right:16px;color:var(--sub);text-decoration:none;font-size:16px;display:flex;align-items:center;gap:6px;padding:6px}
+.cv-sl{display:flex;align-items:center;gap:14px;padding:6px 18px calc(14px + env(safe-area-inset-bottom));background:#f0f0f0;color:#999}
+.cv-rg{position:relative;flex:1;height:44px;display:flex;align-items:center}
+.cv-rg input{width:100%;margin:0;accent-color:#777}
+.cv-bub{position:absolute;top:2px;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 12px;font-weight:700;color:var(--ink);pointer-events:none;font-size:15px}
+.cv-empty{margin:auto;color:var(--sub);text-align:center;line-height:1.8;padding:30px}
+@media (min-width:768px){.cv-word{font-size:64px}.cv-ipa{font-size:24px}.cv-mean{font-size:34px}.cv-ex{font-size:22px}.cv-exko{font-size:17px}}
+
 /* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
 .res-empty,.recent{display:none}
 @media (min-width:768px){
@@ -257,6 +290,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
   <!-- 단어장 -->
   <section id="tab-list">
+    <div class="row" style="margin-bottom:10px"><button class="btn primary grow" id="btnCards">🃏 카드로 보기</button></div>
     <div class="row" style="margin-bottom:10px">
       <input type="text" id="search" class="grow" placeholder="단어·뜻 검색">
       <button class="chip on" data-sort="new">최신순</button>
@@ -367,6 +401,51 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   </div>
 </dialog>
 
+<div id="cardView" role="dialog" aria-label="단어 카드">
+  <div class="cv-top">
+    <button class="cv-ibtn" id="cvClose" aria-label="닫기" style="font-size:24px;padding:4px 10px">‹</button>
+    <div class="ttl" id="cvTitle">단어 카드</div>
+    <button class="cv-ibtn" id="cvBm">🔖 북마크만 보기</button>
+    <button class="cv-ibtn" id="cvShuf" aria-label="섞기">🔀</button>
+  </div>
+  <div class="cv-bar">
+    <button class="cv-pill" id="cvOpt">반복 설정</button>
+    <button class="cv-play" id="cvPlay" aria-label="자동 재생">▶</button>
+  </div>
+  <div class="cv-track" id="cvTrack"></div>
+  <div class="cv-sl"><span>1</span><div class="cv-rg"><input type="range" id="cvRange" min="1" max="1" value="1"><b class="cv-bub" id="cvBub">1</b></div><span id="cvMax">1</span></div>
+</div>
+
+<dialog id="dlgCv">
+  <h3 style="margin:0 0 6px">카드 설정</h3>
+  <label class="lbl">범위</label>
+  <select id="cvScope">
+    <option value="all">전체 단어</option>
+    <option value="due">복습할 단어</option>
+    <option value="hard">어려운 단어 (★4~5)</option>
+    <option value="today">오늘 등록한 단어</option>
+    <option value="range">날짜로 고르기 (달력)</option>
+  </select>
+  <div id="cvDates" style="display:none">
+    <label class="lbl">시작일 (이 날부터 등록한 단어)</label>
+    <input type="date" id="cvFrom">
+    <label class="lbl">끝나는 날 (비우면 오늘까지)</label>
+    <input type="date" id="cvTo">
+    <div class="row" style="margin-top:8px"><button class="chip" id="cvFromToday">시작일을 오늘로</button><button class="chip" id="cvFromWeek">최근 7일</button></div>
+  </div>
+  <label class="lbl">자동 재생: 단어 사이 간격</label>
+  <select id="cvGap">
+    <option value="3">3초</option><option value="5">5초</option><option value="8">8초</option><option value="12">12초</option>
+  </select>
+  <label class="lbl">자동 재생 중 뜻을 보여주기</label>
+  <div class="row" id="cvShowMean"><button class="chip" data-v="1">보여줌</button><button class="chip" data-v="0">가림 (직접 눌러 확인)</button></div>
+  <label class="lbl">끝까지 가면 처음부터 반복</label>
+  <div class="row" id="cvLoop"><button class="chip" data-v="1">반복</button><button class="chip" data-v="0">한 번만</button></div>
+  <label class="lbl">카드를 넘길 때 발음 자동 재생</label>
+  <div class="row" id="cvAuto"><button class="chip" data-v="1">켬</button><button class="chip" data-v="0">끔</button></div>
+  <div class="row" style="margin-top:14px"><button class="btn primary grow" id="cvOptOk">확인</button></div>
+</dialog>
+
 <dialog id="dlgSettings">
   <h3 style="margin:0 0 6px">설정</h3>
   <label class="lbl">Apps Script 웹 앱 URL</label>
@@ -394,7 +473,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '2.5', APP_DATE = '2026-10-12', SERVER_NEED = 4;
+const APP_VERSION = '2.7', APP_DATE = '2026-10-12', SERVER_NEED = 4;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -679,12 +758,13 @@ try { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice);
 function humanAudio(word) {
   const k = word.toLowerCase().trim();
   if (!/^[a-z][a-z'-]*$/.test(k)) return Promise.resolve(null);
-  if (k in audioCache) return Promise.resolve(audioCache[k].el || null);
-  const ent = audioCache[k] = { el: null };
-  return fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(k))
+  if (k in audioCache) return audioCache[k].p || Promise.resolve(audioCache[k].el || null);
+  const ent = audioCache[k] = { el: null, ipa: '' };
+  return ent.p = fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(k))
     .then(r => r.ok ? r.json() : [])
     .then(j => {
       const urls = []; (j || []).forEach(e => (e.phonetics || []).forEach(p => p.audio && urls.push(p.audio)));
+      const e0 = (j || [])[0] || {}; const pt = (e0.phonetics || []).find(p => p.text); ent.ipa = e0.phonetic || (pt && pt.text) || '';
       const u = urls.find(x => /-us\./i.test(x)) || urls[0] || '';
       if (u) { const el = new Audio(u.replace(/^http:/, 'https:')); el.preload = 'auto'; try { el.load(); } catch (e) {} ent.el = el; }
       return ent.el;
@@ -1140,6 +1220,157 @@ $('#sTestBtn').addEventListener('click', async () => {
   out.textContent = '확인 중…';
   try { const r = await fetch(u); const j = await r.json(); out.textContent = j.ok ? ('✅ 연결됐어요 · 서버 v' + (j.version || '?') + (Number(j.version) < SERVER_NEED ? ' ⚠️ 최신(v' + SERVER_NEED + ')이 아니에요. Code.gs 교체 후 새 버전으로 다시 배포하세요' : ' (최신)')) : '응답이 이상해요'; }
   catch (e) { out.textContent = '❌ 연결 실패: 배포 설정(액세스: 모든 사용자)과 URL을 확인해 주세요.'; }
+});
+
+/* ====== 단어 카드 보기 ====== */
+const cv = { deck: [], idx: 0, shuffled: false, bmOnly: false, playing: false, timers: [], prog: false, st: null };
+const cvCfg = () => ({ scope: lsGet('vn_cv_scope', 'all'), gap: parseInt(lsGet('vn_cv_gap', '5'), 10) || 5, showMean: lsGet('vn_cv_mean', '1') === '1', loop: lsGet('vn_cv_loop', '1') === '1', auto: lsGet('vn_cv_auto', '1') === '1' });
+const bmSet = () => { try { return new Set(JSON.parse(lsGet('vn_bm', '[]'))); } catch (e) { return new Set(); } };
+function bmSave(set) { lsSet('vn_bm', JSON.stringify(Array.from(set))); }
+
+const addedYmd = w => { const d = new Date(w.added); return isNaN(d) ? String(w.added).slice(0, 10) : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(d); };
+function buildDeck() {
+  const c = cvCfg(), bm = bmSet(), td = todayStr();
+  let arr = words.slice().sort((a, b) => String(b.added).localeCompare(String(a.added)));
+  if (c.scope === 'due') arr = arr.filter(isDue);
+  else if (c.scope === 'hard') arr = arr.filter(w => (w.level || 0) >= 4);
+  else if (c.scope === 'today') arr = arr.filter(w => addedYmd(w) === td);
+  else if (c.scope === 'range') { const f = lsGet('vn_cv_from', ''), t = lsGet('vn_cv_to', '') || td; arr = arr.filter(w => { const d = addedYmd(w); return (!f || d >= f) && d <= t; }); }
+  if (cv.bmOnly) arr = arr.filter(w => bm.has(w.id));
+  if (cv.shuffled) for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  cv.deck = arr;
+}
+function cvLayout() {
+  const t = $('#cvTrack'); const cw = Math.min(t.clientWidth - 48, 600);
+  t.style.setProperty('--cw', cw + 'px'); t.style.paddingLeft = t.style.paddingRight = Math.max(0, (t.clientWidth - cw) / 2) + 'px';
+  $$('.cv-card', t).forEach(el => { el.style.width = cw + 'px'; });
+}
+function cvStep() { const k = $$('.cv-card', $('#cvTrack')); return k.length > 1 ? k[1].offsetLeft - k[0].offsetLeft : 1; }
+function cvRender(keepIdx) {
+  const t = $('#cvTrack'), bm = bmSet();
+  if (!keepIdx) cv.idx = 0;
+  cv.idx = Math.min(cv.idx, Math.max(0, cv.deck.length - 1));
+  if (!cv.deck.length) {
+    t.innerHTML = '<div class="cv-empty">' + (cv.bmOnly ? '북마크한 단어가 없어요.<br>카드의 🔖 를 눌러 표시해 보세요.' : '이 범위에 단어가 없어요.<br>“반복 설정”에서 범위를 바꿔 보세요.') + '</div>';
+    $('#cvRange').max = 1; $('#cvMax').textContent = '0'; $('#cvBub').textContent = '0'; return;
+  }
+  t.innerHTML = cv.deck.map((w, i) => '<div class="cv-card" data-i="' + i + '">' +
+    '<button class="cv-say" data-a="say" aria-label="발음">🔊</button>' +
+    '<button class="cv-bm" data-a="bm" aria-label="북마크">' + (bm.has(w.id) ? '🔖' : '🏷️') + '</button>' +
+    '<div class="cv-word">' + esc(w.word) + '</div><div class="cv-ipa" data-ipa="' + esc(w.word) + '"></div>' +
+    '<div class="cv-meta">' + esc(w.pos || '') + ' ' + lvChip(w.level) + '</div>' +
+    '<div class="cv-back"><div class="cv-mean">' + esc(w.meaning) + '</div>' +
+    (w.example ? '<div class="cv-ex">' + esc(w.example) + '</div>' : '') + (w.example_ko ? '<div class="cv-exko">' + esc(w.example_ko) + '</div>' : '') +
+    (w.tip ? '<div class="cv-tip">💡 ' + esc(w.tip) + '</div>' : '') + '</div>' +
+    '<div class="cv-hint">탭하면 뜻이 보여요</div>' +
+    '<a class="cv-dict" data-a="dict" href="https://en.dict.naver.com/#/search?query=' + encodeURIComponent(w.word) + '" target="_blank" rel="noopener">📖 사전 검색</a></div>').join('');
+  cvLayout();
+  const n = cv.deck.length; $('#cvRange').max = n; $('#cvMax').textContent = n;
+  cvGo(cv.idx, false); cvUi();
+  cv.deck.slice(Math.max(0, cv.idx - 1), cv.idx + 6).forEach(w => cvIpa(w.word));
+}
+function cvIpa(word) {
+  const k = word.toLowerCase().trim();
+  humanAudio(word).then(() => { const e = audioCache[k]; if (e && e.ipa) $$('.cv-ipa').forEach(el => { if (el.dataset.ipa === word) el.textContent = e.ipa; }); });
+}
+function cvUi() {
+  const n = cv.deck.length, i = cv.idx;
+  $('#cvRange').value = i + 1; const b = $('#cvBub'); b.textContent = n ? i + 1 : 0;
+  const r = $('#cvRange'), pct = n > 1 ? i / (n - 1) : 0; b.style.left = 'calc(' + (pct * 100) + '% + ' + ((0.5 - pct) * 20) + 'px)';
+  const cc = cvCfg(), f = lsGet('vn_cv_from', ''), rg = cc.scope === 'range' && f ? ' · ' + f.slice(5).replace('-', '/') + '~' : '';
+  $('#cvTitle').textContent = '단어 카드 ' + (n ? (i + 1) + '/' + n : '') + rg;
+  $('#cvBm').classList.toggle('on', cv.bmOnly); $('#cvShuf').classList.toggle('on', cv.shuffled);
+  $('#cvPlay').textContent = cv.playing ? '⏸' : '▶';
+}
+function cvGo(i, smooth) {
+  const t = $('#cvTrack'); i = Math.max(0, Math.min(i, cv.deck.length - 1)); cv.idx = i;
+  const target = i * cvStep();
+  if (Math.abs(t.scrollLeft - target) > 2) { cv.prog = true; t.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' }); }
+  cvUi();
+}
+function cvSettle() {
+  const t = $('#cvTrack'); if (!cv.deck.length) return;
+  const i = Math.round(t.scrollLeft / cvStep());
+  if (cv.prog) { cv.prog = false; return; }
+  if (i !== cv.idx) { cv.idx = i; cvUi(); cvIpa(cv.deck[i].word); cvLanded(); }
+}
+function cvLanded() {
+  if (cv.playing) { cvPlayStep(); return; }
+  if (cvCfg().auto && cv.deck[cv.idx]) speak(cv.deck[cv.idx].word);
+}
+function cvClear() { cv.timers.forEach(clearTimeout); cv.timers = []; }
+function cvCardEl(i) { return $('.cv-card[data-i="' + i + '"]', $('#cvTrack')); }
+function cvPlayStep() {
+  cvClear(); const c = cvCfg(), w = cv.deck[cv.idx]; if (!w) return;
+  $$('.cv-card.show').forEach(el => el.classList.remove('show'));
+  speak(w.word);
+  if (c.showMean) cv.timers.push(setTimeout(() => { const el = cvCardEl(cv.idx); if (el) el.classList.add('show'); }, c.gap * 450));
+  cv.timers.push(setTimeout(() => {
+    if (cv.idx + 1 >= cv.deck.length) { if (!c.loop) { cvStop(); return; } cvGo(0, true); } else cvGo(cv.idx + 1, true);
+    cvPlayStep();
+  }, c.gap * 1000));
+}
+function cvStop() { cv.playing = false; cvClear(); cvUi(); }
+function cvToggleBm(i) {
+  const w = cv.deck[i]; if (!w) return; const s = bmSet();
+  if (s.has(w.id)) s.delete(w.id); else s.add(w.id);
+  bmSave(s); const el = cvCardEl(i); if (el) $('.cv-bm', el).textContent = s.has(w.id) ? '🔖' : '🏷️';
+  toast(s.has(w.id) ? '북마크했어요' : '북마크를 뺐어요', 1200);
+}
+function cvOpen() {
+  if (!words.length) { toast('먼저 단어를 저장해 주세요'); return; }
+  cv.shuffled = false; cv.bmOnly = false; cv.playing = false; buildDeck();
+  document.body.style.overflow = 'hidden'; $('#cardView').classList.add('open');
+  cvRender(false);
+}
+function cvClose() { cvStop(); $('#cardView').classList.remove('open'); document.body.style.overflow = ''; try { speechSynthesis.cancel(); } catch (e) {} }
+
+$('#btnCards').addEventListener('click', cvOpen);
+$('#cvClose').addEventListener('click', cvClose);
+$('#cvBm').addEventListener('click', () => { cv.bmOnly = !cv.bmOnly; cvStop(); buildDeck(); cvRender(false); });
+$('#cvShuf').addEventListener('click', () => { cv.shuffled = !cv.shuffled; cvStop(); buildDeck(); cvRender(false); });
+$('#cvPlay').addEventListener('click', () => {
+  if (!cv.deck.length) return;
+  if (cv.playing) { cvStop(); return; }
+  cv.playing = true; cvUi(); cvPlayStep();
+});
+$('#cvRange').addEventListener('input', e => { cvGo(parseInt(e.target.value, 10) - 1, false); });
+$('#cvRange').addEventListener('change', () => { cvIpa(cv.deck[cv.idx].word); cv.prog = false; cvLanded(); });
+$('#cvTrack').addEventListener('scroll', () => { clearTimeout(cv.st); cv.st = setTimeout(cvSettle, 110); });
+$('#cvTrack').addEventListener('click', e => {
+  const card = e.target.closest('.cv-card'); if (!card) return;
+  const a = e.target.closest('[data-a]'); const i = parseInt(card.dataset.i, 10);
+  if (a && a.dataset.a === 'dict') return;
+  if (a && a.dataset.a === 'say') { speak(cv.deck[i].word); return; }
+  if (a && a.dataset.a === 'bm') { cvToggleBm(i); return; }
+  card.classList.toggle('show');
+});
+window.addEventListener('resize', () => { if ($('#cardView').classList.contains('open')) { cvLayout(); cvGo(cv.idx, false); } });
+document.addEventListener('keydown', e => {
+  if (!$('#cardView').classList.contains('open') || $('#dlgCv').open) return;
+  if (e.key === 'ArrowRight') { cvGo(cv.idx + 1, true); cv.prog = false; setTimeout(cvLanded, 350); }
+  else if (e.key === 'ArrowLeft') { cvGo(cv.idx - 1, true); cv.prog = false; setTimeout(cvLanded, 350); }
+  else if (e.key === ' ') { e.preventDefault(); const el = cvCardEl(cv.idx); if (el) el.classList.toggle('show'); }
+  else if (e.key === 'Escape') cvClose();
+});
+
+function cvSyncOpts() {
+  const c = cvCfg(); $('#cvScope').value = c.scope; $('#cvGap').value = String(c.gap);
+  $('#cvFrom').value = lsGet('vn_cv_from', ''); $('#cvTo').value = lsGet('vn_cv_to', ''); cvDatesShow();
+  [['#cvShowMean', c.showMean ? '1' : '0'], ['#cvLoop', c.loop ? '1' : '0'], ['#cvAuto', c.auto ? '1' : '0']].forEach(([sel, v]) => $$(sel + ' .chip').forEach(b => b.classList.toggle('on', b.dataset.v === v)));
+}
+['#cvShowMean', '#cvLoop', '#cvAuto'].forEach(sel => $$(sel + ' .chip').forEach(b => b.addEventListener('click', () => $$(sel + ' .chip').forEach(x => x.classList.toggle('on', x === b)))));
+function cvDatesShow() { $('#cvDates').style.display = $('#cvScope').value === 'range' ? '' : 'none'; }
+$('#cvScope').addEventListener('change', cvDatesShow);
+$('#cvFromToday').addEventListener('click', () => { $('#cvFrom').value = todayStr(); });
+$('#cvFromWeek').addEventListener('click', () => { $('#cvFrom').value = addDays(todayStr(), -6); $('#cvTo').value = ''; });
+$('#cvOpt').addEventListener('click', () => { cvSyncOpts(); $('#dlgCv').showModal(); });
+$('#cvOptOk').addEventListener('click', () => {
+  lsSet('vn_cv_from', $('#cvFrom').value); lsSet('vn_cv_to', $('#cvTo').value);
+  if ($('#cvScope').value === 'range' && !$('#cvFrom').value) { toast('시작일을 골라 주세요'); return; }
+  lsSet('vn_cv_scope', $('#cvScope').value); lsSet('vn_cv_gap', $('#cvGap').value);
+  lsSet('vn_cv_mean', $('#cvShowMean .on').dataset.v); lsSet('vn_cv_loop', $('#cvLoop .on').dataset.v); lsSet('vn_cv_auto', $('#cvAuto .on').dataset.v);
+  $('#dlgCv').close(); cvStop(); buildDeck(); cvRender(false);
 });
 
 /* ====== 시작 ====== */
