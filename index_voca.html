@@ -373,6 +373,16 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <input type="text" id="sGas" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="none" autocomplete="off" spellcheck="false">
   <div id="sTest" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
   <div id="sVer" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  <label class="lbl">발음 소리</label>
+  <div class="row" id="sSrc">
+    <button class="chip" data-v="human">사람 녹음 우선</button>
+    <button class="chip" data-v="tts">기기 음성만</button>
+  </div>
+  <label class="lbl">기기 음성 (녹음이 없을 때 · “기기 음성만”일 때 사용)</label>
+  <select id="sVoice"></select>
+  <label class="lbl">읽는 속도 <b id="sRateVal"></b></label>
+  <input type="range" id="sRate" min="0.5" max="1.2" step="0.05" style="width:100%">
+  <div class="row" style="margin-top:8px"><button class="btn" id="sVoiceTry">🔊 들어보기</button></div>
   <label class="lbl">하루에 새로 외울 단어 수 (복습은 따로 자동 계산돼요)</label>
   <input type="number" id="sNewPerDay" min="0" max="50" inputmode="numeric">
   <div class="row" style="margin-top:14px">
@@ -384,7 +394,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '2.4', APP_DATE = '2026-10-12', SERVER_NEED = 4;
+const APP_VERSION = '2.5', APP_DATE = '2026-10-12', SERVER_NEED = 4;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -661,7 +671,8 @@ function pickVoice() {
     // 네트워크 음성은 시작이 1~3초 늦으므로 기기 안의 음성(localService)을 우선한다
     const score = v => (v.localService ? 60 : 0) + (/natural|neural|enhanced|premium/i.test(v.name) ? 30 : 0) +
       (/google/i.test(v.name) ? 10 : 0) + (/en[-_]US/i.test(v.lang) ? 10 : 0);
-    bestVoice = vs.slice().sort((a, b) => score(b) - score(a))[0];
+    const saved = lsGet('vn_voice', '');
+    bestVoice = (saved && vs.find(v => v.name === saved)) || vs.slice().sort((a, b) => score(b) - score(a))[0];
   } catch (e) {}
 }
 try { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) {}
@@ -679,10 +690,12 @@ function humanAudio(word) {
       return ent.el;
     }).catch(() => { delete audioCache[k]; return null; });
 }
-function ttsSpeak(t) {
+function ttsSpeak(t, o) {
   try {
-    const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.85; u.pitch = 1;
-    if (bestVoice) { u.voice = bestVoice; u.lang = bestVoice.lang; }
+    o = o || {};
+    const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = o.rate || parseFloat(lsGet('vn_rate', '0.85')) || 0.85; u.pitch = 1;
+    const v = o.voice || bestVoice;
+    if (v) { u.voice = v; u.lang = v.lang; }
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   } catch (e) {}
 }
@@ -690,6 +703,7 @@ function speak(t) {
   // 기다리지 않는다: 미리 받아 둔 사람 녹음이 있으면 그것을, 없으면 즉시 기기 음성으로 읽고 다음을 위해 내려받는다
   try { speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio.currentTime = 0; } } catch (e) {}
   const k = t.toLowerCase().trim();
+  if (lsGet('vn_src', 'human') === 'tts') { ttsSpeak(t); return; }
   const ent = audioCache[k];
   if (ent && ent.el) {
     curAudio = ent.el; curAudio.currentTime = 0;
@@ -699,7 +713,8 @@ function speak(t) {
   ttsSpeak(t);
   if (!ent) humanAudio(t);
 }
-function prefetchAudio() { words.slice(0, 80).forEach((w, i) => setTimeout(() => humanAudio(w.word), i * 120)); }
+function prefetchAudio() {
+  if (lsGet('vn_src', 'human') === 'tts') return; words.slice(0, 80).forEach((w, i) => setTimeout(() => humanAudio(w.word), i * 120)); }
 
 function dotsOf(w) { const b = Math.min(w.box || 0, 5); return '●'.repeat(b) + '○'.repeat(5 - b); }
 function stageLabel(w) {
@@ -1090,11 +1105,32 @@ $('#btnQuit').addEventListener('click', () => { if (confirm('퀴즈를 그만할
 /* ====== 설정 ====== */
 $('#btnSettings').addEventListener('click', () => {
   $('#sGas').value = lsGet('vn_gas', '') || (DEFAULT_GAS_URL.indexOf('PASTE') >= 0 ? '' : DEFAULT_GAS_URL);
-  $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = ''; $('#dlgSettings').showModal();
+  $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
+  fillVoices(); syncSrc(lsGet('vn_src', 'human'));
+  $('#sRate').value = lsGet('vn_rate', '0.85'); $('#sRateVal').textContent = $('#sRate').value + '배';
+  $('#dlgSettings').showModal();
+});
+let srcSel = 'human';
+function syncSrc(v) { srcSel = v; $$('#sSrc .chip').forEach(c => c.classList.toggle('on', c.dataset.v === v)); }
+$$('#sSrc .chip').forEach(c => c.addEventListener('click', () => syncSrc(c.dataset.v)));
+$('#sRate').addEventListener('input', () => { $('#sRateVal').textContent = $('#sRate').value + '배'; });
+function enVoices() { try { return speechSynthesis.getVoices().filter(v => /^en[-_]/i.test(v.lang)); } catch (e) { return []; } }
+function fillVoices() {
+  const vs = enVoices(), cur = lsGet('vn_voice', '');
+  $('#sVoice').innerHTML = '<option value="">자동 (가장 자연스러운 음성)</option>' +
+    vs.map(v => '<option value="' + esc(v.name) + '"' + (v.name === cur ? ' selected' : '') + '>' + esc(v.name) + ' · ' + esc(v.lang) + (v.localService ? '' : ' · 인터넷') + '</option>').join('');
+  if (!vs.length) $('#sVoice').innerHTML = '<option value="">이 기기에서 영어 음성을 찾지 못했어요</option>';
+}
+try { speechSynthesis.addEventListener('voiceschanged', () => { if ($('#dlgSettings').open) fillVoices(); }); } catch (e) {}
+$('#sVoiceTry').addEventListener('click', () => {
+  const name = $('#sVoice').value, v = enVoices().find(x => x.name === name) || bestVoice;
+  ttsSpeak('Hello. Please predict the future.', { voice: v, rate: parseFloat($('#sRate').value) });
 });
 $('#sCancel').addEventListener('click', () => $('#dlgSettings').close());
 $('#sSave').addEventListener('click', () => {
   lsSet('vn_gas', $('#sGas').value.trim());
+  lsSet('vn_src', srcSel); lsSet('vn_voice', $('#sVoice').value); lsSet('vn_rate', $('#sRate').value); pickVoice();
+  if (srcSel === 'human') prefetchAudio();
   const n = parseInt($('#sNewPerDay').value, 10); if (!isNaN(n)) lsSet('vn_newperday', String(Math.max(0, Math.min(50, n))));
   $('#dlgSettings').close(); toast('저장했어요'); updateSetupInfo(); refreshWords();
 });
