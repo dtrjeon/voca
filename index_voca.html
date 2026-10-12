@@ -154,9 +154,11 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .cv-play{width:88px;height:48px;border:0;border-radius:999px;background:#07b0cc;color:#fff;font-size:22px}
 .cv-track{flex:1;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:14px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .cv-track::-webkit-scrollbar{display:none}
-.cv-card{flex:none;scroll-snap-align:center;background:#fff;border-radius:14px;border:1px solid var(--line);position:relative;display:flex;flex-direction:column;align-items:center;padding:56px 18px 50px;overflow-y:auto;cursor:pointer}
-.cv-bm{position:absolute;top:12px;right:14px;border:0;background:none;font-size:28px;line-height:1;color:#e9a21c;padding:4px 6px}
-.cv-say{position:absolute;top:12px;left:12px;border:0;background:none;font-size:24px;padding:4px 6px}
+.cv-card{flex:none;scroll-snap-align:center;background:#fff;border-radius:14px;border:1px solid var(--line);position:relative;display:flex;flex-direction:column;overflow:hidden;cursor:pointer}
+.cv-in{flex:1;min-height:0;overflow-y:auto;padding:56px 18px 16px;display:flex;flex-direction:column;align-items:center}
+.cv-foot{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;border-top:1px solid var(--line);background:#fff}
+.cv-bm{z-index:2;position:absolute;top:12px;right:14px;border:0;background:none;font-size:28px;line-height:1;color:#e9a21c;padding:4px 6px}
+.cv-say{z-index:2;position:absolute;top:12px;left:12px;border:0;background:none;font-size:24px;padding:4px 6px}
 .cv-word{font-size:44px;font-weight:800;margin-top:7vh;text-align:center;word-break:break-word;line-height:1.15}
 .cv-ipa{color:#999;font-size:19px;margin-top:8px;min-height:28px;text-align:center}
 .cv-meta{margin-top:10px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;color:var(--sub)}
@@ -166,8 +168,8 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .cv-ex{margin-top:14px;font-size:18px;color:#333}
 .cv-exko{margin-top:4px;font-size:15px;color:var(--sub)}
 .cv-tip{margin-top:12px;font-size:14px;color:#7a5a00;background:#fff8e1;border-radius:10px;padding:8px 12px;display:inline-block;text-align:left}
-.cv-hint{position:absolute;bottom:14px;left:18px;font-size:13px;color:#aaa}
-.cv-dict{position:absolute;bottom:12px;right:16px;color:var(--sub);text-decoration:none;font-size:16px;display:flex;align-items:center;gap:6px;padding:6px}
+.cv-hint{font-size:13px;color:#aaa}
+.cv-dict{color:var(--sub);text-decoration:none;font-size:16px;display:flex;align-items:center;gap:6px;padding:6px}
 .cv-sl{display:flex;align-items:center;gap:14px;padding:6px 18px calc(14px + env(safe-area-inset-bottom));background:#f0f0f0;color:#999}
 .cv-rg{position:relative;flex:1;height:44px;display:flex;align-items:center}
 .cv-rg input{width:100%;margin:0;accent-color:#777}
@@ -204,6 +206,28 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .cal-ws div{display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid var(--line)}
 .cal-ws span{color:var(--sub);text-align:right}
 @media (min-width:1024px){#tab-cal{max-width:none;display:none;grid-template-columns:minmax(0,1.3fr) minmax(320px,1fr);gap:24px;align-items:start}#tab-cal.active{display:grid}.cal-sum{margin-top:0}.cal-d{min-height:74px}}
+
+/* 카드 상세 구역 */
+.cv-back{text-align:left}
+.cv-back .cv-mean{text-align:center}
+.cv-secs{margin-top:14px}
+.cv-sec{margin-top:10px;border-radius:12px;overflow:hidden;background:#f3f3f3}
+.cv-sec h4{margin:0;padding:8px 14px;font-size:16px}
+.cv-sec .bx{background:#fff;margin:0 3px 3px;padding:12px 12px;border-radius:0 0 10px 10px;font-size:16px;line-height:1.6}
+.cv-sec .st{color:#222;letter-spacing:2px}
+.cv-sec .st i{font-style:normal;color:#d0d0d0}
+.cv-info{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center}
+.cv-ex .e{color:#222;margin-top:8px}.cv-ex .k{color:#888;font-size:14px}
+.cv-ex>div:first-child .e{margin-top:0}
+.cv-loading{color:#999;font-size:13px;margin-top:8px;text-align:center}
+.cv-card[data-face="mean"] .cv-word,.cv-card[data-face="mean"] .cv-ipa,.cv-card[data-face="mean"] .cv-meta{visibility:hidden}
+.cv-card[data-face="mean"].show .cv-word,.cv-card[data-face="mean"].show .cv-ipa,.cv-card[data-face="mean"].show .cv-meta{visibility:visible}
+.cv-front-mean{display:none;font-size:30px;font-weight:800;text-align:center;margin-top:7vh;padding:0 6px;word-break:keep-all}
+.cv-card[data-face="mean"] .cv-front-mean{display:block}
+.cv-card[data-face="mean"] .cv-word{margin-top:14px;font-size:30px}
+.cv-card[data-face="mean"] .cv-back .cv-mean{display:none}
+.cv-card[data-face="all"] .cv-back{visibility:visible}
+@media (min-width:768px){.cv-sec h4{font-size:18px}.cv-sec .bx{font-size:19px}.cv-ex .k{font-size:16px}.cv-front-mean{font-size:44px}}
 
 /* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
 .res-empty,.recent{display:none}
@@ -451,6 +475,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
     <button class="cv-ibtn" id="cvClose" aria-label="닫기" style="font-size:24px;padding:4px 10px">‹</button>
     <div class="ttl" id="cvTitle">단어 카드</div>
     <button class="cv-ibtn" id="cvBm">🔖 북마크만 보기</button>
+    <button class="cv-ibtn" id="cvMute" aria-label="소리 끄기">🔊</button>
     <button class="cv-ibtn" id="cvShuf" aria-label="섞기">🔀</button>
   </div>
   <div class="cv-bar">
@@ -478,6 +503,8 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
     <input type="date" id="cvTo">
     <div class="row" style="margin-top:8px"><button class="chip" id="cvFromToday">시작일을 오늘로</button><button class="chip" id="cvFromWeek">최근 7일</button></div>
   </div>
+  <label class="lbl">카드 앞면에 보이는 것</label>
+  <div class="row" id="cvFace"><button class="chip" data-v="word">단어</button><button class="chip" data-v="mean">뜻</button><button class="chip" data-v="all">모두</button></div>
   <label class="lbl">자동 재생: 단어 사이 간격</label>
   <select id="cvGap">
     <option value="3">3초</option><option value="5">5초</option><option value="8">8초</option><option value="12">12초</option>
@@ -518,7 +545,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '2.9', APP_DATE = '2026-10-12', SERVER_NEED = 4;
+const APP_VERSION = '3.1', APP_DATE = '2026-10-13', SERVER_NEED = 5;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -605,7 +632,7 @@ function updateCount() { $('#cnt').textContent = words.length ? words.length + '
 async function refreshWords(silent) {
   try {
     const j = await api('list');
-    words = j.words || []; saveCache();
+    words = (j.words || []).map(w => { let ex = null; try { ex = w.extra ? JSON.parse(w.extra) : null; } catch (e) {} w.extra = ex; return w; }); saveCache();
     renderList(); updateCount(); updateSetupInfo(); setTimeout(() => prefetchAudio(), 800);
   } catch (e) { if (!silent) toast(e.message); }
 }
@@ -719,6 +746,7 @@ function applySaved(id) {
   words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: new Date().toISOString(), right: 0, wrong: 0, last: '', box: 0, due: '' });
   saveCache(); renderList(); updateCount(); updateSetupInfo();
   renderResult();
+  setTimeout(() => ensureExtra(words[0]), 600);
 }
 async function handleDup() {
   const r = curResult; if (!r) return;
@@ -825,6 +853,8 @@ function ttsSpeak(t, o) {
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   } catch (e) {}
 }
+const isMuted = () => lsGet('vn_mute', '0') === '1';
+function autoSpeak(t) { if (!isMuted()) speak(t); }   // 자동 재생만 음소거 대상. 🔊 를 직접 누르면 항상 소리가 난다
 function speak(t) {
   // 기다리지 않는다: 미리 받아 둔 사람 녹음이 있으면 그것을, 없으면 즉시 기기 음성으로 읽고 다음을 위해 내려받는다
   try { speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio.currentTime = 0; } } catch (e) {}
@@ -1139,7 +1169,7 @@ function renderQ() {
     const correct = String(w[key]).trim();
     const opts = shuffle([correct].concat(distractors(w, key, 3)));
     q.correct = correct;
-    if (isW2M) { prompt.textContent = w.word; sub.textContent = w.pos || ''; setTimeout(() => speak(w.word), 150); }
+    if (isW2M) { prompt.textContent = w.word; sub.textContent = w.pos || ''; setTimeout(() => autoSpeak(w.word), 150); }
     else { prompt.textContent = w.meaning; sub.textContent = w.pos ? '(' + w.pos + ')' : ''; }
     body.innerHTML = opts.map(o => '<button class="opt" data-v="' + esc(o) + '">' + esc(o) + '</button>').join('');
     $$('.opt', body).forEach(b => b.addEventListener('click', () => answer(b.dataset.v === correct, b, correct)));
@@ -1270,7 +1300,7 @@ $('#sTestBtn').addEventListener('click', async () => {
 
 /* ====== 단어 카드 보기 ====== */
 const cv = { deck: [], idx: 0, shuffled: false, bmOnly: false, playing: false, timers: [], prog: false, st: null };
-const cvCfg = () => ({ scope: lsGet('vn_cv_scope', 'all'), gap: parseInt(lsGet('vn_cv_gap', '5'), 10) || 5, showMean: lsGet('vn_cv_mean', '1') === '1', loop: lsGet('vn_cv_loop', '1') === '1', auto: lsGet('vn_cv_auto', '1') === '1' });
+const cvCfg = () => ({ scope: lsGet('vn_cv_scope', 'all'), gap: parseInt(lsGet('vn_cv_gap', '5'), 10) || 5, showMean: lsGet('vn_cv_mean', '1') === '1', loop: lsGet('vn_cv_loop', '1') === '1', auto: lsGet('vn_cv_auto', '1') === '1', face: lsGet('vn_cv_face', 'word') });
 const bmSet = () => { try { return new Set(JSON.parse(lsGet('vn_bm', '[]'))); } catch (e) { return new Set(); } };
 function bmSave(set) { lsSet('vn_bm', JSON.stringify(Array.from(set))); }
 
@@ -1300,20 +1330,46 @@ function cvRender(keepIdx) {
     t.innerHTML = '<div class="cv-empty">' + (cv.bmOnly ? '북마크한 단어가 없어요.<br>카드의 🔖 를 눌러 표시해 보세요.' : '이 범위에 단어가 없어요.<br>“반복 설정”에서 범위를 바꿔 보세요.') + '</div>';
     $('#cvRange').max = 1; $('#cvMax').textContent = '0'; $('#cvBub').textContent = '0'; return;
   }
-  t.innerHTML = cv.deck.map((w, i) => '<div class="cv-card" data-i="' + i + '">' +
+  const face = cvCfg().face;
+  t.innerHTML = cv.deck.map((w, i) => '<div class="cv-card" data-face="' + face + '" data-i="' + i + '">' +
     '<button class="cv-say" data-a="say" aria-label="발음">🔊</button>' +
     '<button class="cv-bm" data-a="bm" aria-label="북마크">' + (bm.has(w.id) ? '🔖' : '🏷️') + '</button>' +
-    '<div class="cv-word">' + esc(w.word) + '</div><div class="cv-ipa" data-ipa="' + esc(w.word) + '"></div>' +
+    '<div class="cv-in"><div class="cv-word">' + esc(w.word) + '</div><div class="cv-ipa" data-ipa="' + esc(w.word) + '"></div>' +
     '<div class="cv-meta">' + esc(w.pos || '') + ' ' + lvChip(w.level) + '</div>' +
-    '<div class="cv-back"><div class="cv-mean">' + esc(w.meaning) + '</div>' +
-    (w.example ? '<div class="cv-ex">' + esc(w.example) + '</div>' : '') + (w.example_ko ? '<div class="cv-exko">' + esc(w.example_ko) + '</div>' : '') +
-    (w.tip ? '<div class="cv-tip">💡 ' + esc(w.tip) + '</div>' : '') + '</div>' +
-    '<div class="cv-hint">탭하면 뜻이 보여요</div>' +
-    '<a class="cv-dict" data-a="dict" href="https://en.dict.naver.com/#/search?query=' + encodeURIComponent(w.word) + '" target="_blank" rel="noopener">📖 사전 검색</a></div>').join('');
+    '<div class="cv-front-mean">' + esc(w.meaning) + '</div>' +
+    '<div class="cv-back"><div class="cv-mean">' + esc(w.meaning) + '</div><div class="cv-secs" data-i="' + i + '">' + cvSecs(w) + '</div></div></div>' +
+    '<div class="cv-foot"><div class="cv-hint">탭하면 ' + (cvCfg().face === 'mean' ? '단어가' : '뜻이') + ' 보여요</div>' +
+    '<a class="cv-dict" data-a="dict" href="https://en.dict.naver.com/#/search?query=' + encodeURIComponent(w.word) + '" target="_blank" rel="noopener">📖 사전 검색</a></div></div>').join('');
   cvLayout();
   const n = cv.deck.length; $('#cvRange').max = n; $('#cvMax').textContent = n;
   cvGo(cv.idx, false); cvUi();
   cv.deck.slice(Math.max(0, cv.idx - 1), cv.idx + 6).forEach(w => cvIpa(w.word));
+  ensureExtra(cv.deck[cv.idx]);
+}
+const stars = n => { n = Math.max(0, Math.min(5, n || 0)); return '<span class="st">' + '★'.repeat(n) + '<i>' + '★'.repeat(5 - n) + '</i></span>'; };
+const pending = {};
+function cvSecs(w) {
+  const x = w.extra, tot = (w.right || 0) + (w.wrong || 0), pct = tot ? Math.round((w.right || 0) * 100 / tot) : 0;
+  let h = '<div class="cv-sec"><h4>정보</h4><div class="bx cv-info">' +
+    '<span>사용빈도 ' + (x ? stars(x.freq) : '<span style="color:#aaa">…</span>') + '</span><span>난이도 ' + (w.level ? stars(w.level) : '<span style="color:#aaa">미정</span>') + '</span>' +
+    '<span>정답 ' + (w.right || 0) + '회</span><span>오답 ' + (w.wrong || 0) + '회</span><span>정답률 ' + pct + '%</span></div></div>';
+  const exs = x && x.examples && x.examples.length ? x.examples : (w.example ? [{ en: w.example, ko: w.example_ko }] : []);
+  if (exs.length) h += '<div class="cv-sec"><h4>예문</h4><div class="bx cv-ex">' + exs.map(e => '<div><div class="e">' + esc(e.en) + '</div>' + (e.ko ? '<div class="k">' + esc(e.ko) + '</div>' : '') + '</div>').join('') + '</div></div>';
+  if (x && x.forms) h += '<div class="cv-sec"><h4>형태 변화</h4><div class="bx">' + esc(x.forms) + '</div></div>';
+  if (x && x.derivs && x.derivs.length) h += '<div class="cv-sec"><h4>파생어</h4><div class="bx">' + x.derivs.map(d => '<div>' + esc(d) + '</div>').join('') + '</div></div>';
+  if (w.tip) h += '<div class="cv-sec"><h4>암기 팁</h4><div class="bx">💡 ' + esc(w.tip) + '</div></div>';
+  if (!x && pending[w.id]) h += '<div class="cv-loading">상세 정보를 불러오는 중…</div>';
+  return h;
+}
+function cvRefreshSecs(w) {
+  $$('.cv-secs').forEach(el => { const d = cv.deck[parseInt(el.dataset.i, 10)]; if (d && d.id === w.id) el.innerHTML = cvSecs(w); });
+}
+async function ensureExtra(w) {
+  if (!w || w.extra || pending[w.id] || !w.id || String(w.id).startsWith('tmp')) return;
+  pending[w.id] = true; cvRefreshSecs(w);
+  try { const j = await api('detail', { id: w.id, word: w.word, meaning: w.meaning }); w.extra = j.extra; saveCache(); }
+  catch (e) { /* 서버가 아직 v5가 아니면 조용히 넘어간다 */ }
+  finally { delete pending[w.id]; cvRefreshSecs(w); }
 }
 function cvIpa(word) {
   const k = word.toLowerCase().trim();
@@ -1327,6 +1383,7 @@ function cvUi() {
   $('#cvTitle').textContent = '단어 카드 ' + (n ? (i + 1) + '/' + n : '') + rg;
   $('#cvBm').classList.toggle('on', cv.bmOnly); $('#cvShuf').classList.toggle('on', cv.shuffled);
   $('#cvPlay').textContent = cv.playing ? '⏸' : '▶';
+  $('#cvMute').textContent = isMuted() ? '🔇' : '🔊'; $('#cvMute').classList.toggle('on', isMuted());
 }
 function cvGo(i, smooth) {
   const t = $('#cvTrack'); i = Math.max(0, Math.min(i, cv.deck.length - 1)); cv.idx = i;
@@ -1341,16 +1398,17 @@ function cvSettle() {
   if (i !== cv.idx) { cv.idx = i; cvUi(); cvIpa(cv.deck[i].word); cvLanded(); }
 }
 function cvLanded() {
+  ensureExtra(cv.deck[cv.idx]); ensureExtra(cv.deck[cv.idx + 1]);
   if (cv.playing) { cvPlayStep(); return; }
-  if (cvCfg().auto && cv.deck[cv.idx]) speak(cv.deck[cv.idx].word);
+  if (cvCfg().auto && cvCfg().face !== 'mean' && cv.deck[cv.idx]) autoSpeak(cv.deck[cv.idx].word);
 }
 function cvClear() { cv.timers.forEach(clearTimeout); cv.timers = []; }
 function cvCardEl(i) { return $('.cv-card[data-i="' + i + '"]', $('#cvTrack')); }
 function cvPlayStep() {
   cvClear(); const c = cvCfg(), w = cv.deck[cv.idx]; if (!w) return;
   $$('.cv-card.show').forEach(el => el.classList.remove('show'));
-  speak(w.word);
-  if (c.showMean) cv.timers.push(setTimeout(() => { const el = cvCardEl(cv.idx); if (el) el.classList.add('show'); }, c.gap * 450));
+  if (c.face !== 'mean') autoSpeak(w.word);
+  if (c.showMean || c.face === 'mean') cv.timers.push(setTimeout(() => { const el = cvCardEl(cv.idx); if (el) el.classList.add('show'); if (c.face === 'mean') autoSpeak(w.word); ensureExtra(w); }, c.gap * 450));
   cv.timers.push(setTimeout(() => {
     if (cv.idx + 1 >= cv.deck.length) { if (!c.loop) { cvStop(); return; } cvGo(0, true); } else cvGo(cv.idx + 1, true);
     cvPlayStep();
@@ -1374,6 +1432,10 @@ function cvClose() { cvStop(); $('#cardView').classList.remove('open'); document
 $('#btnCards').addEventListener('click', cvOpen);
 $('#cvClose').addEventListener('click', cvClose);
 $('#cvBm').addEventListener('click', () => { cv.bmOnly = !cv.bmOnly; cvStop(); buildDeck(); cvRender(false); });
+$('#cvMute').addEventListener('click', () => {
+  lsSet('vn_mute', isMuted() ? '0' : '1'); try { speechSynthesis.cancel(); if (curAudio) curAudio.pause(); } catch (e) {}
+  cvUi(); toast(isMuted() ? '자동 발음을 껐어요 (🔊 를 누르면 들려요)' : '자동 발음을 켰어요', 1600);
+});
 $('#cvShuf').addEventListener('click', () => { cv.shuffled = !cv.shuffled; cvStop(); buildDeck(); cvRender(false); });
 $('#cvPlay').addEventListener('click', () => {
   if (!cv.deck.length) return;
@@ -1389,7 +1451,7 @@ $('#cvTrack').addEventListener('click', e => {
   if (a && a.dataset.a === 'dict') return;
   if (a && a.dataset.a === 'say') { speak(cv.deck[i].word); return; }
   if (a && a.dataset.a === 'bm') { cvToggleBm(i); return; }
-  card.classList.toggle('show');
+  card.classList.toggle('show'); ensureExtra(cv.deck[i]);
 });
 window.addEventListener('resize', () => { if ($('#cardView').classList.contains('open')) { cvLayout(); cvGo(cv.idx, false); } });
 document.addEventListener('keydown', e => {
@@ -1403,9 +1465,9 @@ document.addEventListener('keydown', e => {
 function cvSyncOpts() {
   const c = cvCfg(); $('#cvScope').value = c.scope; $('#cvGap').value = String(c.gap);
   $('#cvFrom').value = lsGet('vn_cv_from', ''); $('#cvTo').value = lsGet('vn_cv_to', ''); cvDatesShow();
-  [['#cvShowMean', c.showMean ? '1' : '0'], ['#cvLoop', c.loop ? '1' : '0'], ['#cvAuto', c.auto ? '1' : '0']].forEach(([sel, v]) => $$(sel + ' .chip').forEach(b => b.classList.toggle('on', b.dataset.v === v)));
+  [['#cvFace', c.face], ['#cvShowMean', c.showMean ? '1' : '0'], ['#cvLoop', c.loop ? '1' : '0'], ['#cvAuto', c.auto ? '1' : '0']].forEach(([sel, v]) => $$(sel + ' .chip').forEach(b => b.classList.toggle('on', b.dataset.v === v)));
 }
-['#cvShowMean', '#cvLoop', '#cvAuto'].forEach(sel => $$(sel + ' .chip').forEach(b => b.addEventListener('click', () => $$(sel + ' .chip').forEach(x => x.classList.toggle('on', x === b)))));
+['#cvFace', '#cvShowMean', '#cvLoop', '#cvAuto'].forEach(sel => $$(sel + ' .chip').forEach(b => b.addEventListener('click', () => $$(sel + ' .chip').forEach(x => x.classList.toggle('on', x === b)))));
 function cvDatesShow() { $('#cvDates').style.display = $('#cvScope').value === 'range' ? '' : 'none'; }
 $('#cvScope').addEventListener('change', cvDatesShow);
 $('#cvFromToday').addEventListener('click', () => { $('#cvFrom').value = todayStr(); });
@@ -1421,7 +1483,7 @@ $('#cvOptOk').addEventListener('click', () => {
   lsSet('vn_cv_from', $('#cvFrom').value); lsSet('vn_cv_to', $('#cvTo').value);
   if ($('#cvScope').value === 'range' && !$('#cvFrom').value) { toast('시작일을 골라 주세요'); return; }
   lsSet('vn_cv_scope', $('#cvScope').value); lsSet('vn_cv_gap', $('#cvGap').value);
-  lsSet('vn_cv_mean', $('#cvShowMean .on').dataset.v); lsSet('vn_cv_loop', $('#cvLoop .on').dataset.v); lsSet('vn_cv_auto', $('#cvAuto .on').dataset.v);
+  lsSet('vn_cv_face', $('#cvFace .on').dataset.v); lsSet('vn_cv_mean', $('#cvShowMean .on').dataset.v); lsSet('vn_cv_loop', $('#cvLoop .on').dataset.v); lsSet('vn_cv_auto', $('#cvAuto .on').dataset.v);
   $('#dlgCv').close(); cvStop(); buildDeck(); cvRender(false);
 });
 
