@@ -211,7 +211,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 <body>
 
 <header>
-  <div><h1 style="display:inline">✍️ 손글씨 단어노트</h1><span class="count" id="cnt"></span></div>
+  <div><h1 style="display:inline">✍️ 손글씨 단어노트</h1><span class="count" id="cnt"></span><span class="count" id="verTag" style="margin-left:6px;opacity:.7"></span></div>
   <button class="icon-btn" id="btnSettings" aria-label="설정">⚙️</button>
 </header>
 
@@ -372,6 +372,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <label class="lbl">Apps Script 웹 앱 URL</label>
   <input type="text" id="sGas" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="none" autocomplete="off" spellcheck="false">
   <div id="sTest" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
+  <div id="sVer" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   <label class="lbl">하루에 새로 외울 단어 수 (복습은 따로 자동 계산돼요)</label>
   <input type="number" id="sNewPerDay" min="0" max="50" inputmode="numeric">
   <div class="row" style="margin-top:14px">
@@ -382,12 +383,17 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 </dialog>
 
 <script>
+/* ====== 버전 ====== */
+const APP_VERSION = '2.4', APP_DATE = '2026-10-12', SERVER_NEED = 4;
+
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
 const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwLuQhzJCbzT1ee4cpT_FZF1j74bPEB7g75vc7yNLWF_LluuaRJPm8x21axDMtdRGut/exec';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+$('#verTag').textContent = 'v' + APP_VERSION;
+$('#sVer').textContent = '앱 v' + APP_VERSION + ' (' + APP_DATE + ') · 필요한 서버(Code.gs) 버전 ' + SERVER_NEED;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -542,7 +548,7 @@ function exportPng() {
   let minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
   strokes.forEach(s => s.pts.forEach(p => { minx = Math.min(minx, p.x); miny = Math.min(miny, p.y); maxx = Math.max(maxx, p.x); maxy = Math.max(maxy, p.y); }));
   const pad_ = 28, w = Math.max(maxx - minx, 20), h = Math.max(maxy - miny, 20);
-  const sc = Math.min(2, 1000 / Math.max(w, h));
+  const sc = Math.min(1.5, 560 / Math.max(w, h));
   const cv = document.createElement('canvas');
   cv.width = Math.round((w + pad_ * 2) * sc); cv.height = Math.round((h + pad_ * 2) * sc);
   const c = cv.getContext('2d');
@@ -572,6 +578,19 @@ function renderResult(badge) {
   $('#btnResDel').style.display = r.saved ? 'inline-block' : 'none';
 }
 
+function applySaved(id) {
+  const r = curResult; if (!r) return;
+  r.id = id; r.saved = true;
+  words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: new Date().toISOString(), right: 0, wrong: 0, last: '', box: 0, due: '' });
+  saveCache(); renderList(); updateCount(); updateSetupInfo();
+  renderResult();
+}
+async function handleDup() {
+  const r = curResult; if (!r) return;
+  let ex = words.find(x => x.word === r.word);
+  if (!ex) { await refreshWords(true); ex = words.find(x => x.word === r.word); }
+  if (ex) { curResult = Object.assign({ saved: true }, ex); renderResult('ℹ️ 이미 단어장에 있는 단어예요'); }
+}
 async function saveCurrent() {
   const r = curResult; if (!r || r.saved) return;
   try {
@@ -595,7 +614,7 @@ $('#btnRecog').addEventListener('click', async () => {
   if (!strokes.length) { toast('먼저 단어를 써 주세요'); return; }
   const btn = $('#btnRecog'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>인식 중…';
   try {
-    const j = await api('recognize', { image: exportPng() });
+    const j = await api('recognize', { image: exportPng(), autosave: true });
     const r = j.result || {};
     const word = String(r.word || '').trim().toLowerCase();
     if (!word) { toast('글자를 읽지 못했어요. 더 크고 또박또박 써 보세요.', 3000); return; }
@@ -603,7 +622,10 @@ $('#btnRecog').addEventListener('click', async () => {
     strokes = []; redraw();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (curResult.lowConf) renderResult('철자를 확인해 주세요');
+    else if (j.saved && j.saved.ok) { applySaved(j.saved.id); }
+    else if (j.saved && j.saved.duplicate) { await handleDup(); }
     else { renderResult('저장 중…'); await saveCurrent(); }
+    if (curResult && curResult.word) humanAudio(curResult.word);
   } catch (e) { toast(e.message, 3500); }
   finally { btn.disabled = false; btn.textContent = '인식하기'; }
 });
@@ -636,24 +658,26 @@ function pickVoice() {
   try {
     const vs = speechSynthesis.getVoices().filter(v => /^en[-_]/i.test(v.lang));
     if (!vs.length) return;
-    const score = v => (/natural|neural|enhanced|premium|online/i.test(v.name) ? 50 : 0) + (/google/i.test(v.name) ? 30 : 0) +
-      (/en[-_]US/i.test(v.lang) ? 10 : 0) + (v.localService ? 0 : 5);
+    // 네트워크 음성은 시작이 1~3초 늦으므로 기기 안의 음성(localService)을 우선한다
+    const score = v => (v.localService ? 60 : 0) + (/natural|neural|enhanced|premium/i.test(v.name) ? 30 : 0) +
+      (/google/i.test(v.name) ? 10 : 0) + (/en[-_]US/i.test(v.lang) ? 10 : 0);
     bestVoice = vs.slice().sort((a, b) => score(b) - score(a))[0];
   } catch (e) {}
 }
 try { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) {}
 function humanAudio(word) {
   const k = word.toLowerCase().trim();
-  if (!/^[a-z][a-z'-]*$/.test(k)) return Promise.resolve('');
-  if (k in audioCache) return Promise.resolve(audioCache[k]);
-  const p = fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(k))
+  if (!/^[a-z][a-z'-]*$/.test(k)) return Promise.resolve(null);
+  if (k in audioCache) return Promise.resolve(audioCache[k].el || null);
+  const ent = audioCache[k] = { el: null };
+  return fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(k))
     .then(r => r.ok ? r.json() : [])
     .then(j => {
       const urls = []; (j || []).forEach(e => (e.phonetics || []).forEach(p => p.audio && urls.push(p.audio)));
       const u = urls.find(x => /-us\./i.test(x)) || urls[0] || '';
-      return (audioCache[k] = u ? u.replace(/^http:/, 'https:') : '');
-    }).catch(() => { delete audioCache[k]; return ''; });
-  audioCache[k] = p; return p;
+      if (u) { const el = new Audio(u.replace(/^http:/, 'https:')); el.preload = 'auto'; try { el.load(); } catch (e) {} ent.el = el; }
+      return ent.el;
+    }).catch(() => { delete audioCache[k]; return null; });
 }
 function ttsSpeak(t) {
   try {
@@ -663,15 +687,17 @@ function ttsSpeak(t) {
   } catch (e) {}
 }
 function speak(t) {
-  try { speechSynthesis.cancel(); if (curAudio) curAudio.pause(); } catch (e) {}
-  let done = false;
-  const fallback = () => { if (!done) { done = true; ttsSpeak(t); } };
-  humanAudio(t).then(url => {
-    if (!url) return fallback();
-    const a = new Audio(url); curAudio = a;
-    a.addEventListener('error', fallback);
-    const pr = a.play(); if (pr && pr.catch) pr.catch(fallback);
-  });
+  // 기다리지 않는다: 미리 받아 둔 사람 녹음이 있으면 그것을, 없으면 즉시 기기 음성으로 읽고 다음을 위해 내려받는다
+  try { speechSynthesis.cancel(); if (curAudio) { curAudio.pause(); curAudio.currentTime = 0; } } catch (e) {}
+  const k = t.toLowerCase().trim();
+  const ent = audioCache[k];
+  if (ent && ent.el) {
+    curAudio = ent.el; curAudio.currentTime = 0;
+    const pr = curAudio.play(); if (pr && pr.catch) pr.catch(() => ttsSpeak(t));
+    return;
+  }
+  ttsSpeak(t);
+  if (!ent) humanAudio(t);
 }
 function prefetchAudio() { words.slice(0, 80).forEach((w, i) => setTimeout(() => humanAudio(w.word), i * 120)); }
 
@@ -1076,11 +1102,13 @@ $('#sTestBtn').addEventListener('click', async () => {
   const u = $('#sGas').value.trim(); const out = $('#sTest');
   if (!u) { out.textContent = 'URL을 입력해 주세요.'; return; }
   out.textContent = '확인 중…';
-  try { const r = await fetch(u); const j = await r.json(); out.textContent = j.ok ? '✅ 연결됐어요' : '응답이 이상해요'; }
+  try { const r = await fetch(u); const j = await r.json(); out.textContent = j.ok ? ('✅ 연결됐어요 · 서버 v' + (j.version || '?') + (Number(j.version) < SERVER_NEED ? ' ⚠️ 최신(v' + SERVER_NEED + ')이 아니에요. Code.gs 교체 후 새 버전으로 다시 배포하세요' : ' (최신)')) : '응답이 이상해요'; }
   catch (e) { out.textContent = '❌ 연결 실패: 배포 설정(액세스: 모든 사용자)과 URL을 확인해 주세요.'; }
 });
 
 /* ====== 시작 ====== */
+// 서버를 미리 깨워 두면 첫 인식이 빨라진다 (Apps Script 콜드 스타트 방지)
+try { const gu = gasUrl(); if (gu && gu.indexOf('PASTE_GAS_URL') < 0) { fetch(gu).catch(() => {}); setInterval(() => { if (!document.hidden) fetch(gasUrl()).catch(() => {}); }, 240000); } } catch (e) {}
 const wideMQ = window.matchMedia('(min-width:768px)');
 function syncWide() { const d = $('#quizSetup details'); if (d) d.open = wideMQ.matches; }
 if (wideMQ.addEventListener) wideMQ.addEventListener('change', syncWide);
