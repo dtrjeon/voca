@@ -131,6 +131,70 @@ dialog{border:0;border-radius:18px;padding:18px;width:min(92vw,460px);box-shadow
 dialog::backdrop{background:rgba(20,22,40,.45)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
+/* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
+.res-empty,.recent{display:none}
+@media (min-width:768px){
+  body{padding-bottom:24px}
+  header{padding-left:24px;padding-right:24px}
+  header h1{font-size:20px}
+  nav{top:calc(58px + env(safe-area-inset-top));bottom:0;right:auto;width:96px;flex-direction:column;justify-content:flex-start;border-top:0;border-right:1px solid var(--line);padding:10px 0 0}
+  nav button{flex:none;padding:16px 0 14px;font-size:13px}
+  nav button .ic{font-size:28px}
+  .nbadge{left:calc(50% + 12px)}
+  main{max-width:none;margin:0 0 0 96px;padding:22px 28px}
+  #toast{bottom:28px}
+  .btn{padding:14px 20px;font-size:17px}
+  .chip{padding:9px 18px;font-size:15px}
+  input[type=text],input[type=number],textarea{font-size:17px}
+  dialog{width:min(80vw,560px)}
+
+  /* 쓰기: 왼쪽 큰 캔버스 / 오른쪽 결과 + 최근 단어 */
+  #tab-write.active{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);gap:24px;align-items:start}
+  .w-left{grid-column:1;grid-row:1}
+  .w-right{grid-column:2;grid-row:1;position:sticky;top:80px}
+  .pad-wrap{height:clamp(340px,58vh,680px)}
+  .pad-hint{font-size:22px}
+  .result-word{font-size:40px}
+  .res-mean{font-size:24px}
+  .res-ex{font-size:18px}
+  .res-exko{font-size:15px}
+  .res-empty{display:flex;align-items:center;justify-content:center;text-align:center;min-height:200px;border:2px dashed #cfd3ea;border-radius:var(--radius);color:var(--sub);padding:20px;margin-bottom:12px;line-height:1.7}
+  #resultCard:not([style*="none"]) + .res-empty{display:none}
+  .recent{display:block}
+  .recent-t{font-weight:700;margin-bottom:6px}
+  .rc-item{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+  .rc-item span{color:var(--sub);text-align:right}
+  .rc-empty{color:var(--sub);font-size:14px}
+
+  /* 단어장: 카드 격자 */
+  #list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;align-items:start}
+  .w-item{margin-bottom:0;padding:16px 18px}
+  .w-word{font-size:24px}
+  .w-mean{font-size:17px}
+
+  /* 암기점검: 홈 + 직접 고르기 2단, 퀴즈는 가운데 크게 */
+  #quizSetup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+  #quizSetup .card{margin-bottom:0}
+  #quizPlay,#quizResult{max-width:820px;margin:0 auto}
+  .home-title{font-size:22px}
+  .q-prompt{font-size:40px;padding:26px 8px}
+  .q-prompt.small{font-size:25px}
+  .q-sub{font-size:17px}
+  .q-sub.hint{font-size:26px}
+  .opt{font-size:20px;padding:18px}
+  .fb{font-size:17px}
+  .score{font-size:72px}
+}
+@media (min-width:768px) and (max-width:1023px){
+  main{padding:18px 20px}
+  #tab-write.active{display:block}
+  .w-right{position:static}
+  .res-empty,.recent{display:none}
+  .pad-wrap{height:clamp(340px,50vh,640px)}
+  #list{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  #quizSetup{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -143,6 +207,7 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
 <main>
   <!-- 쓰기 -->
   <section id="tab-write" class="active">
+    <div class="w-right">
     <div class="card result" id="resultCard" style="display:none">
       <div class="res-head"><span class="result-word" id="rWordTxt"></span><span class="w-pos" id="rPosTxt"></span><button class="speak" id="rSpeak" aria-label="발음">🔊</button><span class="badge" id="rBadge"></span></div>
       <div class="res-mean" id="rMeaningTxt"></div>
@@ -156,6 +221,10 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
         <button class="btn primary grow" id="btnResSave" style="display:none">저장</button>
       </div>
     </div>
+    <div class="res-empty" id="resEmpty">S펜으로 왼쪽에 단어를 쓰고<br>“인식하기”를 누르면<br>뜻과 예문이 여기에 나타나요</div>
+    <div class="card recent" id="recentBox"><div class="recent-t">최근 저장한 단어</div><div id="recentList"></div></div>
+    </div>
+    <div class="w-left">
     <div class="row" style="margin-bottom:8px">
       <span style="font-size:14px;color:var(--sub)">크게 쓰고 인식하면 자동 저장돼요</span>
       <span class="grow"></span>
@@ -170,6 +239,7 @@ dialog::backdrop{background:rgba(20,22,40,.45)}
       <button class="btn" id="btnUndo">↩︎ 되돌리기</button>
       <button class="btn" id="btnClear">지우기</button>
       <button class="btn primary grow" id="btnRecog">인식하기</button>
+    </div>
     </div>
 
   </section>
@@ -538,7 +608,14 @@ function dueLabel(w) {
   return d === 1 ? '내일 복습' : d + '일 뒤 복습';
 }
 
+function renderRecent() {
+  const el = $('#recentList'); if (!el) return;
+  const arr = words.slice().sort((a, b) => String(b.added).localeCompare(String(a.added))).slice(0, 6);
+  el.innerHTML = arr.length ? arr.map(w => '<div class="rc-item"><b>' + esc(w.word) + '</b><span>' + esc(w.meaning) + '</span></div>').join('') : '<div class="rc-empty">아직 저장한 단어가 없어요</div>';
+}
+
 function renderList() {
+  renderRecent();
   const q = $('#search').value.trim().toLowerCase();
   let arr = words.filter(w => !q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0);
   arr = arr.slice().sort((a, b) => {
@@ -715,7 +792,7 @@ function updateSetupInfo() { renderHome(); updateBadge(); updateCustomInfo(); }
 
 /* ---- 퀴즈 진행 ---- */
 let quiz = null;
-function show(id) { ['quizSetup', 'quizPlay', 'quizResult'].forEach(x => $('#' + x).style.display = (x === id ? 'block' : 'none')); window.scrollTo(0, 0); }
+function show(id) { ['quizSetup', 'quizPlay', 'quizResult'].forEach(x => $('#' + x).style.display = (x === id ? '' : 'none')); window.scrollTo(0, 0); }
 
 function typeOk(w, t) { return t !== 'cloze' || !!clozeOf(w); }
 // 섞어서: 단계가 낮을수록 쉬운 유형(보고 고르기), 높을수록 어려운 유형(떠올려 쓰기)
@@ -893,6 +970,10 @@ $('#sTestBtn').addEventListener('click', async () => {
 });
 
 /* ====== 시작 ====== */
+const wideMQ = window.matchMedia('(min-width:768px)');
+function syncWide() { const d = $('#quizSetup details'); if (d) d.open = wideMQ.matches; }
+if (wideMQ.addEventListener) wideMQ.addEventListener('change', syncWide);
+syncWide();
 resizePad();
 renderList(); updateCount(); updateSetupInfo();
 if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) refreshWords(true);
