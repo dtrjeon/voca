@@ -229,6 +229,12 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .cv-card[data-face="all"] .cv-back{visibility:visible}
 @media (min-width:768px){.cv-sec h4{font-size:18px}.cv-sec .bx{font-size:19px}.cv-ex .k{font-size:16px}.cv-front-mean{font-size:44px}}
 
+/* 등록일 · 일자별 */
+.dtrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.dtrow input[type=date]{width:auto;flex:none;padding:6px 10px;font-size:16px}
+.dtrow.past{background:#fff8e1;border-color:#f0d58a}
+.dtnote{font-size:13px;color:var(--sub)}
+.day-h{grid-column:1/-1;font-weight:700;margin:14px 2px 6px}
 /* 폴더 · 가져오기 · 학습 카드 */
 .fbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .fbar .chip{display:inline-flex;align-items:center;gap:4px}
@@ -248,6 +254,29 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .pk{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
 @media (min-width:768px){#folderCards{grid-column:1/-1}}
 
+/* 뜻 토글 · 표 보기 */
+#tab-list #search{flex:1 1 100%;min-width:0}
+#tab-list .row{flex-wrap:wrap}
+.tg{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
+.tg input{position:absolute;opacity:0;width:0;height:0}
+.tg .sw{width:44px;height:26px;border-radius:999px;background:#c9ccd8;position:relative;transition:.2s;flex:none}
+.tg .sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:.2s}
+.tg input:checked+.sw{background:var(--accent)}
+.tg input:checked+.sw::after{left:21px}
+.tg input:focus-visible+.sw{outline:2px solid var(--accent);outline-offset:2px}
+.tool-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.tbl{display:grid;gap:8px}
+.tcell{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;min-width:0;display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.tcell .tw{font-weight:700;font-size:17px;word-break:break-word;display:flex;align-items:center;gap:4px}
+.tcell .tw .speak{margin-left:auto}
+.tcell .tp{font-size:12px;color:var(--sub)}
+.tcell .tm{font-size:14px;word-break:keep-all;overflow-wrap:anywhere}
+.tcell .tm.hid{color:transparent;background:#eceef6;border-radius:6px;min-height:1.2em;user-select:none}
+.tcell.empty-c{visibility:hidden}
+.tpager{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0}
+.hidemean .w-mean{visibility:hidden}
+.hidemean .w-item.open .w-mean{visibility:visible}
+.setgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 /* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
 .res-empty,.recent{display:none}
 @media (min-width:768px){
@@ -347,6 +376,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
     <div class="card recent" id="recentBox"><div class="recent-t">최근 저장한 단어</div><div id="recentList"></div></div>
     </div>
     <div class="w-left">
+    <div class="dtrow" id="dtRow"><span>📅 등록일</span><input type="date" id="wDate"><button class="chip" id="wToday">오늘</button><span class="dtnote" id="wDateNote"></span></div>
     <div class="row" style="margin-bottom:8px">
       <span style="font-size:14px;color:var(--sub)">크게 쓰고 인식하면 자동 저장돼요</span>
       <span class="grow"></span>
@@ -376,6 +406,11 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
       <button class="chip" data-sort="wrong">오답순</button>
       <button class="chip" data-sort="due">복습순</button>
       <button class="chip" data-sort="level">난이도순</button>
+      <button class="chip" data-sort="day">일자별</button>
+    </div>
+    <div class="tool-row">
+      <label class="tg"><input type="checkbox" id="tgMean" checked><span class="sw"></span>뜻</label>
+      <button class="chip" id="btnView">▦ 표로 보기</button>
     </div>
     <div id="rateBar"></div>
     <div id="list"></div>
@@ -481,6 +516,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <label class="lbl">예문</label><textarea id="eExample" rows="2"></textarea>
   <label class="lbl">예문 뜻</label><textarea id="eExampleKo" rows="2"></textarea>
   <label class="lbl">어근·외우기 팁</label><input type="text" id="eTip">
+  <label class="lbl">등록일</label><input type="date" id="eDate">
   <label class="lbl">폴더 (폴더/서브폴더 형식)</label><input type="text" id="eFolder" list="folderList" autocomplete="off" placeholder="비워 두면 미분류"><datalist id="folderList"></datalist>
   <label class="lbl">난이도 (수능 기준)</label>
   <select id="eLevel">
@@ -576,6 +612,9 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <div class="row" style="margin-top:8px"><button class="btn" id="sVoiceTry">🔊 들어보기</button></div>
   <label class="lbl">하루에 새로 외울 단어 수 (복습은 따로 자동 계산돼요)</label>
   <input type="number" id="sNewPerDay" min="0" max="50" inputmode="numeric">
+  <label class="lbl">단어장 표 크기 (행 × 열 · 한 페이지에 행×열 개)</label>
+  <div class="setgrid"><div><label class="lbl" for="sRows">행 (1~30)</label><input type="number" id="sRows" min="1" max="30" inputmode="numeric"></div>
+  <div><label class="lbl" for="sCols">열 (1~6)</label><input type="number" id="sCols" min="1" max="6" inputmode="numeric"></div></div>
   <div class="row" style="margin-top:14px">
     <button class="btn" id="sTestBtn">연결 테스트</button>
     <button class="btn" id="sCancel">닫기</button>
@@ -585,7 +624,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '3.3', APP_DATE = '2026-10-13', SERVER_NEED = 6;
+const APP_VERSION = '3.5', APP_DATE = '2026-10-14', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -665,6 +704,10 @@ function lvGroup(w) { const l = clampLv(w.level); return !l ? 'none' : (l <= 2 ?
 let words = [];
 try { words = JSON.parse(lsGet('vn_words', '[]')) || []; } catch (e) { words = []; }
 let sortMode = 'new';
+const tblRows = () => { const v = parseInt(lsGet('vn_trows', '5'), 10); return isNaN(v) ? 5 : Math.max(1, Math.min(30, v)); };
+const tblCols = () => { const v = parseInt(lsGet('vn_tcols', '3'), 10); return isNaN(v) ? 3 : Math.max(1, Math.min(6, v)); };
+let showMean = lsGet('vn_showmean', '1') !== '0', tblView = lsGet('vn_tblview', '0') === '1', tblPage = 0;
+const tblRevealed = new Set();
 
 function saveCache() { lsSet('vn_words', JSON.stringify(words)); }
 function updateCount() { $('#cnt').textContent = words.length ? words.length + '단어' : ''; }
@@ -783,9 +826,9 @@ function renderResult(badge) {
 function applySaved(id) {
   const r = curResult; if (!r) return;
   r.id = id; r.saved = true;
-  words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: new Date().toISOString(), right: 0, wrong: 0, last: '', box: 0, due: '' });
+  words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '' });
   saveCache(); renderList(); updateCount(); updateSetupInfo();
-  renderResult();
+  renderResult(); wDateAfterSave();
   setTimeout(() => ensureExtra(words[0]), 600);
 }
 async function handleDup() {
@@ -797,11 +840,11 @@ async function handleDup() {
 async function saveCurrent() {
   const r = curResult; if (!r || r.saved) return;
   try {
-    const j = await api('add', { word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip, level: r.level });
+    const j = await api('add', { word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip, level: r.level, date: regDate() });
     r.id = j.id; r.saved = true;
-    words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: new Date().toISOString(), right: 0, wrong: 0, last: '', box: 0, due: '' });
+    words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '' });
     saveCache(); renderList(); updateCount(); updateSetupInfo();
-    renderResult();
+    renderResult(); wDateAfterSave();
   } catch (e) {
     if (e.data && e.data.duplicate) {
       let ex = words.find(x => x.word === r.word);
@@ -817,7 +860,7 @@ $('#btnRecog').addEventListener('click', async () => {
   if (!strokes.length) { toast('먼저 단어를 써 주세요'); return; }
   const btn = $('#btnRecog'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>인식 중…';
   try {
-    const j = await api('recognize', { image: exportPng(), autosave: true });
+    const j = await api('recognize', { image: exportPng(), autosave: true, date: regDate() });
     const r = j.result || {};
     const word = String(r.word || '').trim().toLowerCase();
     if (!word) { toast('글자를 읽지 못했어요. 더 크고 또박또박 써 보세요.', 3000); return; }
@@ -839,7 +882,7 @@ $('#btnResEdit').addEventListener('click', () => {
   const r = curResult; if (!r) return;
   editId = r.saved ? r.id : '__new__';
   $('#eWord').value = r.word; $('#ePos').value = r.pos || ''; $('#eMeaning').value = r.meaning || '';
-  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || ''; $('#eLevel').value = String(r.level || 0); $('#eFolder').value = r.folder || ''; fillFolderList();
+  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || ''; $('#eLevel').value = String(r.level || 0); $('#eFolder').value = r.folder || ''; fillFolderList(); $('#eDate').value = r.saved && r.id ? (words.find(x => x.id === r.id) ? addedYmd(words.find(x => x.id === r.id)) : '') : regDate();
   $('#dlgEdit').showModal();
 });
 $('#btnResDel').addEventListener('click', async () => {
@@ -965,6 +1008,7 @@ function renderList() {
   const q = $('#search').value.trim().toLowerCase();
   let arr = words.filter(w => inFolder(w) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0));
   arr = arr.slice().sort((a, b) => {
+    if (sortMode === 'day') return String(b.added).localeCompare(String(a.added));
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
     if (sortMode === 'wrong') return (b.wrong || 0) - (a.wrong || 0) || (a.right || 0) - (b.right || 0);
     if (sortMode === 'due') {
@@ -974,8 +1018,12 @@ function renderList() {
     return String(b.added).localeCompare(String(a.added));
   });
   const box = $('#list');
+  $('#tgMean').checked = showMean; $('#btnView').textContent = tblView ? '☰ 목록으로 보기' : '▦ 표로 보기'; $('#btnView').classList.toggle('on', tblView);
+  box.classList.toggle('hidemean', !showMean);
+  if (tblView && arr.length) { renderTable(arr, box); return; }
   if (!arr.length) { box.innerHTML = '<div class="empty">' + (words.length ? '검색 결과가 없어요' : '아직 단어가 없어요.<br>“쓰기” 탭에서 첫 단어를 써 보세요!') + '</div>'; return; }
-  box.innerHTML = arr.map(w =>
+  const dayCnt = {}; if (sortMode === 'day') arr.forEach(w => { const d = addedYmd(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
+  box.innerHTML = arr.map((w, ix) => dayHead(arr, ix, dayCnt) +
     '<div class="w-item" data-id="' + esc(w.id) + '">' +
       '<div class="w-top"><span class="w-word">' + esc(w.word) + '</span>' +
       (w.pos ? '<span class="w-pos">' + esc(w.pos) + '</span>' : '') +
@@ -993,9 +1041,38 @@ function renderList() {
         '<div class="say-out"></div>' +
       '</div></div>').join('');
 }
-$('#search').addEventListener('input', renderList);
+function renderTable(arr, box) {
+  const R = tblRows(), C = tblCols(), per = R * C, pages = Math.max(1, Math.ceil(arr.length / per));
+  if (tblPage >= pages) tblPage = pages - 1; if (tblPage < 0) tblPage = 0;
+  const part = arr.slice(tblPage * per, tblPage * per + per);
+  const rows = Math.ceil(part.length / C);
+  let h = '<div class="tbl" style="grid-template-columns:repeat(' + C + ',minmax(0,1fr))">';
+  for (let i = 0; i < rows * C; i++) {
+    const w = part[i];
+    if (!w) { h += '<div class="tcell empty-c"></div>'; continue; }
+    const hide = !showMean && !tblRevealed.has(w.id);
+    h += '<div class="tcell" data-id="' + esc(w.id) + '"><div class="tw"><span>' + esc(w.word) + '</span><button class="speak" data-act="tspeak" aria-label="발음">🔊</button></div>' +
+      (w.pos ? '<div class="tp">' + esc(w.pos) + '</div>' : '') +
+      '<div class="tm' + (hide ? ' hid' : '') + '">' + esc(w.meaning) + '</div></div>';
+  }
+  h += '</div><div class="tpager"><button class="btn" id="tPrev"' + (tblPage ? '' : ' disabled') + '>◀ 이전</button><span>' + (tblPage + 1) + ' / ' + pages + ' · ' + R + '×' + C + ' · 총 ' + arr.length + '개</span><button class="btn" id="tNext"' + (tblPage < pages - 1 ? '' : ' disabled') + '>다음 ▶</button></div>';
+  box.innerHTML = h;
+}
+$('#list').addEventListener('click', e => {
+  const t = e.target.closest('.tcell'); if (t) {
+    const w = words.find(x => x.id === t.dataset.id); if (!w) return;
+    if (e.target.dataset.act === 'tspeak') { speak(w.word); return; }
+    if (!showMean) { if (tblRevealed.has(w.id)) tblRevealed.delete(w.id); else tblRevealed.add(w.id); renderList(); }
+    return;
+  }
+  if (e.target.id === 'tPrev') { tblPage--; renderList(); window.scrollTo(0, 0); }
+  if (e.target.id === 'tNext') { tblPage++; renderList(); window.scrollTo(0, 0); }
+});
+$('#tgMean').addEventListener('change', e => { showMean = e.target.checked; lsSet('vn_showmean', showMean ? '1' : '0'); tblRevealed.clear(); renderList(); });
+$('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
+$('#search').addEventListener('input', () => { tblPage = 0; renderList(); });
 $$('[data-sort]').forEach(b => b.addEventListener('click', () => {
-  sortMode = b.dataset.sort; $$('[data-sort]').forEach(x => x.classList.toggle('on', x === b)); renderList();
+  sortMode = b.dataset.sort; tblPage = 0; $$('[data-sort]').forEach(x => x.classList.toggle('on', x === b)); renderList();
 }));
 
 // 마이크로 단어를 따라 말하면 맞게 들리는지 확인 (지원하는 브라우저에서만)
@@ -1024,7 +1101,7 @@ $('#list').addEventListener('click', async e => {
   if (act === 'say') { sayWord(w.word, $('.say-out', item)); return; }
   if (act === 'edit') {
     editId = w.id; $('#eWord').value = w.word; $('#ePos').value = w.pos || ''; $('#eMeaning').value = w.meaning || '';
-    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#eLevel').value = String(w.level || 0); $('#eFolder').value = w.folder || ''; fillFolderList(); $('#dlgEdit').showModal(); return;
+    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#eLevel').value = String(w.level || 0); $('#eFolder').value = w.folder || ''; fillFolderList(); $('#eDate').value = addedYmd(w); $('#dlgEdit').showModal(); return;
   }
   if (act === 'del') {
     if (!confirm('“' + w.word + '” 을(를) 삭제할까요?')) return;
@@ -1036,7 +1113,7 @@ $('#list').addEventListener('click', async e => {
 });
 $('#eCancel').addEventListener('click', () => $('#dlgEdit').close());
 $('#eSave').addEventListener('click', async () => {
-  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim(), level: parseInt($('#eLevel').value, 10) || 0, folder: $('#eFolder').value.trim().replace(/\s*\/\s*/g, '/') };
+  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim(), level: parseInt($('#eLevel').value, 10) || 0, folder: $('#eFolder').value.trim().replace(/\s*\/\s*/g, '/'), date: $('#eDate').value };
   if (!d.word) { toast('단어를 입력해 주세요'); return; }
   const patch = { word: d.word.toLowerCase(), pos: d.pos, meaning: d.meaning, example: d.example, example_ko: d.example_ko, tip: d.tip, level: d.level, folder: d.folder };
   if (editId === '__new__') {
@@ -1045,7 +1122,7 @@ $('#eSave').addEventListener('click', async () => {
   }
   try {
     await api('update', d);
-    const w = words.find(x => x.id === editId); if (w) Object.assign(w, patch);
+    const w = words.find(x => x.id === editId); if (w) { Object.assign(w, patch); if (d.date) w.added = new Date(d.date + 'T12:00:00+09:00').toISOString(); }
     saveCache(); renderList();
     if (curResult && curResult.id === editId) { Object.assign(curResult, patch); renderResult(); }
     $('#dlgEdit').close(); toast('수정했어요');
@@ -1302,7 +1379,7 @@ $('#btnQuit').addEventListener('click', () => { if (confirm('퀴즈를 그만할
 /* ====== 설정 ====== */
 $('#btnSettings').addEventListener('click', () => {
   $('#sGas').value = lsGet('vn_gas', '') || (DEFAULT_GAS_URL.indexOf('PASTE') >= 0 ? '' : DEFAULT_GAS_URL);
-  $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
+  $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
   fillVoices(); syncSrc(lsGet('vn_src', 'human'));
   $('#sRate').value = lsGet('vn_rate', '0.85'); $('#sRateVal').textContent = $('#sRate').value + '배';
   $('#dlgSettings').showModal();
@@ -1329,6 +1406,9 @@ $('#sSave').addEventListener('click', () => {
   lsSet('vn_src', srcSel); lsSet('vn_voice', $('#sVoice').value); lsSet('vn_rate', $('#sRate').value); pickVoice();
   if (srcSel === 'human') prefetchAudio();
   const n = parseInt($('#sNewPerDay').value, 10); if (!isNaN(n)) lsSet('vn_newperday', String(Math.max(0, Math.min(50, n))));
+  const tr = parseInt($('#sRows').value, 10), tc = parseInt($('#sCols').value, 10);
+  if (!isNaN(tr)) lsSet('vn_trows', String(Math.max(1, Math.min(30, tr)))); if (!isNaN(tc)) lsSet('vn_tcols', String(Math.max(1, Math.min(6, tc))));
+  tblPage = 0; renderList();
   $('#dlgSettings').close(); toast('저장했어요'); updateSetupInfo(); refreshWords();
 });
 $('#sTestBtn').addEventListener('click', async () => {
@@ -1790,6 +1870,27 @@ $('#folderCards').addEventListener('click', e => {
   else startQuiz(folderStudyList(f.list), 'mix');
 });
 { const _rh = renderHome; renderHome = function () { _rh(); renderFolderCards(); }; }
+
+/* ====== 등록일 (쓰기에서 고른 날짜로 단어를 등록) ====== */
+// vn_wdate 가 비어 있으면 "항상 오늘". 다른 날짜를 고르면 바꿀 때까지 그 날짜로 등록한다.
+const regDate = () => { const v = lsGet('vn_wdate', ''); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : todayStr(); };
+const regISO = () => { const d = regDate(); return d === todayStr() ? new Date().toISOString() : new Date(d + 'T12:00:00+09:00').toISOString(); };
+function renderWDate() {
+  const d = regDate(), past = d !== todayStr(), wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(d + 'T12:00:00+09:00').getDay()];
+  $('#wDate').value = d; $('#dtRow').classList.toggle('past', past);
+  $('#wDateNote').textContent = past ? d.slice(5).replace('-', '/') + '(' + wd + ') 일자로 등록돼요' : '오늘(' + wd + ') 등록';
+  $('#wToday').style.display = past ? '' : 'none';
+}
+function wDateAfterSave() { const n = words.filter(w => addedYmd(w) === regDate()).length; $('#wDateNote').textContent = $('#wDate').value.slice(5).replace('-', '/') + ' 일자 단어 ' + n + '개'; }
+$('#wDate').addEventListener('change', e => { const v = e.target.value; lsSet('vn_wdate', !v || v === todayStr() ? '' : v); renderWDate(); });
+$('#wToday').addEventListener('click', () => { lsSet('vn_wdate', ''); renderWDate(); toast('오늘 일자로 등록해요', 1400); });
+function dayHead(arr, ix, cnt) {
+  if (sortMode !== 'day') return '';
+  const d = addedYmd(arr[ix]); if (ix && addedYmd(arr[ix - 1]) === d) return '';
+  const wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(d + 'T12:00:00+09:00').getDay()];
+  return '<div class="day-h">📅 ' + d.slice(5).replace('-', '/') + ' (' + wd + ') · ' + cnt[d] + '개</div>';
+}
+renderWDate();
 
 /* ====== 시작 ====== */
 // 서버를 미리 깨워 두면 첫 인식이 빨라진다 (Apps Script 콜드 스타트 방지)
