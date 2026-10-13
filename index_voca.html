@@ -550,8 +550,9 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <div style="font-size:14px;color:var(--sub)">폴더와 서브폴더를 만들어 단어장에 한꺼번에 등록해요. 이미 있는 단어는 새로 만들지 않고, 폴더가 비어 있으면 그 폴더로만 넣어요.</div>
   <label class="lbl">기본 제공</label>
   <div id="impBuiltin"></div>
-  <label class="lbl">내 파일로 가져오기 (.md)</label>
-  <input type="file" id="impFile" accept=".md,.txt,text/markdown,text/plain">
+  <label class="lbl">내 파일로 가져오기 (엑셀 .xls .xlsx · .csv · .md)</label>
+  <input type="file" id="impFile" accept=".md,.txt,.csv,.tsv,.xls,.xlsx,.xlsm,.ods,text/markdown,text/plain,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+  <div style="font-size:13px;color:var(--sub);margin-top:6px">엑셀: <b>파일 이름 = 폴더</b>, <b>시트 탭 이름 = 서브폴더</b>. 열 머리글은 <b>단어 · 뜻 · 예문 · 해석</b>(품사·폴더·서브폴더·난이도·팁도 가능)으로 쓰면 자동 인식해요. <button class="chip" id="impTpl" style="padding:3px 10px;font-size:13px">양식 받기</button></div>
   <div id="impPreview" style="margin-top:8px;font-size:14px;color:var(--sub)"></div>
   <div id="impStatus" style="margin-top:8px;font-size:14px"></div>
   <div class="row" style="margin-top:14px"><button class="btn" id="impClose">닫기</button><button class="btn primary grow" id="impGo" disabled>등록</button></div>
@@ -584,7 +585,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '3.2', APP_DATE = '2026-10-13', SERVER_NEED = 6;
+const APP_VERSION = '3.3', APP_DATE = '2026-10-13', SERVER_NEED = 6;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1649,18 +1650,91 @@ function parseWordMd(text) {
 }
 let impPending = null;
 function impSummary(p) {
-  const by = {}; p.items.forEach(i => { by[i.folder] = (by[i.folder] || 0) + 1; });
-  return '📁 ' + esc(p.title || '가져온 단어') + ' — 총 ' + p.items.length + '개<br>' + Object.keys(by).map(k => '· ' + esc(k.split('/').slice(1).join('/') || k) + ' ' + by[k] + '개').join('<br>');
+  const roots = {}; p.items.forEach(i => { const k = i.folder.indexOf('/'); const r = k < 0 ? i.folder : i.folder.slice(0, k), sb = k < 0 ? '(바로 아래)' : i.folder.slice(k + 1); const o = roots[r] || (roots[r] = { n: 0, subs: {} }); o.n++; o.subs[sb] = (o.subs[sb] || 0) + 1; });
+  return Object.keys(roots).map((r, i) => (i ? '<br>' : '') + '📁 ' + esc(r) + ' — 총 ' + roots[r].n + '개<br>' + Object.keys(roots[r].subs).map(k => '· ' + esc(k) + ' ' + roots[r].subs[k] + '개').join('<br>')).join('<br>') + (Object.keys(roots).length > 1 ? '<br><b>합계 ' + p.items.length + '개</b>' : '');
 }
 function renderImport() {
-  $('#impBuiltin').innerHTML = BUILTIN_PACKS.map((p, i) => '<div class="pk"><div><b>' + esc(p.title) + '</b><div style="font-size:13px;color:var(--sub)">' + impSummary(p).split('<br>').slice(1).join(' · ').replace(/· /g, '') + '</div></div><button class="btn" data-pk="' + i + '">선택</button></div>').join('');
+  $('#impBuiltin').innerHTML = BUILTIN_PACKS.map((p, i) => '<div class="pk"><div><b>' + esc(p.title) + '</b><div style="font-size:13px;color:var(--sub)">' + p.items.length + '개 · 동사 · 형용사 · 부사</div></div><button class="btn" data-pk="' + i + '">선택</button></div>').join('');
 }
 $('#impBuiltin').addEventListener('click', e => { const b = e.target.closest('[data-pk]'); if (!b) return; setImp(BUILTIN_PACKS[parseInt(b.dataset.pk, 10)]); });
+/* --- 엑셀/CSV 읽기 (SheetJS 를 필요할 때만 불러온다) --- */
+let xlsxP = null;
+function ensureXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (xlsxP) return xlsxP;
+  return xlsxP = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    sc.onload = () => window.XLSX ? res(window.XLSX) : rej(new Error('엑셀 읽기 도구를 불러오지 못했어요'));
+    sc.onerror = () => { xlsxP = null; rej(new Error('엑셀 읽기 도구를 불러오지 못했어요. 인터넷에 연결한 뒤 다시 시도해 주세요.')); };
+    document.head.appendChild(sc);
+  });
+}
+const HDR = {
+  word: /^(단어|영단어|word|english|vocab|vocabulary)$/i,
+  meaning: /^(뜻|의미|meaning|한글\s*뜻|korean)$/i,
+  example: /^(예문|영어\s*예문|example|sentence)$/i,
+  example_ko: /^(예문\s*(뜻|해석|번역)|해석|번역|example_?ko|예문\s*ko)$/i,
+  pos: /^(품사|pos|part)$/i,
+  folder: /^(폴더|folder|교재|책)$/i,
+  sub: /^(서브\s*폴더|하위\s*폴더|subfolder|분류|단원|day|unit|유닛|그룹|group)$/i,
+  level: /^(난이도|level)$/i,
+  tip: /^(팁|tip|어근|어근팁|암기\s*팁)$/i
+};
+function parseSheetRows(rows, base, sheetName, singleSheet) {
+  const norm = v => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  let hi = -1, map = {};
+  for (let r = 0; r < Math.min(rows.length, 12); r++) {
+    const m = {}; (rows[r] || []).forEach((c, i) => { const t = norm(c); Object.keys(HDR).forEach(k => { if (!(k in m) && HDR[k].test(t)) m[k] = i; }); });
+    if ('word' in m && ('meaning' in m || 'example_ko' in m)) { hi = r; map = m; break; }
+  }
+  if (hi < 0) {                                    // 머리글이 없으면 [번호?, 단어, 뜻, 예문, 해석] 순서로 본다
+    const first = rows.find(r => r && r.some(c => norm(c))) || [];
+    const off = /^\d+$/.test(norm(first[0])) ? 1 : 0;
+    map = { word: off, meaning: off + 1, example: off + 2, example_ko: off + 3 }; hi = -1;
+  }
+  if (!('meaning' in map) && 'example_ko' in map && !('example' in map)) { map.meaning = map.example_ko; delete map.example_ko; }
+  const dflt = /^(sheet\s*\d*|시트\s*\d*)$/i.test(sheetName);
+  const items = [];
+  for (let r = hi + 1; r < rows.length; r++) {
+    const row = rows[r] || []; const g = k => k in map ? norm(row[map[k]]) : '';
+    const w = g('word'); if (!/^[A-Za-z][A-Za-z' .-]*$/.test(w)) continue;
+    const root = g('folder') || base || '가져온 단어';
+    const sub = g('sub') || (singleSheet && dflt ? '' : (dflt ? '' : sheetName));
+    const lv = parseInt(g('level'), 10);
+    items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: root + (sub ? '/' + sub : '') });
+  }
+  return items;
+}
+async function parseSpreadsheet(file) {
+  const X = await ensureXlsx();
+  const buf = await file.arrayBuffer();
+  const wb = X.read(buf, { type: 'array' });
+  const base = file.name.replace(/\.[^.]+$/, '').trim();
+  let items = [];
+  wb.SheetNames.forEach(n => { const rows = X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' }); items = items.concat(parseSheetRows(rows, base, n, wb.SheetNames.length === 1)); });
+  return { title: base, items: items };
+}
+$('#impTpl').addEventListener('click', async () => {
+  try {
+    const X = await ensureXlsx();
+    const ws1 = X.utils.aoa_to_sheet([['번호', '단어', '뜻', '예문', '해석'], [1, 'assist', '돕다', 'The teacher assisted the students.', '선생님은 학생들을 도왔다.'], [2, 'propose', '제안하다', 'She proposed a new plan.', '그녀는 새 계획을 제안했다.']]);
+    const ws2 = X.utils.aoa_to_sheet([['번호', '단어', '뜻', '예문', '해석'], [1, 'familiar', '익숙한', 'This song sounds familiar.', '이 노래는 익숙하게 들린다.']]);
+    const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws1, '동사'); X.utils.book_append_sheet(wb, ws2, '형용사');
+    const out = X.write(wb, { bookType: 'xlsx', type: 'array' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out], { type: 'application/octet-stream' })); a.download = 'voca_template.xlsx';
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  } catch (e) { toast(e.message, 3500); }
+});
 $('#impFile').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
-  const p = parseWordMd(await f.text());
-  if (!p.items.length) { $('#impPreview').textContent = '단어 표를 찾지 못했어요. (# 제목, ## 소제목, | 번호 | 단어 | 뜻 | 예문 | 해석 | 표 형식)'; impPending = null; $('#impGo').disabled = true; return; }
-  setImp(p);
+  $('#impPreview').textContent = '파일을 읽는 중…'; impPending = null; $('#impGo').disabled = true;
+  try {
+    const isText = /\.(md|txt)$/i.test(f.name);
+    const p = isText ? parseWordMd(await f.text()) : await parseSpreadsheet(f);
+    if (!p.items.length) { $('#impPreview').textContent = isText ? '단어 표를 찾지 못했어요. (# 제목, ## 소제목, | 번호 | 단어 | 뜻 | 예문 | 해석 | 표 형식)' : '단어를 찾지 못했어요. 첫 줄 머리글을 단어 · 뜻 · 예문 · 해석 으로 써 주세요. (“양식 받기”로 예시를 받을 수 있어요)'; return; }
+    setImp(p);
+  } catch (err) { $('#impPreview').textContent = '❌ ' + err.message; }
 });
 function setImp(p) { impPending = p; $('#impPreview').innerHTML = impSummary(p); $('#impStatus').textContent = ''; $('#impGo').disabled = false; }
 $('#btnImport').addEventListener('click', () => { impPending = null; $('#impPreview').textContent = ''; $('#impStatus').textContent = ''; $('#impGo').disabled = true; $('#impFile').value = ''; renderImport(); $('#dlgImport').showModal(); });
