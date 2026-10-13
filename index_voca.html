@@ -229,6 +229,25 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .cv-card[data-face="all"] .cv-back{visibility:visible}
 @media (min-width:768px){.cv-sec h4{font-size:18px}.cv-sec .bx{font-size:19px}.cv-ex .k{font-size:16px}.cv-front-mean{font-size:44px}}
 
+/* 폴더 · 가져오기 · 학습 카드 */
+.fbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.fbar .chip{display:inline-flex;align-items:center;gap:4px}
+.fbar .chip small{opacity:.7}
+.fsub{padding-left:10px;border-left:3px solid var(--accent-soft)}
+.w-folder{display:inline-block;font-size:12px;color:var(--sub);background:#f1f2f8;border-radius:6px;padding:0 7px;margin-left:6px}
+.fc{margin-top:12px}
+.fc h3{margin:0;font-size:18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fc .fsubr{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.fc .fsubr .nm{flex:1;min-width:0}
+.fc .fsubr .nm b{display:block}
+.fc .fsubr .nm span{font-size:13px;color:var(--sub)}
+.fc .mini{border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;font-size:15px;color:var(--ink)}
+.fc .mini.pri{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+.fc .pbar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:#eceef8;margin:8px 0 2px}
+.fc .pbar i{display:block;height:100%}
+.pk{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
+@media (min-width:768px){#folderCards{grid-column:1/-1}}
+
 /* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
 .res-empty,.recent{display:none}
 @media (min-width:768px){
@@ -293,6 +312,11 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   #quizSetup{grid-template-columns:1fr}
 }
 
+@media (min-width:1024px){
+  #quizSetup > #homeCard{grid-column:1;grid-row:1}
+  #quizSetup > details{grid-column:2;grid-row:1}
+  #quizSetup > #folderCards{grid-column:1/-1;grid-row:2}
+}
 </style>
 </head>
 <body>
@@ -344,7 +368,8 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
   <!-- 단어장 -->
   <section id="tab-list">
-    <div class="row" style="margin-bottom:10px"><button class="btn primary grow" id="btnCards">🃏 카드로 보기</button></div>
+    <div class="row" style="margin-bottom:10px"><button class="btn primary grow" id="btnCards">🃏 카드로 보기</button><button class="btn" id="btnImport">📥 가져오기</button></div>
+    <div id="folderBar"></div>
     <div class="row" style="margin-bottom:10px">
       <input type="text" id="search" class="grow" placeholder="단어·뜻 검색">
       <button class="chip on" data-sort="new">최신순</button>
@@ -374,6 +399,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <section id="tab-quiz">
     <div id="quizSetup">
       <div class="card home" id="homeCard"></div>
+      <div id="folderCards"></div>
       <details class="card">
         <summary>직접 골라서 풀기</summary>
         <label class="lbl" style="margin-top:0">유형</label>
@@ -455,6 +481,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <label class="lbl">예문</label><textarea id="eExample" rows="2"></textarea>
   <label class="lbl">예문 뜻</label><textarea id="eExampleKo" rows="2"></textarea>
   <label class="lbl">어근·외우기 팁</label><input type="text" id="eTip">
+  <label class="lbl">폴더 (폴더/서브폴더 형식)</label><input type="text" id="eFolder" list="folderList" autocomplete="off" placeholder="비워 두면 미분류"><datalist id="folderList"></datalist>
   <label class="lbl">난이도 (수능 기준)</label>
   <select id="eLevel">
     <option value="0">미정</option>
@@ -518,6 +545,18 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <div class="row" style="margin-top:14px"><button class="btn primary grow" id="cvOptOk">확인</button></div>
 </dialog>
 
+<dialog id="dlgImport">
+  <h3 style="margin:0 0 6px">단어 가져오기</h3>
+  <div style="font-size:14px;color:var(--sub)">폴더와 서브폴더를 만들어 단어장에 한꺼번에 등록해요. 이미 있는 단어는 새로 만들지 않고, 폴더가 비어 있으면 그 폴더로만 넣어요.</div>
+  <label class="lbl">기본 제공</label>
+  <div id="impBuiltin"></div>
+  <label class="lbl">내 파일로 가져오기 (.md)</label>
+  <input type="file" id="impFile" accept=".md,.txt,text/markdown,text/plain">
+  <div id="impPreview" style="margin-top:8px;font-size:14px;color:var(--sub)"></div>
+  <div id="impStatus" style="margin-top:8px;font-size:14px"></div>
+  <div class="row" style="margin-top:14px"><button class="btn" id="impClose">닫기</button><button class="btn primary grow" id="impGo" disabled>등록</button></div>
+</dialog>
+
 <dialog id="dlgSettings">
   <h3 style="margin:0 0 6px">설정</h3>
   <label class="lbl">Apps Script 웹 앱 URL</label>
@@ -545,7 +584,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '3.1', APP_DATE = '2026-10-13', SERVER_NEED = 5;
+const APP_VERSION = '3.2', APP_DATE = '2026-10-13', SERVER_NEED = 6;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -799,7 +838,7 @@ $('#btnResEdit').addEventListener('click', () => {
   const r = curResult; if (!r) return;
   editId = r.saved ? r.id : '__new__';
   $('#eWord').value = r.word; $('#ePos').value = r.pos || ''; $('#eMeaning').value = r.meaning || '';
-  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || ''; $('#eLevel').value = String(r.level || 0);
+  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || ''; $('#eLevel').value = String(r.level || 0); $('#eFolder').value = r.folder || ''; fillFolderList();
   $('#dlgEdit').showModal();
 });
 $('#btnResDel').addEventListener('click', async () => {
@@ -921,9 +960,9 @@ async function rateAll() {
 }
 
 function renderList() {
-  renderRecent(); renderRateBar();
+  renderRecent(); renderRateBar(); renderFolderBar();
   const q = $('#search').value.trim().toLowerCase();
-  let arr = words.filter(w => !q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0);
+  let arr = words.filter(w => inFolder(w) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0));
   arr = arr.slice().sort((a, b) => {
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
     if (sortMode === 'wrong') return (b.wrong || 0) - (a.wrong || 0) || (a.right || 0) - (b.right || 0);
@@ -939,6 +978,7 @@ function renderList() {
     '<div class="w-item" data-id="' + esc(w.id) + '">' +
       '<div class="w-top"><span class="w-word">' + esc(w.word) + '</span>' +
       (w.pos ? '<span class="w-pos">' + esc(w.pos) + '</span>' : '') +
+      (!folderSel.s && w.folder && folderSel.f !== '' ? '<span class="w-folder">' + esc(splitFolder(w)[1] || splitFolder(w)[0]) + '</span>' : '') +
       '<button class="speak" data-act="speak" aria-label="발음">🔊</button>' +
       '<span class="stat">✓<b class="ok">' + (w.right || 0) + '</b> ✗<b class="bad">' + (w.wrong || 0) + '</b></span></div>' +
       '<div class="w-mean">' + esc(w.meaning) + '</div>' +
@@ -983,7 +1023,7 @@ $('#list').addEventListener('click', async e => {
   if (act === 'say') { sayWord(w.word, $('.say-out', item)); return; }
   if (act === 'edit') {
     editId = w.id; $('#eWord').value = w.word; $('#ePos').value = w.pos || ''; $('#eMeaning').value = w.meaning || '';
-    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#eLevel').value = String(w.level || 0); $('#dlgEdit').showModal(); return;
+    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#eLevel').value = String(w.level || 0); $('#eFolder').value = w.folder || ''; fillFolderList(); $('#dlgEdit').showModal(); return;
   }
   if (act === 'del') {
     if (!confirm('“' + w.word + '” 을(를) 삭제할까요?')) return;
@@ -995,9 +1035,9 @@ $('#list').addEventListener('click', async e => {
 });
 $('#eCancel').addEventListener('click', () => $('#dlgEdit').close());
 $('#eSave').addEventListener('click', async () => {
-  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim(), level: parseInt($('#eLevel').value, 10) || 0 };
+  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim(), level: parseInt($('#eLevel').value, 10) || 0, folder: $('#eFolder').value.trim().replace(/\s*\/\s*/g, '/') };
   if (!d.word) { toast('단어를 입력해 주세요'); return; }
-  const patch = { word: d.word.toLowerCase(), pos: d.pos, meaning: d.meaning, example: d.example, example_ko: d.example_ko, tip: d.tip, level: d.level };
+  const patch = { word: d.word.toLowerCase(), pos: d.pos, meaning: d.meaning, example: d.example, example_ko: d.example_ko, tip: d.tip, level: d.level, folder: d.folder };
   if (editId === '__new__') {
     if (curResult) { Object.assign(curResult, patch, { lowConf: false }); renderResult(); }
     $('#dlgEdit').close(); await saveCurrent(); return;
@@ -1307,8 +1347,9 @@ function bmSave(set) { lsSet('vn_bm', JSON.stringify(Array.from(set))); }
 const addedYmd = w => { const d = new Date(w.added); return isNaN(d) ? String(w.added).slice(0, 10) : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(d); };
 function buildDeck() {
   const c = cvCfg(), bm = bmSet(), td = todayStr();
-  let arr = words.slice().sort((a, b) => String(b.added).localeCompare(String(a.added)));
-  if (c.scope === 'due') arr = arr.filter(isDue);
+  let arr = (cv.override || words).slice().sort((a, b) => cv.override ? 0 : String(b.added).localeCompare(String(a.added)));
+  if (cv.override) { /* 폴더 카드: 범위 설정은 적용하지 않는다 */ }
+  else if (c.scope === 'due') arr = arr.filter(isDue);
   else if (c.scope === 'hard') arr = arr.filter(w => (w.level || 0) >= 4);
   else if (c.scope === 'today') arr = arr.filter(w => addedYmd(w) === td);
   else if (c.scope === 'range') { const f = lsGet('vn_cv_from', ''), t = lsGet('vn_cv_to', '') || td; arr = arr.filter(w => { const d = addedYmd(w); return (!f || d >= f) && d <= t; }); }
@@ -1380,7 +1421,7 @@ function cvUi() {
   $('#cvRange').value = i + 1; const b = $('#cvBub'); b.textContent = n ? i + 1 : 0;
   const r = $('#cvRange'), pct = n > 1 ? i / (n - 1) : 0; b.style.left = 'calc(' + (pct * 100) + '% + ' + ((0.5 - pct) * 20) + 'px)';
   const cc = cvCfg(), f = lsGet('vn_cv_from', ''), rg = cc.scope === 'range' && f ? ' · ' + f.slice(5).replace('-', '/') + '~' : '';
-  $('#cvTitle').textContent = '단어 카드 ' + (n ? (i + 1) + '/' + n : '') + rg;
+  $('#cvTitle').textContent = (cv.override ? cv.otitle : '단어 카드') + ' ' + (n ? (i + 1) + '/' + n : '') + (cv.override ? '' : rg);
   $('#cvBm').classList.toggle('on', cv.bmOnly); $('#cvShuf').classList.toggle('on', cv.shuffled);
   $('#cvPlay').textContent = cv.playing ? '⏸' : '▶';
   $('#cvMute').textContent = isMuted() ? '🔇' : '🔊'; $('#cvMute').classList.toggle('on', isMuted());
@@ -1421,8 +1462,9 @@ function cvToggleBm(i) {
   bmSave(s); const el = cvCardEl(i); if (el) $('.cv-bm', el).textContent = s.has(w.id) ? '🔖' : '🏷️';
   toast(s.has(w.id) ? '북마크했어요' : '북마크를 뺐어요', 1200);
 }
-function cvOpen() {
+function cvOpen(opts) {
   if (!words.length) { toast('먼저 단어를 저장해 주세요'); return; }
+  cv.override = opts && opts.words ? opts.words : null; cv.otitle = opts && opts.title ? opts.title : '';
   cv.shuffled = false; cv.bmOnly = false; cv.playing = false; buildDeck();
   document.body.style.overflow = 'hidden'; $('#cardView').classList.add('open');
   cvRender(false);
@@ -1549,6 +1591,131 @@ $('#calQuick').addEventListener('click', e => {
   calSave(); renderCal();
 });
 calInit();
+
+/* ====== 폴더 / 가져오기 / 학습 카드 ====== */
+const BUILTIN_PACKS = [{"title": "고1~2 영어 필수 20 (3편)", "items": [{"word": "disapprove", "meaning": "못마땅해하다, 반대하다, 승인하지 않다", "example": "My parents disapprove of my decision.", "example_ko": "부모님은 내 결정을 못마땅해하신다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "incline", "meaning": "(마음이)~쪽으로 기울다, 경사지다", "example": "I am inclined to agree with her opinion.", "example_ko": "나는 그녀의 의견에 동의하는 쪽으로 마음이 기운다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "outweigh", "meaning": "~보다 더 크다, ~보다 중대[우수]하다", "example": "The benefits outweigh the risks.", "example_ko": "그 이점은 위험보다 더 크다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "soothe", "meaning": "(기분/고통 등을) 달래다, 진정시키다", "example": "Soft music can soothe your mind.", "example_ko": "부드러운 음악은 마음을 진정시킬 수 있다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "assist", "meaning": "돕다, 원조하다", "example": "The teacher assisted the students with their project.", "example_ko": "선생님은 학생들의 프로젝트를 도왔다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "stink", "meaning": "악취를 풍기다, 냄새가 나다", "example": "The garbage began to stink in the heat.", "example_ko": "그 쓰레기는 더위 속에서 악취를 풍기기 시작했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "propose", "meaning": "(계획/생각을) 제안[제시]하다, 청혼하다", "example": "She proposed a new solution to the problem.", "example_ko": "그녀는 그 문제에 대한 새로운 해결책을 제안했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "acclaim", "meaning": "칭송하다, 찬사를 보내다", "example": "Critics acclaimed the movie as a masterpiece.", "example_ko": "비평가들은 그 영화를 걸작이라고 극찬했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "magnify", "meaning": "확대[증대]하다", "example": "This lens magnifies small objects.", "example_ko": "이 렌즈는 작은 물체를 확대한다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "comply", "meaning": "응하다, 따르다", "example": "Everyone must comply with the safety rules.", "example_ko": "모든 사람은 안전 규칙을 준수해야 한다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "ascend", "meaning": "오르다, 올라가다", "example": "We slowly ascended the mountain.", "example_ko": "우리는 천천히 산을 올라갔다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "specify", "meaning": "명시하다", "example": "Please specify the reason for your choice.", "example_ko": "선택한 이유를 구체적으로 밝혀 주세요.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "inject", "meaning": "주입하다, 주사하다", "example": "The doctor injected the medicine into his arm.", "example_ko": "의사는 그의 팔에 약물을 주사했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "transcribe", "meaning": "기록하다, 옮겨쓰다, 편곡하다", "example": "She transcribed the interview into a document.", "example_ko": "그녀는 인터뷰 내용을 문서로 옮겨 적었다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "persevere", "meaning": "인내하다, 참다, 꾸준히 계속하다", "example": "She persevered despite many difficulties.", "example_ko": "그녀는 많은 어려움에도 불구하고 끈기 있게 계속했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "commemorate", "meaning": "기념하다, 추모하다", "example": "The event commemorates an important moment in history.", "example_ko": "그 행사는 역사적으로 중요한 순간을 기념한다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "unify", "meaning": "통합[통일]하다", "example": "The leader tried to unify the divided groups.", "example_ko": "그 지도자는 나뉜 집단들을 하나로 통합하려 했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "enroll", "meaning": "등록하다", "example": "She enrolled in an English course.", "example_ko": "그녀는 영어 강좌에 등록했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "pierce", "meaning": "뚫다, 관통하다", "example": "The nail pierced the thin piece of wood.", "example_ko": "못이 얇은 나무 조각을 관통했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "plunge", "meaning": "뛰어들다, 급락하다, 잠기다, 돌입하다", "example": "The temperature plunged during the night.", "example_ko": "밤사이 기온이 급격히 떨어졌다.", "folder": "고1~2 영어 필수 20 (3편)/필수 동사 20"}, {"word": "familiar", "meaning": "친근한, 익숙한", "example": "This song sounds familiar to me.", "example_ko": "이 노래는 나에게 익숙하게 들린다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "reasonable", "meaning": "합리[이성]적인, 적당한, 가격이 알맞은", "example": "The hotel offers rooms at reasonable prices.", "example_ko": "그 호텔은 합리적인 가격에 객실을 제공한다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "relevant", "meaning": "관련된, 적절한", "example": "Please provide information relevant to the topic.", "example_ko": "그 주제와 관련된 정보를 제공해 주세요.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "loyal", "meaning": "충실한, 충성스러운", "example": "She remained loyal to her friends.", "example_ko": "그녀는 친구들에게 변함없이 충실했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "casual", "meaning": "무심한, 대충의, 평상시의, 우연한", "example": "He wore casual clothes to the party.", "example_ko": "그는 파티에 편안한 평상복을 입고 갔다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "immense", "meaning": "거대한, 엄청난", "example": "The project required an immense amount of effort.", "example_ko": "그 프로젝트에는 엄청난 노력이 필요했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "legal", "meaning": "법률과 관련된, 합법적인", "example": "You should seek legal advice before making a decision.", "example_ko": "결정을 내리기 전에 법률적인 조언을 구해야 한다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "brutal", "meaning": "잔혹한, 무자비한, 거친, 혹독한", "example": "The soldiers had to survive the brutal winter.", "example_ko": "군인들은 혹독한 겨울을 견뎌야 했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "modest", "meaning": "그다지 대단하지 않은, 보통의, 겸손한", "example": "Despite his success, he remained modest.", "example_ko": "그는 성공했음에도 겸손함을 유지했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "impersonal", "meaning": "인간미 없는, 비인격적인", "example": "Online communication can sometimes feel impersonal.", "example_ko": "온라인 의사소통은 때때로 인간미 없게 느껴질 수 있다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "steady", "meaning": "꾸준한, 안정된, 흔들림 없는", "example": "The company has shown steady growth.", "example_ko": "그 회사는 꾸준한 성장을 보여 왔다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "cognitive", "meaning": "인식[인지]의", "example": "Reading can improve cognitive abilities.", "example_ko": "독서는 인지 능력을 향상시킬 수 있다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "contrary", "meaning": "반대되는", "example": "His actions were contrary to his words.", "example_ko": "그의 행동은 그의 말과 상반되었다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "compatible", "meaning": "양립[공존]할 수 있는, 호환되는", "example": "This software is compatible with most computers.", "example_ko": "이 소프트웨어는 대부분의 컴퓨터와 호환된다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "intense", "meaning": "극심한, 강렬한, 열심인, 열성적인", "example": "The athletes trained under intense pressure.", "example_ko": "선수들은 극심한 압박 속에서 훈련했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "arrogant", "meaning": "오만한, 건방진", "example": "His arrogant attitude made others uncomfortable.", "example_ko": "그의 오만한 태도는 다른 사람들을 불편하게 했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "narrow", "meaning": "(폭이) 좁은, 한정된", "example": "We walked along a narrow path.", "example_ko": "우리는 좁은 길을 따라 걸었다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "irrational", "meaning": "비이성적인, 분별이 없는", "example": "His fear seemed irrational to others.", "example_ko": "그의 두려움은 다른 사람들에게 비이성적으로 보였다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "specific", "meaning": "명확한, 구체적인, 특정한", "example": "Please give me a specific example.", "example_ko": "구체적인 예를 하나 들어 주세요.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "relative", "meaning": "상대적인, 관련 있는", "example": "The importance of money is relative.", "example_ko": "돈의 중요성은 상대적이다.", "folder": "고1~2 영어 필수 20 (3편)/필수 형용사 20"}, {"word": "eventually", "meaning": "결국, 마침내, 언젠가는", "example": "She eventually found a solution to the problem.", "example_ko": "그녀는 결국 그 문제의 해결책을 찾아냈다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "overall", "meaning": "종합[전반]적으로, 전부", "example": "Overall, the results were better than expected.", "example_ko": "전반적으로 결과는 예상보다 좋았다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "probably", "meaning": "아마, 십중팔구", "example": "He will probably arrive before noon.", "example_ko": "그는 아마 정오 전에 도착할 것이다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "simultaneously", "meaning": "동시에", "example": "The two events occurred simultaneously.", "example_ko": "두 사건은 동시에 발생했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "initially", "meaning": "처음에, 시초에", "example": "Initially, I found the task difficult.", "example_ko": "처음에 나는 그 과제가 어렵다고 느꼈다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "utterly", "meaning": "완전히, 순전히", "example": "His explanation was utterly confusing.", "example_ko": "그의 설명은 완전히 혼란스러웠다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "definitely", "meaning": "분명히[틀림없이], 절대(로), 확실히", "example": "This experience will definitely help you.", "example_ko": "이 경험은 분명히 너에게 도움이 될 것이다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "firmly", "meaning": "단호히, 확고히", "example": "She firmly refused the offer.", "example_ko": "그녀는 그 제안을 단호하게 거절했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "practically", "meaning": "사실상, 거의, 현실적으로", "example": "The building was practically empty.", "example_ko": "그 건물은 사실상 비어 있었다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "frequently", "meaning": "자주, 흔히", "example": "This word is frequently used in everyday conversation.", "example_ko": "이 단어는 일상 대화에서 자주 사용된다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "seemingly", "meaning": "외견상으로, 겉보기에는", "example": "The task was seemingly simple.", "example_ko": "그 과제는 겉보기에는 간단했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "generally", "meaning": "일반적으로, 대체로, 보통", "example": "People generally need enough sleep to stay healthy.", "example_ko": "사람들은 일반적으로 건강을 유지하려면 충분한 수면이 필요하다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "increasingly", "meaning": "점점 더, 갈수록", "example": "People are becoming increasingly aware of environmental problems.", "example_ko": "사람들은 환경 문제를 점점 더 많이 인식하고 있다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "merely", "meaning": "단지, 그저, 오직", "example": "It was merely a misunderstanding.", "example_ko": "그것은 단지 오해였을 뿐이다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "barely", "meaning": "간신히, 거의~않게", "example": "She barely passed the exam.", "example_ko": "그녀는 시험에 간신히 합격했다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "immediately", "meaning": "즉시, 바로, 곧", "example": "He immediately recognized his mistake.", "example_ko": "그는 즉시 자신의 실수를 알아차렸다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "mainly", "meaning": "주로, 대부분", "example": "The book is mainly about environmental issues.", "example_ko": "그 책은 주로 환경 문제에 관한 것이다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "directly", "meaning": "직접, 곧바로, 바로", "example": "You can contact the teacher directly.", "example_ko": "선생님께 직접 연락할 수 있다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "widely", "meaning": "널리, 광범위하게", "example": "English is widely used around the world.", "example_ko": "영어는 전 세계에서 널리 사용된다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}, {"word": "otherwise", "meaning": "그렇지 않으면, 달리, 그 외에는", "example": "Leave now; otherwise, you may miss the bus.", "example_ko": "지금 출발해. 그렇지 않으면 버스를 놓칠 수도 있다.", "folder": "고1~2 영어 필수 20 (3편)/필수 부사 20"}]}];
+const splitFolder = w => { const f = String(w.folder || ''); const i = f.indexOf('/'); return i < 0 ? [f, ''] : [f.slice(0, i), f.slice(i + 1)]; };
+const folderSel = { f: '', s: '' };
+function folderTree() {
+  const t = {};
+  words.forEach(w => { const [r, sb] = splitFolder(w); if (!r) return; const o = t[r] || (t[r] = { all: [], subs: {} }); o.all.push(w); const k = sb || '(바로 아래)'; (o.subs[k] || (o.subs[k] = [])).push(w); });
+  return t;
+}
+function renderFolderBar() {
+  const el = $('#folderBar'); if (!el) return;
+  const t = folderTree(), roots = Object.keys(t), none = words.filter(w => !w.folder).length;
+  if (!roots.length) { el.innerHTML = ''; folderSel.f = folderSel.s = ''; return; }
+  const chip = (cls, label, n, attr) => '<button class="chip' + (cls ? ' on' : '') + '" ' + attr + '>' + label + ' <small>' + n + '</small></button>';
+  let h = '<div class="fbar">' + chip(!folderSel.f, '전체', words.length, 'data-f=""') +
+    roots.map(r => chip(folderSel.f === r, '📁 ' + esc(r), t[r].all.length, 'data-f="' + esc(r) + '"')).join('') +
+    (none ? chip(folderSel.f === '__none', '미분류', none, 'data-f="__none"') : '') + '</div>';
+  if (folderSel.f && t[folderSel.f]) {
+    const o = t[folderSel.f];
+    h += '<div class="fbar fsub">' + chip(!folderSel.s, '모두', o.all.length, 'data-s=""') +
+      Object.keys(o.subs).map(k => chip(folderSel.s === k, '📂 ' + esc(k), o.subs[k].length, 'data-s="' + esc(k) + '"')).join('') + '</div>';
+  }
+  el.innerHTML = h;
+}
+$('#folderBar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-f')) { folderSel.f = b.getAttribute('data-f'); folderSel.s = ''; }
+  else if (b.hasAttribute('data-s')) folderSel.s = b.getAttribute('data-s');
+  renderList();
+});
+function inFolder(w) {
+  if (!folderSel.f) return true;
+  if (folderSel.f === '__none') return !w.folder;
+  const [r, sb] = splitFolder(w); if (r !== folderSel.f) return false;
+  return !folderSel.s || (sb || '(바로 아래)') === folderSel.s;
+}
+function fillFolderList() {
+  const set = new Set(); words.forEach(w => { if (w.folder) set.add(w.folder); });
+  $('#folderList').innerHTML = Array.from(set).sort().map(f => '<option value="' + esc(f) + '">').join('');
+}
+
+/* --- 마크다운 표 → 단어 목록 (# 제목 = 폴더, ## 소제목 = 서브폴더) --- */
+function parseWordMd(text) {
+  let title = '', sub = ''; const items = [];
+  String(text).split(/\r?\n/).forEach(ln => {
+    if (/^#\s/.test(ln)) title = ln.replace(/^#\s+/, '').trim();
+    else if (/^##\s/.test(ln)) sub = ln.replace(/^##\s+/, '').trim();
+    else if (ln.trim().startsWith('|')) {
+      const c = ln.trim().replace(/^\||\|$/g, '').split('|').map(x => x.trim());
+      if (c.length >= 5 && /^\d+$/.test(c[0]) && /^[A-Za-z][A-Za-z' -]*$/.test(c[1]))
+        items.push({ word: c[1], meaning: c[2], example: c[3], example_ko: c[4], folder: (title || '가져온 단어') + (sub ? '/' + sub : '') });
+    }
+  });
+  return { title: title, items: items };
+}
+let impPending = null;
+function impSummary(p) {
+  const by = {}; p.items.forEach(i => { by[i.folder] = (by[i.folder] || 0) + 1; });
+  return '📁 ' + esc(p.title || '가져온 단어') + ' — 총 ' + p.items.length + '개<br>' + Object.keys(by).map(k => '· ' + esc(k.split('/').slice(1).join('/') || k) + ' ' + by[k] + '개').join('<br>');
+}
+function renderImport() {
+  $('#impBuiltin').innerHTML = BUILTIN_PACKS.map((p, i) => '<div class="pk"><div><b>' + esc(p.title) + '</b><div style="font-size:13px;color:var(--sub)">' + impSummary(p).split('<br>').slice(1).join(' · ').replace(/· /g, '') + '</div></div><button class="btn" data-pk="' + i + '">선택</button></div>').join('');
+}
+$('#impBuiltin').addEventListener('click', e => { const b = e.target.closest('[data-pk]'); if (!b) return; setImp(BUILTIN_PACKS[parseInt(b.dataset.pk, 10)]); });
+$('#impFile').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const p = parseWordMd(await f.text());
+  if (!p.items.length) { $('#impPreview').textContent = '단어 표를 찾지 못했어요. (# 제목, ## 소제목, | 번호 | 단어 | 뜻 | 예문 | 해석 | 표 형식)'; impPending = null; $('#impGo').disabled = true; return; }
+  setImp(p);
+});
+function setImp(p) { impPending = p; $('#impPreview').innerHTML = impSummary(p); $('#impStatus').textContent = ''; $('#impGo').disabled = false; }
+$('#btnImport').addEventListener('click', () => { impPending = null; $('#impPreview').textContent = ''; $('#impStatus').textContent = ''; $('#impGo').disabled = true; $('#impFile').value = ''; renderImport(); $('#dlgImport').showModal(); });
+$('#impClose').addEventListener('click', () => $('#dlgImport').close());
+$('#impGo').addEventListener('click', async () => {
+  if (!impPending) return;
+  const go = $('#impGo'); go.disabled = true; $('#impStatus').innerHTML = '<span class="spinner"></span> 등록하는 중…';
+  try {
+    let added = 0, moved = 0, skipped = 0;
+    for (let i = 0; i < impPending.items.length; i += 100) {
+      const j = await api('import', { items: impPending.items.slice(i, i + 100) });
+      added += j.added || 0; moved += j.moved || 0; skipped += j.skipped || 0;
+    }
+    await refreshWords(true);
+    folderSel.f = (impPending.items[0].folder || '').split('/')[0]; folderSel.s = '';
+    $('#impStatus').textContent = '✅ 새로 ' + added + '개 등록' + (moved ? ' · 이미 있던 ' + moved + '개는 폴더로 옮김' : '') + (skipped ? ' · ' + skipped + '개는 이미 등록돼 있어 건너뜀' : '');
+    renderList(); renderHome();
+    setTimeout(() => { $('#dlgImport').close(); toast('폴더에 등록했어요'); }, 1400);
+  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v6)으로 다시 배포해 주세요' : ''); go.disabled = false; }
+});
+
+/* --- 암기점검: 폴더별 학습 카드 --- */
+function folderStats(list) { return { n: list.length, nw: list.filter(isNew).length, due: list.filter(isDue).length, done: list.filter(isMastered).length }; }
+function folderStudyList(list) {
+  const due = list.filter(isDue).sort((a, b) => (a.box || 0) - (b.box || 0));
+  const fresh = list.filter(isNew); const rest = list.filter(w => !isNew(w) && !isDue(w) && !isMastered(w));
+  return due.concat(fresh, rest).slice(0, SESSION_MAX);
+}
+function renderFolderCards() {
+  const el = $('#folderCards'); if (!el) return;
+  const t = folderTree(), roots = Object.keys(t);
+  if (!roots.length) { el.innerHTML = ''; return; }
+  const row = (nm, list, key) => { const s = folderStats(list); return '<div class="fsubr"><div class="nm"><b>' + nm + '</b><span>' + s.n + '개 · 새 ' + s.nw + ' · 복습 ' + s.due + ' · 암기 ' + s.done + '</span></div>' +
+    '<button class="mini" data-fc="cards" data-k="' + key + '" aria-label="카드로 보기">🃏</button><button class="mini pri" data-fc="quiz" data-k="' + key + '">🎯 퀴즈</button></div>'; };
+  el.innerHTML = roots.map((r, ri) => {
+    const o = t[r], s = folderStats(o.all), pc = x => (s.n ? Math.round(x / s.n * 100) : 0);
+    const subKeys = Object.keys(o.subs);
+    return '<div class="card fc"><h3><span>📁 ' + esc(r) + '</span><span style="font-size:13px;color:var(--sub);font-weight:500">' + s.n + '개</span></h3>' +
+      '<div class="pbar"><i style="width:' + pc(s.done) + '%;background:#1f9d63"></i><i style="width:' + pc(s.n - s.nw - s.done) + '%;background:#3b4cca"></i></div>' +
+      '<div style="font-size:12px;color:var(--sub);margin-bottom:4px">암기 ' + s.done + ' · 학습 중 ' + (s.n - s.nw - s.done) + ' · 새 ' + s.nw + '</div>' +
+      subKeys.map((k, ki) => row('📂 ' + esc(k), o.subs[k], ri + ':' + ki)).join('') + (subKeys.length > 1 ? row('📚 폴더 전체', o.all, ri + ':all') : '') + '</div>';
+  }).join('');
+}
+function folderListByKey(key) {
+  const t = folderTree(), roots = Object.keys(t), [ri, ki] = key.split(':'); const r = roots[parseInt(ri, 10)]; if (!r) return { list: [], title: '' };
+  const o = t[r]; if (ki === 'all') return { list: o.all, title: r };
+  const k = Object.keys(o.subs)[parseInt(ki, 10)]; return { list: o.subs[k] || [], title: r + ' · ' + k };
+}
+$('#folderCards').addEventListener('click', e => {
+  const b = e.target.closest('[data-fc]'); if (!b) return; const f = folderListByKey(b.dataset.k);
+  if (!f.list.length) { toast('단어가 없어요'); return; }
+  if (b.dataset.fc === 'cards') cvOpen({ words: f.list, title: f.title });
+  else startQuiz(folderStudyList(f.list), 'mix');
+});
+{ const _rh = renderHome; renderHome = function () { _rh(); renderFolderCards(); }; }
 
 /* ====== 시작 ====== */
 // 서버를 미리 깨워 두면 첫 인식이 빨라진다 (Apps Script 콜드 스타트 방지)
