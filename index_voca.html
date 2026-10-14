@@ -256,6 +256,18 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .pk{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
 @media (min-width:768px){#folderCards{grid-column:1/-1}}
 
+/* 화면 확대·글자 크기 설정(크롬 등)에서도 깨지지 않게 */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+header h1{min-width:0;flex:1 1 auto}
+header{gap:10px}
+header .icon-btn{flex:none}
+header .count{white-space:nowrap}
+.w-sched{flex-wrap:wrap;row-gap:4px}
+.w-sched>*{white-space:nowrap}
+.icon-row .tg{flex-direction:column;gap:2px;padding:3px 2px;min-width:0}
+.icon-row .tg .tg-l{font-size:12px;line-height:1}
+.filt-row select{font-size:15px;padding:10px 8px}
+@media (max-width:340px){.icon-row{gap:5px}.ibtn{font-size:19px}.filt-row.has-f{grid-template-columns:1fr}}
 /* 뜻 토글 · 표 보기 */
 #tab-list #search{display:block;width:100%}
 .filt-row{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px}
@@ -281,13 +293,18 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .icon-row .tg-l{font-weight:700}
 .tbl{display:grid;gap:8px}
 .tcell{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;min-width:0;display:flex;flex-direction:column;gap:4px;cursor:pointer}
-.tcell .tw{font-weight:700;font-size:17px;word-break:break-word;display:flex;align-items:center;gap:4px}
+.tcell .tw{font-weight:700;font-size:17px;display:flex;align-items:center;gap:4px;min-width:0}
+.tcell .tw>span{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden}
+.tcell .tw .speak{flex:none}
 .tcell .tw .speak{margin-left:auto}
-.tcell .tp{font-size:12px;color:var(--sub)}
+.tcell .tp{font-size:12px;color:var(--sub);display:flex;align-items:center;justify-content:space-between;gap:4px}
+.tcell .tw>span.wrapw{white-space:normal;overflow-wrap:anywhere;overflow:visible;line-height:1.15}
 .tcell .tm{font-size:14px;word-break:keep-all;overflow-wrap:anywhere}
 .tcell .tm.hid{color:transparent;background:#eceef6;border-radius:6px;min-height:1.2em;user-select:none}
 .tcell.empty-c{visibility:hidden}
-.tpager{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0}
+.tpager{display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0;flex-wrap:wrap}
+.tpager .btn{white-space:nowrap}
+.tpager span{font-size:13px;text-align:center}
 .hidemean .w-mean{display:none}
 .hidemean .w-item.open .w-mean{display:block}
 .ibtn{position:relative;cursor:pointer}
@@ -378,11 +395,11 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   .ibtn{font-size:16px;font-weight:700;gap:8px;height:48px}
   .ibtn .ic{font-size:20px}
   .ibtn .lb{display:inline;white-space:nowrap}
-  .icon-row .tg{height:48px;font-size:16px;gap:8px}
+  .icon-row .tg{height:48px;font-size:16px;gap:8px;flex-direction:row;padding:0}
   .icon-row .tg .sw{width:44px;height:26px}
   .icon-row .tg .sw::after{top:3px;left:3px;width:20px;height:20px}
   .icon-row .tg input:checked+.sw::after{left:21px}
-  .icon-row .tg-l{font-size:16px}
+  .icon-row .tg .tg-l{font-size:16px}
 }
 </style>
 </head>
@@ -667,7 +684,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '4.1', APP_DATE = '2026-10-14', SERVER_NEED = 7;
+const APP_VERSION = '4.3', APP_DATE = '2026-10-14', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1096,13 +1113,22 @@ function renderTable(arr, box) {
     const w = part[i];
     if (!w) { h += '<div class="tcell empty-c"></div>'; continue; }
     const hide = !showMean && !tblRevealed.has(w.id);
-    h += '<div class="tcell" data-id="' + esc(w.id) + '"><div class="tw"><span>' + esc(w.word) + '</span><button class="speak" data-act="tspeak" aria-label="발음">🔊</button></div>' +
-      (w.pos ? '<div class="tp">' + esc(w.pos) + '</div>' : '') +
+    h += '<div class="tcell" data-id="' + esc(w.id) + '"><div class="tw"><span>' + esc(w.word) + '</span></div>' +
+      '<div class="tp"><span>' + esc(w.pos || '') + '</span><button class="speak" data-act="tspeak" aria-label="발음">🔊</button></div>' +
       '<div class="tm' + (hide ? ' hid' : '') + '">' + esc(w.meaning) + '</div></div>';
   }
   h += '</div><div class="tpager"><button class="btn" id="tPrev"' + (tblPage ? '' : ' disabled') + '>◀ 이전</button><span>' + (tblPage + 1) + ' / ' + pages + ' · ' + R + '×' + C + ' · 총 ' + arr.length + '개</span><button class="btn" id="tNext"' + (tblPage < pages - 1 ? '' : ' disabled') + '>다음 ▶</button></div>';
-  box.innerHTML = h;
+  box.innerHTML = h; fitTable();
 }
+function fitTable() {
+  document.querySelectorAll('.tcell .tw>span').forEach(el => {
+    el.style.fontSize = ''; let fs = parseFloat(getComputedStyle(el).fontSize);
+    el.classList.remove('wrapw');
+    while (el.scrollWidth > el.clientWidth + 0.5 && fs > 11) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+    if (el.scrollWidth > el.clientWidth + 0.5) el.classList.add('wrapw');
+  });
+}
+window.addEventListener('resize', () => { if (tblView) fitTable(); });
 $('#list').addEventListener('click', e => {
   const t = e.target.closest('.tcell'); if (t) {
     const w = words.find(x => x.id === t.dataset.id); if (!w) return;
