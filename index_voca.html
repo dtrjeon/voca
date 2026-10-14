@@ -271,7 +271,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .tg input:checked+.sw{background:var(--accent)}
 .tg input:checked+.sw::after{left:21px}
 .tg input:focus-visible+.sw{outline:2px solid var(--accent);outline-offset:2px}
-.icon-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;align-items:stretch}
+.icon-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px;align-items:stretch}
 .icon-row>*{min-width:0}
 .ibtn .lb{display:none}
 .ibtn{width:auto;height:44px;border:1px solid var(--line);background:#fff;border-radius:12px;font-size:22px;line-height:1;display:inline-flex;align-items:center;justify-content:center;color:var(--ink);padding:0;flex:none}
@@ -423,6 +423,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
       <button class="ibtn" id="btnImport" title="가져오기" aria-label="가져오기"><span class="ic">📥</span><span class="lb">가져오기</span></button>
       <label class="tg" title="뜻 보이기/가리기"><input type="checkbox" id="tgMean" checked aria-label="뜻 보이기"><span class="sw"></span><span class="tg-l">뜻</span></label>
       <button class="ibtn" id="btnView" title="표로 보기" aria-label="표로 보기"><span class="ic">▦</span><span class="lb">표로 보기</span></button>
+      <button class="ibtn" id="btnCal" title="달력" aria-label="달력"><span class="ic">📅</span><span class="lb">달력</span></button>
     </div>
     <input type="text" id="search" placeholder="🔍 단어·뜻 검색" style="margin-bottom:10px">
     <div class="filt-row">
@@ -647,7 +648,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '3.9', APP_DATE = '2026-10-14', SERVER_NEED = 7;
+const APP_VERSION = '4.0', APP_DATE = '2026-10-14', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1093,6 +1094,7 @@ $('#list').addEventListener('click', e => {
   if (e.target.id === 'tNext') { tblPage++; renderList(); window.scrollTo(0, 0); }
 });
 $('#tgMean').addEventListener('change', e => { showMean = e.target.checked; lsSet('vn_showmean', showMean ? '1' : '0'); tblRevealed.clear(); renderList(); });
+$('#btnCal').addEventListener('click', () => { const b = document.querySelector('nav button[data-tab="cal"]'); if (b) b.click(); });
 $('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
 $('#search').addEventListener('input', () => { tblPage = 0; renderList(); });
 $('#sortSel').addEventListener('change', e => { sortMode = e.target.value; tblPage = 0; renderList(); });
