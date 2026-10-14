@@ -288,8 +288,22 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .tcell .tm.hid{color:transparent;background:#eceef6;border-radius:6px;min-height:1.2em;user-select:none}
 .tcell.empty-c{visibility:hidden}
 .tpager{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0}
-.hidemean .w-mean{visibility:hidden}
-.hidemean .w-item.open .w-mean{visibility:visible}
+.hidemean .w-mean{display:none}
+.hidemean .w-item.open .w-mean{display:block}
+.ibtn{position:relative;cursor:pointer}
+.ibtn input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.datebar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:8px 8px 8px 14px;margin-bottom:10px;font-weight:600}
+.datebar .btn{padding:6px 12px;background:#fff}
+.icon-row .tg{gap:5px;padding:0 4px}
+.icon-row .tg .sw{width:36px;height:22px}
+.icon-row .tg .sw::after{top:3px;left:3px;width:16px;height:16px}
+.icon-row .tg input:checked+.sw::after{left:17px}
+.icon-row .tg-l{font-size:13px}
+.step{display:flex;align-items:stretch;gap:6px}
+.step input{flex:1;min-width:0;text-align:center;-moz-appearance:textfield;appearance:textfield}
+.step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.step button{flex:none;width:46px;border:1px solid var(--line);background:#fff;border-radius:12px;font-size:22px;font-weight:700;color:var(--accent);padding:0}
+.step button:active{background:var(--accent-soft)}
 .setgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 /* 태블릿 (768px 이상): 왼쪽 메뉴 + 2단 레이아웃. 휴대폰은 위의 기본 스타일 그대로 */
 .res-empty,.recent{display:none}
@@ -364,7 +378,11 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   .ibtn{font-size:16px;font-weight:700;gap:8px;height:48px}
   .ibtn .ic{font-size:20px}
   .ibtn .lb{display:inline;white-space:nowrap}
-  .icon-row .tg{height:48px;font-size:16px}
+  .icon-row .tg{height:48px;font-size:16px;gap:8px}
+  .icon-row .tg .sw{width:44px;height:26px}
+  .icon-row .tg .sw::after{top:3px;left:3px;width:20px;height:20px}
+  .icon-row .tg input:checked+.sw::after{left:21px}
+  .icon-row .tg-l{font-size:16px}
 }
 </style>
 </head>
@@ -423,7 +441,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
       <button class="ibtn" id="btnImport" title="가져오기" aria-label="가져오기"><span class="ic">📥</span><span class="lb">가져오기</span></button>
       <label class="tg" title="뜻 보이기/가리기"><input type="checkbox" id="tgMean" checked aria-label="뜻 보이기"><span class="sw"></span><span class="tg-l">뜻</span></label>
       <button class="ibtn" id="btnView" title="표로 보기" aria-label="표로 보기"><span class="ic">▦</span><span class="lb">표로 보기</span></button>
-      <button class="ibtn" id="btnCal" title="달력" aria-label="달력"><span class="ic">📅</span><span class="lb">달력</span></button>
+      <label class="ibtn" id="btnDate" title="등록일로 걸러 보기"><span class="ic">📅</span><span class="lb">일자</span><input type="date" id="dfInput" aria-label="등록일 선택"></label>
     </div>
     <input type="text" id="search" placeholder="🔍 단어·뜻 검색" style="margin-bottom:10px">
     <div class="filt-row">
@@ -436,6 +454,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
         <option value="day">일자별</option>
       </select>
     </div>
+    <div id="dateBar"></div>
     <div id="rateBar"></div>
     <div id="list"></div>
   </section>
@@ -635,10 +654,10 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
   <input type="range" id="sRate" min="0.5" max="1.2" step="0.05" style="width:100%">
   <div class="row" style="margin-top:8px"><button class="btn" id="sVoiceTry">🔊 들어보기</button></div>
   <label class="lbl">하루에 새로 외울 단어 수 (복습은 따로 자동 계산돼요)</label>
-  <input type="number" id="sNewPerDay" min="0" max="50" inputmode="numeric">
+  <div class="step" data-for="sNewPerDay"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sNewPerDay" min="0" max="50" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div>
   <label class="lbl">단어장 표 크기 (행 × 열 · 한 페이지에 행×열 개)</label>
-  <div class="setgrid"><div><label class="lbl" for="sRows">행 (1~30)</label><input type="number" id="sRows" min="1" max="30" inputmode="numeric"></div>
-  <div><label class="lbl" for="sCols">열 (1~6)</label><input type="number" id="sCols" min="1" max="6" inputmode="numeric"></div></div>
+  <div class="setgrid"><div><label class="lbl" for="sRows">행 (1~30)</label><div class="step" data-for="sRows"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sRows" min="1" max="30" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div></div>
+  <div><label class="lbl" for="sCols">열 (1~6)</label><div class="step" data-for="sCols"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sCols" min="1" max="6" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div></div></div>
   <div class="row" style="margin-top:14px">
     <button class="btn" id="sTestBtn">연결 테스트</button>
     <button class="btn" id="sCancel">닫기</button>
@@ -648,7 +667,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '4.0', APP_DATE = '2026-10-14', SERVER_NEED = 7;
+const APP_VERSION = '4.1', APP_DATE = '2026-10-14', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1030,7 +1049,8 @@ async function rateAll() {
 function renderList() {
   renderRecent(); renderRateBar(); renderFolderBar();
   const q = $('#search').value.trim().toLowerCase();
-  let arr = words.filter(w => inFolder(w) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0));
+  renderDateBar();
+  let arr = words.filter(w => inFolder(w) && (!dateFilter || addedYmd(w) === dateFilter) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0));
   arr = arr.slice().sort((a, b) => {
     if (sortMode === 'day') return String(b.added).localeCompare(String(a.added));
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
@@ -1046,7 +1066,7 @@ function renderList() {
   box.classList.toggle('hidemean', !showMean);
   box.classList.toggle('tblmode', tblView && arr.length > 0);
   if (tblView && arr.length) { renderTable(arr, box); return; }
-  if (!arr.length) { box.innerHTML = '<div class="empty">' + (words.length ? '검색 결과가 없어요' : '아직 단어가 없어요.<br>“쓰기” 탭에서 첫 단어를 써 보세요!') + '</div>'; return; }
+  if (!arr.length) { box.innerHTML = '<div class="empty">' + (words.length ? (dateFilter ? '그 날 등록한 단어가 없어요' : '검색 결과가 없어요') : '아직 단어가 없어요.<br>“쓰기” 탭에서 첫 단어를 써 보세요!') + '</div>'; return; }
   const dayCnt = {}; if (sortMode === 'day') arr.forEach(w => { const d = addedYmd(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
   box.innerHTML = arr.map((w, ix) => dayHead(arr, ix, dayCnt) +
     '<div class="w-item" data-id="' + esc(w.id) + '">' +
@@ -1094,7 +1114,17 @@ $('#list').addEventListener('click', e => {
   if (e.target.id === 'tNext') { tblPage++; renderList(); window.scrollTo(0, 0); }
 });
 $('#tgMean').addEventListener('change', e => { showMean = e.target.checked; lsSet('vn_showmean', showMean ? '1' : '0'); tblRevealed.clear(); renderList(); });
-$('#btnCal').addEventListener('click', () => { const b = document.querySelector('nav button[data-tab="cal"]'); if (b) b.click(); });
+let dateFilter = '';
+function renderDateBar() {
+  const el = $('#dateBar'); if (!el) return;
+  $('#btnDate').classList.toggle('on', !!dateFilter); $('#dfInput').value = dateFilter;
+  if (!dateFilter) { el.innerHTML = ''; return; }
+  const wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(dateFilter + 'T12:00:00+09:00').getDay()];
+  const n = words.filter(w => addedYmd(w) === dateFilter).length;
+  el.innerHTML = '<div class="datebar"><span>📅 ' + dateFilter.slice(5).replace('-', '/') + ' (' + wd + ') 등록 · <b>' + n + '개</b></span><button class="btn" id="dfClear" aria-label="일자 필터 해제">✕ 해제</button></div>';
+  $('#dfClear').addEventListener('click', () => { dateFilter = ''; tblPage = 0; renderList(); });
+}
+$('#dfInput').addEventListener('change', e => { dateFilter = e.target.value || ''; tblPage = 0; renderList(); });
 $('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
 $('#search').addEventListener('input', () => { tblPage = 0; renderList(); });
 $('#sortSel').addEventListener('change', e => { sortMode = e.target.value; tblPage = 0; renderList(); });
@@ -1424,6 +1454,12 @@ $('#sVoiceTry').addEventListener('click', () => {
   const name = $('#sVoice').value, v = enVoices().find(x => x.name === name) || bestVoice;
   ttsSpeak('Hello. Please predict the future.', { voice: v, rate: parseFloat($('#sRate').value) });
 });
+$$('.step').forEach(st => st.addEventListener('click', e => {
+  const b = e.target.closest('button[data-d]'); if (!b) return;
+  const i = $('#' + st.dataset.for), mn = parseInt(i.min, 10), mx = parseInt(i.max, 10);
+  let v = parseInt(i.value, 10); if (isNaN(v)) v = mn;
+  i.value = Math.max(mn, Math.min(mx, v + parseInt(b.dataset.d, 10)));
+}));
 $('#sCancel').addEventListener('click', () => $('#dlgSettings').close());
 $('#sSave').addEventListener('click', () => {
   lsSet('vn_gas', $('#sGas').value.trim());
