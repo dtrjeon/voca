@@ -255,8 +255,10 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 @media (min-width:768px){#folderCards{grid-column:1/-1}}
 
 /* 뜻 토글 · 표 보기 */
-#tab-list #search{flex:1 1 0;min-width:0}
-#tab-list #sortSel{width:auto;flex:none;min-width:110px}
+#tab-list #search{display:block;width:100%}
+.filt-row{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px}
+.filt-row.has-f{grid-template-columns:1fr 1fr}
+.filt-row select{width:100%;min-width:0;text-overflow:ellipsis}
 #list.tblmode,#list.tblmode:not(.x){display:block!important}
 #tab-list .row{flex-wrap:wrap}
 .tg{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
@@ -419,9 +421,9 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
       <label class="tg" title="뜻 보이기/가리기"><input type="checkbox" id="tgMean" checked aria-label="뜻 보이기"><span class="sw"></span><span class="tg-l">뜻</span></label>
       <button class="ibtn" id="btnView" title="표로 보기" aria-label="표로 보기"><span class="ic">▦</span><span class="lb">표로 보기</span></button>
     </div>
-    <div id="folderBar"></div>
-    <div class="row" style="margin-bottom:10px">
-      <input type="text" id="search" class="grow" placeholder="단어·뜻 검색">
+    <input type="text" id="search" placeholder="🔍 단어·뜻 검색" style="margin-bottom:10px">
+    <div class="filt-row">
+      <div id="folderBar"></div>
       <select id="sortSel" aria-label="정렬">
         <option value="new">최신순</option>
         <option value="wrong">오답순</option>
@@ -642,7 +644,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '3.7', APP_DATE = '2026-10-14', SERVER_NEED = 7;
+const APP_VERSION = '3.8', APP_DATE = '2026-10-14', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1702,23 +1704,26 @@ function folderTree() {
 function renderFolderBar() {
   const el = $('#folderBar'); if (!el) return;
   const t = folderTree(), roots = Object.keys(t), none = words.filter(w => !w.folder).length;
-  if (!roots.length) { el.innerHTML = ''; folderSel.f = folderSel.s = ''; return; }
-  const chip = (cls, label, n, attr) => '<button class="chip' + (cls ? ' on' : '') + '" ' + attr + '>' + label + ' <small>' + n + '</small></button>';
-  let h = '<div class="fbar">' + chip(!folderSel.f, '전체', words.length, 'data-f=""') +
-    roots.map(r => chip(folderSel.f === r, '📁 ' + esc(r), t[r].all.length, 'data-f="' + esc(r) + '"')).join('') +
-    (none ? chip(folderSel.f === '__none', '미분류', none, 'data-f="__none"') : '') + '</div>';
-  if (folderSel.f && t[folderSel.f]) {
-    const o = t[folderSel.f];
-    h += '<div class="fbar fsub">' + chip(!folderSel.s, '모두', o.all.length, 'data-s=""') +
-      Object.keys(o.subs).map(k => chip(folderSel.s === k, '📂 ' + esc(k), o.subs[k].length, 'data-s="' + esc(k) + '"')).join('') + '</div>';
-  }
-  el.innerHTML = h;
+  const row = el.parentNode;
+  if (!roots.length) { el.innerHTML = ''; folderSel.f = folderSel.s = ''; row.classList.remove('has-f'); return; }
+  row.classList.add('has-f');
+  const cur = folderSel.f === '__none' ? '__none' : (folderSel.f ? (folderSel.s ? 's:' + folderSel.f + '/' + folderSel.s : 'f:' + folderSel.f) : '');
+  let h = '<select id="folderSelect" aria-label="폴더"><option value="">📁 전체 (' + words.length + ')</option>';
+  roots.forEach(r => {
+    h += '<option value="f:' + esc(r) + '">📁 ' + esc(r) + ' (' + t[r].all.length + ')</option>';
+    Object.keys(t[r].subs).forEach(k => { h += '<option value="s:' + esc(r) + '/' + esc(k) + '">\u00a0\u00a0└ ' + esc(k) + ' (' + t[r].subs[k].length + ')</option>'; });
+  });
+  if (none) h += '<option value="__none">미분류 (' + none + ')</option>';
+  el.innerHTML = h + '</select>';
+  $('#folderSelect').value = cur;
 }
-$('#folderBar').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (b.hasAttribute('data-f')) { folderSel.f = b.getAttribute('data-f'); folderSel.s = ''; }
-  else if (b.hasAttribute('data-s')) folderSel.s = b.getAttribute('data-s');
-  renderList();
+$('#folderBar').addEventListener('change', e => {
+  const v = e.target.value;
+  if (v === '') { folderSel.f = folderSel.s = ''; }
+  else if (v === '__none') { folderSel.f = '__none'; folderSel.s = ''; }
+  else if (v.startsWith('f:')) { folderSel.f = v.slice(2); folderSel.s = ''; }
+  else { const x = v.slice(2), i = x.indexOf('/'); folderSel.f = x.slice(0, i); folderSel.s = x.slice(i + 1); }
+  tblPage = 0; renderList();
 });
 function inFolder(w) {
   if (!folderSel.f) return true;
