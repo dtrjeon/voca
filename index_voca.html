@@ -234,7 +234,9 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .dtrow input[type=date]{width:auto;flex:none;padding:6px 10px;font-size:16px}
 .dtrow.past{background:#fff8e1;border-color:#f0d58a}
 .dtnote{font-size:13px;color:var(--sub)}
-.day-h{grid-column:1/-1;font-weight:700;margin:14px 2px 6px}
+.day-h{grid-column-start:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;font-weight:700;background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:10px 8px;margin:0}
+.day-h small{font-weight:600;opacity:.8;font-size:13px}
+@media (max-width:767px){.day-h{flex-direction:row;gap:8px;padding:8px 12px;margin:10px 0 2px;justify-content:flex-start}}
 /* 폴더 · 가져오기 · 학습 카드 */
 .fbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .fbar .chip{display:inline-flex;align-items:center;gap:4px}
@@ -258,6 +260,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 #tab-list #search{display:block;width:100%}
 .filt-row{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px}
 .filt-row.has-f{grid-template-columns:1fr 1fr}
+#folderBar:empty{display:none}
 .filt-row select{width:100%;min-width:0;text-overflow:ellipsis}
 #list.tblmode,#list.tblmode:not(.x){display:block!important}
 #tab-list .row{flex-wrap:wrap}
@@ -644,7 +647,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '3.8', APP_DATE = '2026-10-14', SERVER_NEED = 7;
+const APP_VERSION = '3.9', APP_DATE = '2026-10-14', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1910,7 +1913,7 @@ function dayHead(arr, ix, cnt) {
   if (sortMode !== 'day') return '';
   const d = addedYmd(arr[ix]); if (ix && addedYmd(arr[ix - 1]) === d) return '';
   const wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(d + 'T12:00:00+09:00').getDay()];
-  return '<div class="day-h">📅 ' + d.slice(5).replace('-', '/') + ' (' + wd + ') · ' + cnt[d] + '개</div>';
+  return '<div class="day-h"><span>📅 ' + d.slice(5).replace('-', '/') + ' (' + wd + ')</span><small>' + cnt[d] + '개</small></div>';
 }
 renderWDate();
 
