@@ -256,6 +256,7 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 
 /* 뜻 토글 · 표 보기 */
 #tab-list #search{flex:1 1 100%;min-width:0}
+#list.tblmode,#list.tblmode:not(.x){display:block!important}
 #tab-list .row{flex-wrap:wrap}
 .tg{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
 .tg input{position:absolute;opacity:0;width:0;height:0}
@@ -1020,6 +1021,7 @@ function renderList() {
   const box = $('#list');
   $('#tgMean').checked = showMean; $('#btnView').textContent = tblView ? '☰ 목록으로 보기' : '▦ 표로 보기'; $('#btnView').classList.toggle('on', tblView);
   box.classList.toggle('hidemean', !showMean);
+  box.classList.toggle('tblmode', tblView && arr.length > 0);
   if (tblView && arr.length) { renderTable(arr, box); return; }
   if (!arr.length) { box.innerHTML = '<div class="empty">' + (words.length ? '검색 결과가 없어요' : '아직 단어가 없어요.<br>“쓰기” 탭에서 첫 단어를 써 보세요!') + '</div>'; return; }
   const dayCnt = {}; if (sortMode === 'day') arr.forEach(w => { const d = addedYmd(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
