@@ -737,6 +737,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <label class="lbl">단어장 표 크기 (행 × 열 · 한 페이지에 행×열 개)</label>
   <div class="setgrid"><div><label class="lbl" for="sRows">행 (1~30)</label><div class="step" data-for="sRows"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sRows" min="1" max="30" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div></div>
   <div><label class="lbl" for="sCols">열 (1~6)</label><div class="step" data-for="sCols"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sCols" min="1" max="6" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div></div></div>
+  <label class="lbl" for="sTmSrc">🍅 토마토 · 토픽 (어떤 단어로 Day를 만들까요?)</label>
+  <select id="sTmSrc"></select>
   <label class="lbl">🍅 토마토 · Day 하나에 들어갈 단어 수</label>
   <div class="step" data-for="sTmPer"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sTmPer" min="5" max="50" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div>
   <div class="row" style="margin-top:14px">
@@ -748,7 +750,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '4.4', APP_DATE = '2026-10-14', SERVER_NEED = 7;
+const APP_VERSION = '4.5', APP_DATE = '2026-10-14', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1524,7 +1526,7 @@ $('#btnQuit').addEventListener('click', () => { if (confirm('퀴즈를 그만할
 /* ====== 설정 ====== */
 $('#btnSettings').addEventListener('click', () => {
   $('#sGas').value = lsGet('vn_gas', '') || (DEFAULT_GAS_URL.indexOf('PASTE') >= 0 ? '' : DEFAULT_GAS_URL);
-  $('#sTmPer').value = tmPer(); $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
+  $('#sTmSrc').innerHTML = tmSrcOptions(); $('#sTmSrc').value = tmSrc; $('#sTmPer').value = tmPer(); $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
   fillVoices(); syncSrc(lsGet('vn_src', 'human'));
   $('#sRate').value = lsGet('vn_rate', '0.85'); $('#sRateVal').textContent = $('#sRate').value + '배';
   $('#dlgSettings').showModal();
@@ -1559,6 +1561,7 @@ $('#sSave').addEventListener('click', () => {
   const n = parseInt($('#sNewPerDay').value, 10); if (!isNaN(n)) lsSet('vn_newperday', String(Math.max(0, Math.min(50, n))));
   const tr = parseInt($('#sRows').value, 10), tc = parseInt($('#sCols').value, 10);
   if (!isNaN(tr)) lsSet('vn_trows', String(Math.max(1, Math.min(30, tr)))); if (!isNaN(tc)) lsSet('vn_tcols', String(Math.max(1, Math.min(6, tc))));
+  if ($('#sTmSrc').value !== tmSrc) { tmSrc = $('#sTmSrc').value; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; }
   const tp = parseInt($('#sTmPer').value, 10); if (!isNaN(tp)) lsSet('vn_tm_per', String(Math.max(5, Math.min(50, tp))));
   tblPage = 0; renderList(); if ($('#tab-tomato').classList.contains('active')) tmRender();
   $('#dlgSettings').close(); toast('저장했어요'); updateSetupInfo(); refreshWords();
@@ -2072,14 +2075,17 @@ function tmStat(arr) { const c = { o: 0, x: 0, t: 0, n: 0 }; arr.forEach(w => { 
 const tmDateKey = d => tmSrc + '#' + d;
 const tmFmt = v => v ? v.slice(5).replace('-', '/') : ' / ';
 
-function tmSrcSelect() {
+function tmSrcOptions() {
   const t = folderTree(), roots = Object.keys(t);
-  let h = '<select id="tmSrc" aria-label="범위"><option value="">전체 단어 (' + words.length + ')</option>';
+  let h = '<option value="">전체 단어 (' + words.length + ')</option>';
   roots.forEach(r => {
     h += '<option value="f:' + esc(r) + '">📁 ' + esc(r) + ' (' + t[r].all.length + ')</option>';
     Object.keys(t[r].subs).forEach(k => { h += '<option value="s:' + esc(r) + '/' + esc(k) + '">  └ ' + esc(k) + ' (' + t[r].subs[k].length + ')</option>'; });
   });
-  return h.replace('value="' + esc(tmSrc) + '"', 'value="' + esc(tmSrc) + '" selected') + '</select>';
+  return h;
+}
+function tmSrcSelect() {
+  return '<select id="tmSrc" aria-label="토픽(범위)">' + tmSrcOptions().replace('value="' + esc(tmSrc) + '"', 'value="' + esc(tmSrc) + '" selected') + '</select>';
 }
 
 function tmHome() {
@@ -2119,8 +2125,8 @@ function tmDay() {
     const m = tmMarks[w.id] || '', rv = tm.rev.has(w.id);
     const wHid = tm.mode === 'm2w' && !rv, mHid = tm.mode === 'w2m' && !rv;
     h += '<tr data-id="' + esc(w.id) + '"><td><button class="tm-mk ' + m + '" data-act="mark" aria-label="표시 바꾸기">' + (TM_GLYPH[m] || '') + '</button></td>' +
-      '<td class="w' + (wHid ? ' tm-hid' : '') + '" data-act="' + (wHid ? 'rev' : 'say') + '">' + esc(w.word) + '</td>' +
-      '<td class="' + (mHid ? 'tm-hid' : '') + '" data-act="' + (mHid ? 'rev' : 'say') + '">' + esc(w.meaning) + '</td>' +
+      '<td class="w' + (wHid ? ' tm-hid' : '') + '" data-act="' + (tm.mode === 'm2w' ? 'rev' : 'say') + '">' + esc(w.word) + '</td>' +
+      '<td class="' + (mHid ? 'tm-hid' : '') + '" data-act="' + (tm.mode === 'w2m' ? 'rev' : 'say') + '">' + esc(w.meaning) + '</td>' +
       (showEx ? '<td class="ex">' + esc(w.example || '') + '</td><td class="ex">' + esc(w.example_ko || '') + '</td>' : '') + '</tr>';
   });
   h += '</tbody></table></div>';
@@ -2144,7 +2150,7 @@ $('#tmBody').addEventListener('click', e => {
   else if (act === 'ex') tm.ex = !tm.ex;
   else if (act === 'revall') { const ids = tmDayWords(tm.day).map(x => x.id); if (ids.every(i => tm.rev.has(i))) tm.rev.clear(); else ids.forEach(i => tm.rev.add(i)); }
   else if (act === 'mark' && w) { const n = TM_NEXT[tmMarks[id] || '']; if (n) tmMarks[id] = n; else delete tmMarks[id]; tmSaveMarks(); }
-  else if (act === 'rev' && id) { if (tm.rev.has(id)) tm.rev.delete(id); else tm.rev.add(id); if (w && tm.mode === 'm2w') speak(w.word); }
+  else if (act === 'rev' && id) { if (tm.rev.has(id)) tm.rev.delete(id); else tm.rev.add(id); if (w && tm.mode === 'm2w' && tm.rev.has(id)) speak(w.word); }
   else if (act === 'say' && w) { speak(w.word); return; }
   else if (act === 'allo') { tmDayWords(tm.day).forEach(x => { tmMarks[x.id] = 'o'; }); tmSaveMarks(); toast('이 Day를 모두 ◎ 로 표시했어요'); }
   else if (act === 'clr') { tmDayWords(tm.day).forEach(x => { delete tmMarks[x.id]; }); tmSaveMarks(); }
