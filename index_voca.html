@@ -255,7 +255,8 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 @media (min-width:768px){#folderCards{grid-column:1/-1}}
 
 /* 뜻 토글 · 표 보기 */
-#tab-list #search{flex:1 1 100%;min-width:0}
+#tab-list #search{flex:1 1 0;min-width:0}
+#tab-list #sortSel{width:auto;flex:none;min-width:110px}
 #list.tblmode,#list.tblmode:not(.x){display:block!important}
 #tab-list .row{flex-wrap:wrap}
 .tg{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
@@ -403,11 +404,13 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
     <div id="folderBar"></div>
     <div class="row" style="margin-bottom:10px">
       <input type="text" id="search" class="grow" placeholder="단어·뜻 검색">
-      <button class="chip on" data-sort="new">최신순</button>
-      <button class="chip" data-sort="wrong">오답순</button>
-      <button class="chip" data-sort="due">복습순</button>
-      <button class="chip" data-sort="level">난이도순</button>
-      <button class="chip" data-sort="day">일자별</button>
+      <select id="sortSel" aria-label="정렬">
+        <option value="new">최신순</option>
+        <option value="wrong">오답순</option>
+        <option value="due">복습순</option>
+        <option value="level">난이도순</option>
+        <option value="day">일자별</option>
+      </select>
     </div>
     <div class="tool-row">
       <label class="tg"><input type="checkbox" id="tgMean" checked><span class="sw"></span>뜻</label>
@@ -1073,9 +1076,7 @@ $('#list').addEventListener('click', e => {
 $('#tgMean').addEventListener('change', e => { showMean = e.target.checked; lsSet('vn_showmean', showMean ? '1' : '0'); tblRevealed.clear(); renderList(); });
 $('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
 $('#search').addEventListener('input', () => { tblPage = 0; renderList(); });
-$$('[data-sort]').forEach(b => b.addEventListener('click', () => {
-  sortMode = b.dataset.sort; tblPage = 0; $$('[data-sort]').forEach(x => x.classList.toggle('on', x === b)); renderList();
-}));
+$('#sortSel').addEventListener('change', e => { sortMode = e.target.value; tblPage = 0; renderList(); });
 
 // 마이크로 단어를 따라 말하면 맞게 들리는지 확인 (지원하는 브라우저에서만)
 function sayWord(word, out) {
