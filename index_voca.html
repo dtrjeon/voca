@@ -237,6 +237,11 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 .day-h{grid-column-start:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;font-weight:700;background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:10px 8px;margin:0}
 .day-h small{font-weight:600;opacity:.8;font-size:13px}
 @media (max-width:767px){.day-h{flex-direction:row;gap:8px;padding:8px 12px;margin:10px 0 2px;justify-content:flex-start}}
+.dayrow{display:flex;gap:8px;align-items:stretch;margin-bottom:6px}
+.dayrow .dr-main{flex:1;display:flex;align-items:center;gap:6px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 14px;font-size:16px;color:var(--ink)}
+.dayrow .dr-main span{margin-left:auto;color:var(--sub);font-size:14px}
+.dayrow.on .dr-main{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.dayrow .dr-tm{flex:none;width:52px;font-size:20px;padding:0}
 /* 폴더 · 가져오기 · 학습 카드 */
 .fbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .fbar .chip{display:inline-flex;align-items:center;gap:4px}
@@ -542,7 +547,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
       <button class="ibtn" id="btnImport" title="가져오기" aria-label="가져오기"><span class="ic">📥</span><span class="lb">가져오기</span></button>
       <label class="tg" title="뜻 보이기/가리기"><input type="checkbox" id="tgMean" checked aria-label="뜻 보이기"><span class="sw"></span><span class="tg-l">뜻</span></label>
       <button class="ibtn" id="btnView" title="표로 보기" aria-label="표로 보기"><span class="ic">▦</span><span class="lb">표로 보기</span></button>
-      <label class="ibtn" id="btnDate" title="등록일로 걸러 보기"><span class="ic">📅</span><span class="lb">일자</span><input type="date" id="dfInput" aria-label="등록일 선택"></label>
+      <button class="ibtn" id="btnDate" title="일자별 보기" aria-label="일자별 보기"><span class="ic">📅</span><span class="lb">일자</span></button>
     </div>
     <input type="text" id="search" placeholder="🔍 단어·뜻 검색" style="margin-bottom:10px">
     <div class="filt-row">
@@ -808,6 +813,14 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   </div>
 </dialog>
 
+<dialog id="dlgDays">
+  <h3 style="margin:0 0 6px">📅 일자별 단어</h3>
+  <div style="font-size:13px;color:var(--sub);margin-bottom:8px">날짜를 누르면 그날 등록한 단어만 보여요. 🍅를 누르면 그 일자를 토마토 범위로 정해요.</div>
+  <div id="daysList" style="max-height:50vh;overflow:auto"></div>
+  <label class="lbl" for="dfInput">달력에서 직접 고르기</label><input type="date" id="dfInput" aria-label="등록일 선택">
+  <div class="row" style="margin-top:12px"><button class="btn" id="daysClear" type="button">전체 보기</button><button class="btn primary grow" id="daysClose" type="button">닫기</button></div>
+</dialog>
+
 <dialog id="dlgDup">
   <h3 style="margin:0 0 6px">🔍 중복 단어 찾기</h3>
   <div class="tg-line" style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--sub);margin:4px 0 8px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dupLoose"> 비슷한 모양도 찾기 (예: <i>run · runs · running</i>)</label></div>
@@ -838,7 +851,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.4.1', APP_DATE = '2026-10-15', SERVER_NEED = 8;
+const APP_VERSION = '5.5.0', APP_DATE = '2026-10-15', SERVER_NEED = 8;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1043,7 +1056,11 @@ function redraw() {
 function pt(e) { const r = pad.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, p: e.pressure > 0 ? e.pressure : 0.5 }; }
 function allowed(e) {
   if (e.pointerType === 'pen') { penSeen = true; return true; }
-  if (e.pointerType === 'touch' && penSeen && !fingerOK) return false;
+  if (e.pointerType === 'touch' && !fingerOK) {
+    const t = Date.now();
+    if (t - (allowed._t || 0) > 4000) { allowed._t = t; toast('S펜으로 써 주세요. 손가락으로 쓰려면 "손가락도 쓰기"를 켜세요'); }
+    return false;
+  }
   return true;
 }
 pad.addEventListener('pointerdown', e => {
@@ -1068,7 +1085,8 @@ pad.addEventListener('pointermove', e => {
 pad.addEventListener('contextmenu', e => e.preventDefault());
 window.addEventListener('resize', resizePad);
 
-$('#chipFinger').addEventListener('click', e => { fingerOK = !fingerOK; e.currentTarget.classList.toggle('on', fingerOK); toast(fingerOK ? '손가락 입력을 허용합니다' : 'S펜이 감지되면 손가락 입력은 무시합니다'); });
+$('#chipFinger').classList.toggle('on', fingerOK);
+$('#chipFinger').addEventListener('click', e => { fingerOK = !fingerOK; e.currentTarget.classList.toggle('on', fingerOK); toast(fingerOK ? '손가락 입력을 허용합니다' : '손가락 입력을 끕니다 (S펜만 인식)'); });
 $('#btnUndo').addEventListener('click', () => { strokes.pop(); redraw(); });
 $('#btnClear').addEventListener('click', () => { strokes = []; redraw(); });
 
@@ -1373,7 +1391,28 @@ function renderDateBar() {
   el.innerHTML = '<div class="datebar"><span>📅 ' + dateFilter.slice(5).replace('-', '/') + ' (' + wd + ') 등록 · <b>' + n + '개</b></span><button class="btn" id="dfClear" aria-label="일자 필터 해제">✕ 해제</button></div>';
   $('#dfClear').addEventListener('click', () => { dateFilter = ''; tblPage = 0; renderList(); });
 }
-$('#dfInput').addEventListener('change', e => { dateFilter = e.target.value || ''; tblPage = 0; renderList(); });
+const WDK = ['일', '월', '화', '수', '목', '금', '토'];
+function daysSummary() {
+  const m = {}; words.forEach(w => { const d = addedYmd(w); if (/^\d{4}-\d{2}-\d{2}$/.test(d)) m[d] = (m[d] || 0) + 1; });
+  return Object.keys(m).sort().reverse().map(d => ({ d: d, n: m[d] }));
+}
+function renderDays() {
+  const a = daysSummary();
+  $('#daysList').innerHTML = a.length ? a.map(x => '<div class="dayrow' + (x.d === dateFilter ? ' on' : '') + '" data-d="' + x.d + '"><button class="dr-main" type="button" data-act="dview"><b>' + x.d.slice(5).replace('-', '/') + '</b> (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ')<span>' + x.n + '개</span></button><button class="btn dr-tm" type="button" data-act="dtm" aria-label="토마토 범위로 정하기">🍅</button></div>').join('') : '<div class="empty">아직 등록한 단어가 없어요</div>';
+}
+function openDays() { renderDays(); $('#dfInput').value = dateFilter; $('#dlgDays').showModal(); }
+$('#btnDate').addEventListener('click', openDays);
+$('#daysClose').addEventListener('click', () => $('#dlgDays').close());
+$('#daysClear').addEventListener('click', () => { dateFilter = ''; tblPage = 0; $('#dlgDays').close(); renderList(); });
+$('#daysList').addEventListener('click', e => {
+  const r = e.target.closest('.dayrow'); if (!r) return; const d = r.dataset.d;
+  if (e.target.closest('[data-act="dtm"]')) {
+    tmSrc = 'd:' + d; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; $('#dlgDays').close(); $('nav button[data-tab="tomato"]').click(); return;
+  }
+  setDateView(d);
+});
+function setDateView(d) { dateFilter = d || ''; folderSel.f = folderSel.s = ''; tblPage = 0; $('#dlgDays').close(); renderList(); window.scrollTo(0, 0); }
+$('#dfInput').addEventListener('change', e => { if (e.target.value) setDateView(e.target.value); });
 $('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
 $('#search').addEventListener('input', () => { tblPage = 0; renderList(); });
 $('#sortSel').addEventListener('change', e => { sortMode = e.target.value; tblPage = 0; renderList(); });
@@ -2218,6 +2257,7 @@ const tmSaveMarks = () => lsSet('vn_tm_marks', JSON.stringify(tmMarks));
 const tmSaveDates = () => lsSet('vn_tm_dates', JSON.stringify(tmDates));
 function tmWords() {
   if (!tmSrc) return words.slice();
+  if (tmSrc.startsWith('d:')) { const d = tmSrc.slice(2); return words.filter(w => addedYmd(w) === d).sort((a, b) => String(a.added).localeCompare(String(b.added))); }
   const isSub = tmSrc.startsWith('s:'), v = tmSrc.slice(2);
   return words.filter(w => {
     if (!w.folder) return false;
@@ -2226,7 +2266,7 @@ function tmWords() {
     const i = v.indexOf('/'); return r === v.slice(0, i) && (sb || '(바로 아래)') === v.slice(i + 1);
   });
 }
-const tmLabel = () => !tmSrc ? '전체 단어' : tmSrc.slice(2).replace('/', ' › ');
+const tmLabel = () => !tmSrc ? '전체 단어' : tmSrc.startsWith('d:') ? '📅 ' + tmSrc.slice(7).replace('-', '/') + ' 등록' : tmSrc.slice(2).replace('/', ' › ');
 const tmDayWords = (d, all) => (all || tmWords()).slice((d - 1) * tmPer(), d * tmPer());
 function tmStat(arr) { const c = { o: 0, x: 0, t: 0, n: 0 }; arr.forEach(w => { const m = tmMarks[w.id]; if (m) c[m]++; else c.n++; }); return c; }
 const tmDateKey = d => tmSrc + '#' + d;
@@ -2239,6 +2279,8 @@ function tmSrcOptions() {
     h += '<option value="f:' + esc(r) + '">📁 ' + esc(r) + ' (' + t[r].all.length + ')</option>';
     Object.keys(t[r].subs).forEach(k => { h += '<option value="s:' + esc(r) + '/' + esc(k) + '">  └ ' + esc(k) + ' (' + t[r].subs[k].length + ')</option>'; });
   });
+  const ds = daysSummary().slice(0, 60); if (tmSrc.startsWith('d:') && !ds.some(x => 'd:' + x.d === tmSrc)) ds.push({ d: tmSrc.slice(2), n: tmWords().length });
+  if (ds.length) h += '<optgroup label="📅 등록일별">' + ds.map(x => '<option value="d:' + x.d + '">📅 ' + x.d.slice(5).replace('-', '/') + ' (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ') · ' + x.n + '개</option>').join('') + '</optgroup>';
   return h;
 }
 function tmSrcSelect() {
