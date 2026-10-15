@@ -36,6 +36,12 @@ button{font:inherit;cursor:pointer}
 .btn.block{width:100%}
 .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:14px;color:var(--sub)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.gnsw{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--sub);user-select:none;cursor:pointer}
+.gnsw b{color:var(--text,#222)}
+.gnsw .sw{position:relative;width:52px;height:30px;border-radius:999px;background:#c9cde6;transition:background .15s;flex:none}
+.gnsw .sw::after{content:'';position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}
+.gnsw.on .sw{background:var(--accent)}
+.gnsw.on .sw::after{left:25px}
 label.lbl{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
 input[type=text],input[type=number],textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
 textarea{resize:vertical;min-height:60px}
@@ -836,6 +842,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div style="font-size:13px;color:var(--sub)" id="gnInfo"></div>
   <label class="lbl">만들 범위</label>
   <div class="setgrid"><div><label class="lbl" for="gnFrom">시작 Day</label><input type="number" id="gnFrom" min="1" inputmode="numeric"></div><div><label class="lbl" for="gnTo">끝 Day</label><input type="number" id="gnTo" min="1" inputmode="numeric"></div></div>
+  <label class="lbl">종류</label>
+  <div class="gnsw" id="gnLang" role="switch" aria-checked="false" tabindex="0"><span id="gnLangKo"><b>영한</b></span><span class="sw"></span><span id="gnLangEn">영영</span><span style="font-size:12px;margin-left:6px" id="gnLangNote">단어·뜻(한국어)·연어·연어 뜻</span></div>
   <label class="lbl">양식</label>
   <div class="row" id="gnType"><button class="chip on" data-v="study" type="button">학습표 (단어·뜻·연어·연어 뜻)</button><button class="chip" data-v="exam" type="button">좌우 시험지</button></div>
   <label class="lbl">칸 내용</label>
@@ -855,7 +863,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.7.1', APP_DATE = '2026-10-15', SERVER_NEED = 13;
+const APP_VERSION = '1.0.0', APP_DATE = '2026-10-15', SERVER_NEED = 14;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2543,21 +2551,42 @@ $('#dupList').addEventListener('click', e => {
 });
 
 /* --- 굿노트용 PDF --- */
-let gnMode = 'blank', gnType = 'study', gnFs = 1.3;
+let gnMode = 'blank', gnType = 'study', gnFs = 1.3, gnLang = 'ko';
 let gnBlob = null, gnName = 'goodnotes.pdf';
 function gnStale() { const had = !!gnBlob; gnBlob = null; $('#gnOut').innerHTML = had ? '<span style="color:var(--sub)">설정이 바뀌어 이전 파일을 지웠어요. 위의 “PDF 만들기”를 다시 눌러 주세요.</span>' : ''; }
 const collOf = w => (w.extra && w.extra.colloc) ? { c: w.extra.colloc, k: w.extra.colloc_ko || '' } : null;
 function gnRange() { const nd = Math.ceil(tmWords().length / tmPer()); let a = Math.max(1, parseInt($('#gnFrom').value, 10) || 1), b = Math.min(nd, parseInt($('#gnTo').value, 10) || nd); if (a > b) { const t = a; a = b; b = t; } return [a, b]; }
 function gnTargets() { const [a, b] = gnRange(), all = tmWords(), per = tmPer(); return all.slice((a - 1) * per, b * per); }
-function gnCollInfo() { const t = gnTargets(), miss = t.filter(w => !collOf(w)); $('#gnCollInfo').innerHTML = '연어: <b>' + (t.length - miss.length) + '</b> / ' + t.length + '개 준비됨' + (miss.length ? ' · 비어 있는 ' + miss.length + '개' : ' ✅'); $('#gnCollGo').textContent = miss.length ? '✨ 연어 자동 만들기 (' + miss.length + '개)' : '✨ 연어 모두 준비됨'; $('#gnCollGo').disabled = !miss.length; $('#gnColl').style.display = gnType === 'study' ? '' : 'none'; return miss; }
+const enOf = w => { const x = w.extra || {}; return { m: x.meaning_en || '', c: x.colloc_en || '' }; };
+/* 준비가 덜 된 단어: 영한 학습표 → 연어 / 영영 → 영어 뜻(+학습표면 연어·연어 영어 뜻) */
+function gnMiss(w) {
+  const x = w.extra || {};
+  if (gnLang === 'en') return !x.meaning_en || (gnType === 'study' && (!x.colloc || !x.colloc_en));
+  return gnType === 'study' && !x.colloc;
+}
+function gnCollInfo() {
+  const t = gnTargets(), miss = t.filter(gnMiss), en = gnLang === 'en';
+  $('#gnCollInfo').innerHTML = (en ? '영영 자료' : '연어') + ': <b>' + (t.length - miss.length) + '</b> / ' + t.length + '개 준비됨' + (miss.length ? ' · 비어 있는 ' + miss.length + '개' : ' ✅');
+  $('#gnCollGo').textContent = miss.length ? (en ? '✨ 영어 뜻·연어 자동 만들기 (' : '✨ 연어 자동 만들기 (') + miss.length + '개)' : (en ? '✨ 영영 자료 모두 준비됨' : '✨ 연어 모두 준비됨');
+  $('#gnCollGo').disabled = !miss.length; $('#gnColl').style.display = (gnType === 'study' || en) ? '' : 'none'; return miss;
+}
 function gnOpen() {
   const all = tmWords(), nd = Math.ceil(all.length / tmPer());
   if (!nd) { toast('이 토픽에 단어가 없어요'); return; }
   $('#gnInfo').textContent = '토픽: ' + tmLabel() + ' · 단어 ' + all.length + '개 · Day ' + nd + '개 (Day당 ' + tmPer() + '단어)';
   $('#gnFrom').value = 1; $('#gnTo').value = nd; $('#gnFrom').max = $('#gnTo').max = nd;
-  $('#gnCollSt').textContent = ''; gnCollInfo(); gnBlob = null; $('#gnOut').innerHTML = '';
+  $('#gnCollSt').textContent = ''; gnSetLang(gnLang); gnBlob = null; $('#gnOut').innerHTML = '';
   $('#dlgGn').showModal();
 }
+function gnSetLang(v) {
+  gnLang = v; const sw = $('#gnLang'); sw.classList.toggle('on', v === 'en'); sw.setAttribute('aria-checked', v === 'en' ? 'true' : 'false');
+  $('#gnLangKo').innerHTML = v === 'en' ? '영한' : '<b>영한</b>'; $('#gnLangEn').innerHTML = v === 'en' ? '<b>영영</b>' : '영영';
+  $('#gnLangNote').textContent = v === 'en' ? '단어·뜻(영어)·연어·연어 뜻(영어)' : '단어·뜻(한국어)·연어·연어 뜻';
+  $('#gnType [data-v="study"]').textContent = v === 'en' ? '학습표 (단어·뜻(영어)·연어·연어 뜻(영어))' : '학습표 (단어·뜻·연어·연어 뜻)';
+  gnCollInfo(); gnStale();
+}
+$('#gnLang').addEventListener('click', () => gnSetLang(gnLang === 'en' ? 'ko' : 'en'));
+$('#gnLang').addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); gnSetLang(gnLang === 'en' ? 'ko' : 'en'); } });
 $('#gnMode').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnMode = b.dataset.v; $$('#gnMode .chip').forEach(c => c.classList.toggle('on', c === b)); gnStale(); });
 $('#gnFs').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnFs = parseFloat(b.dataset.v) || 1.3; $$('#gnFs .chip').forEach(c => c.classList.toggle('on', c === b)); gnStale(); });
 $('#gnType').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnType = b.dataset.v; $$('#gnType .chip').forEach(c => c.classList.toggle('on', c === b)); gnCollInfo(); gnStale(); });
@@ -2565,22 +2594,37 @@ $('#gnFrom').addEventListener('input', () => { gnCollInfo(); gnStale(); }); $('#
 $('#gnCollGo').addEventListener('click', async () => {
   const miss = gnCollInfo(); if (!miss.length) return;
   const go = $('#gnCollGo'); go.disabled = true; let done = 0, fails = 0, lastErr = '';
+  const st = t => { $('#gnCollSt').innerHTML = '<span class="spinner"></span> ' + t; };
   try {
-    for (let i = 0; i < miss.length; i += 15) {
-      $('#gnCollSt').innerHTML = '<span class="spinner"></span> 만드는 중… ' + done + '/' + miss.length;
-      let j; try { j = await api('colloc', { items: miss.slice(i, i + 15).map(w => ({ id: w.id, word: w.word, meaning: w.meaning })) }); }
+    // 1) 연어 (학습표에서 연어가 비어 있는 단어)
+    const needC = gnType === 'study' ? miss.filter(w => !collOf(w)) : [];
+    for (let i = 0; i < needC.length; i += 15) {
+      st('연어 만드는 중… ' + i + '/' + needC.length);
+      let j; try { j = await api('colloc', { items: needC.slice(i, i + 15).map(w => ({ id: w.id, word: w.word, meaning: w.meaning })) }); }
       catch (e) { if (/unknown action/.test(e.message)) throw e; fails++; lastErr = e.message; continue; }
       (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w) { w.extra = Object.assign({}, w.extra || {}, { colloc: o.colloc, colloc_ko: o.colloc_ko }); done++; } });
       saveCache();
     }
-    $('#gnCollSt').textContent = (done ? '✅ ' + done + '개 만들었어요' : '') + (fails ? ' ⚠️ 일부 묶음 실패(' + lastErr.slice(0, 80) + ') — 다시 누르면 비어 있는 것만 이어서 만들어요' : '');
-  } catch (e) { $('#gnCollSt').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v8)으로 다시 배포해 주세요' : ''); }
+    // 2) 영영: 영어 뜻 (+ 연어의 영어 뜻)
+    if (gnLang === 'en') {
+      const needE = miss.filter(w => { const x = w.extra || {}; return !x.meaning_en || (gnType === 'study' && x.colloc && !x.colloc_en); });
+      for (let i = 0; i < needE.length; i += 15) {
+        st('영어 뜻 만드는 중… ' + i + '/' + needE.length);
+        let j; try { j = await api('defen', { items: needE.slice(i, i + 15).map(w => ({ id: w.id, word: w.word, meaning: w.meaning, colloc: gnType === 'study' && w.extra ? (w.extra.colloc || '') : '' })) }); }
+        catch (e) { if (/unknown action/.test(e.message)) throw e; fails++; lastErr = e.message; continue; }
+        (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w) { const add = { meaning_en: o.meaning_en }; if (o.colloc_en) add.colloc_en = o.colloc_en; w.extra = Object.assign({}, w.extra || {}, add); done++; } });
+        saveCache();
+      }
+    }
+    $('#gnCollSt').textContent = (done ? '✅ ' + done + '건 만들었어요' : '') + (fails ? ' ⚠️ 일부 묶음 실패(' + lastErr.slice(0, 80) + ') — 다시 누르면 비어 있는 것만 이어서 만들어요' : '');
+  } catch (e) { $('#gnCollSt').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v14)으로 다시 배포해 주세요' : ''); }
   gnCollInfo();
 });
 $('#gnClose').addEventListener('click', () => $('#dlgGn').close());
 /* --- PDF 를 앱 안에서 직접 그린다 (캔버스 → JPEG → PDF, 링크 포함) --- */
 const GN_FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo','Pretendard',sans-serif";
-function gnDrawPages(from, to, mode, type, cv, fs) {
+function gnDrawPages(from, to, mode, type, cv, fs, lang) {
+  const EN = lang === 'en', mn = w => EN ? enOf(w).m : w.meaning;
   const F = fs || 1, all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), topic = tmLabel(), blank = mode === 'blank';
   const W = cv.width, S = W / 210, ctx = cv.getContext('2d'), PT = 0.3528 * S;
   const homePages = Math.ceil((to - from + 1) / 50), total = homePages + (to - from + 1);
@@ -2668,13 +2712,14 @@ function gnDrawPages(from, to, mode, type, cv, fs) {
       });
     };
     if (type === 'study') {
-      table(10, 190, [5, 23, 23, 26, 23], ['', '단어', '단어 뜻', '연어(Collocation)', '연어 뜻'], (w, i) => {
-        const cl = collOf(w) || { c: '', k: '' };
-        return i === 1 ? { t: w.word, pt: 9.5 * F, bold: true } : i === 2 ? { t: blank ? '' : w.meaning, pt: 8.5 * F } : i === 3 ? { t: cl.c, pt: 8.5 * F } : { t: blank ? '' : cl.k, pt: 8.5 * F };
+      table(10, 190, EN ? [5, 17, 30, 21, 27] : [5, 23, 23, 26, 23], EN ? ['', '단어', '뜻 (영어)', '연어(Collocation)', '연어 뜻 (영어)'] : ['', '단어', '단어 뜻', '연어(Collocation)', '연어 뜻'], (w, i) => {
+        const cl = collOf(w) || { c: '', k: '' }, ck = EN ? enOf(w).c : cl.k;
+        return i === 1 ? { t: w.word, pt: 9.5 * F, bold: true } : i === 2 ? { t: blank ? '' : mn(w), pt: 8.5 * F } : i === 3 ? { t: cl.c, pt: 8.5 * F } : { t: blank ? '' : ck, pt: 8.5 * F };
       }, 0);
     } else {
-      table(10, 93, [34, 50, 16], ['단어', '단어 뜻', ''], (w, i) => i === 0 ? { t: w.word, pt: 9.5 * F, bold: true } : { t: blank ? '' : w.meaning, pt: 8.5 * F }, 2);
-      table(107, 93, [34, 50, 16], ['단어 뜻', '단어', ''], (w, i) => i === 0 ? { t: w.meaning, pt: 8.5 * F } : { t: blank ? '' : w.word, pt: 9.5 * F, bold: true }, 2);
+      const ef = EN ? [26, 58, 16] : [34, 50, 16], mh = EN ? '뜻 (영어)' : '단어 뜻';
+      table(10, 93, ef, ['단어', mh, ''], (w, i) => i === 0 ? { t: w.word, pt: 9.5 * F, bold: true } : { t: blank ? '' : mn(w), pt: 8.5 * F }, 2);
+      table(107, 93, EN ? [58, 26, 16] : [34, 50, 16], [mh, '단어', ''], (w, i) => i === 0 ? { t: mn(w), pt: 8.5 * F } : { t: blank ? '' : w.word, pt: 9.5 * F, bold: true }, 2);
     }
     ctx.textAlign = 'center'; ctx.font = font(8, false); ctx.fillStyle = '#aaaaaa'; ctx.fillText(d + ' / ' + nd, px(105), px(291.5));
   };
@@ -2712,11 +2757,11 @@ function gnMakePdf(jpegs, linksPer, W, H) {
 const S_MM = W => W / 210;
 $('#gnGo').addEventListener('click', async () => {
   const [a, b] = gnRange();
-  if (gnType === 'study' && gnCollInfo().length && !confirm('연어가 비어 있는 단어가 있어요. 그대로 PDF를 만들까요? (빈 칸으로 나와요)')) return;
+  if (gnCollInfo().length && !confirm((gnLang === 'en' ? '영어 뜻·연어가 비어 있는 단어가 있어요' : '연어가 비어 있는 단어가 있어요') + '. 그대로 PDF를 만들까요? (빈 칸으로 나와요)')) return;
   const go = $('#gnGo'); go.disabled = true; $('#gnOut').innerHTML = '';
   try {
     const W = 1500, H = Math.round(W * 297 / 210), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const dr = gnDrawPages(a, b, gnMode, gnType, cv, gnFs), jpegs = [], linksPer = [];
+    const dr = gnDrawPages(a, b, gnMode, gnType, cv, gnFs, gnLang), jpegs = [], linksPer = [];
     for (let i = 0; i < dr.total; i++) {
       $('#gnOut').innerHTML = '<span class="spinner"></span> 페이지 만드는 중… ' + (i + 1) + '/' + dr.total;
       await new Promise(r => setTimeout(r, 0));
@@ -2727,7 +2772,7 @@ $('#gnGo').addEventListener('click', async () => {
     }
     const pdf = gnMakePdf(jpegs, linksPer, W, H);
     gnBlob = new Blob([pdf], { type: 'application/pdf' });
-    gnName = 'handvoca_굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_' + (gnType === 'study' ? '학습표' : '시험지') + '_' + (gnMode === 'blank' ? '쓰기용' : '정답포함') + '_Day' + a + '-' + b + '.pdf';
+    gnName = 'handvoca_굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_' + (gnLang === 'en' ? '영영_' : '') + (gnType === 'study' ? '학습표' : '시험지') + '_' + (gnMode === 'blank' ? '쓰기용' : '정답포함') + '_Day' + a + '-' + b + '.pdf';
     const mb = (pdf.length / 1048576).toFixed(1);
     $('#gnOut').innerHTML = '✅ <b>' + dr.total + '쪽</b> (' + mb + 'MB) 완성!<div class="row" style="margin-top:8px"><button class="btn primary grow" id="gnSave" type="button">② 📥 저장</button><button class="btn grow" id="gnShare" type="button">📤 공유 · 열기</button></div>';
   } catch (e) { $('#gnOut').textContent = '❌ ' + e.message; }
