@@ -840,6 +840,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div class="row" id="gnType"><button class="chip on" data-v="study" type="button">학습표 (단어·뜻·연어·연어 뜻)</button><button class="chip" data-v="exam" type="button">좌우 시험지</button></div>
   <label class="lbl">칸 내용</label>
   <div class="row" id="gnMode"><button class="chip on" data-v="blank" type="button">쓰기용 (뜻 칸 비움)</button><button class="chip" data-v="full" type="button">정답 포함</button></div>
+  <label class="lbl">글자 크기</label>
+  <div class="row" id="gnFs"><button class="chip" data-v="1" type="button">보통</button><button class="chip on" data-v="1.3" type="button">크게</button><button class="chip" data-v="1.5" type="button">아주 크게</button></div>
   <div id="gnColl" style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;font-size:13px">
     <div id="gnCollInfo"></div>
     <div class="row" style="margin-top:8px"><button class="btn grow" id="gnCollGo" type="button">✨ 연어 자동 만들기</button></div>
@@ -852,7 +854,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.6.2', APP_DATE = '2026-10-15', SERVER_NEED = 10;
+const APP_VERSION = '5.6.3', APP_DATE = '2026-10-15', SERVER_NEED = 10;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2436,7 +2438,9 @@ $('#dupList').addEventListener('click', e => {
 });
 
 /* --- 굿노트용 PDF --- */
-let gnMode = 'blank', gnType = 'study';
+let gnMode = 'blank', gnType = 'study', gnFs = 1.3;
+let gnBlob = null, gnName = 'goodnotes.pdf';
+function gnStale() { const had = !!gnBlob; gnBlob = null; $('#gnOut').innerHTML = had ? '<span style="color:var(--sub)">설정이 바뀌어 이전 파일을 지웠어요. 아래 “PDF 만들기”를 다시 눌러 주세요.</span>' : ''; }
 const collOf = w => (w.extra && w.extra.colloc) ? { c: w.extra.colloc, k: w.extra.colloc_ko || '' } : null;
 function gnRange() { const nd = Math.ceil(tmWords().length / tmPer()); let a = Math.max(1, parseInt($('#gnFrom').value, 10) || 1), b = Math.min(nd, parseInt($('#gnTo').value, 10) || nd); if (a > b) { const t = a; a = b; b = t; } return [a, b]; }
 function gnTargets() { const [a, b] = gnRange(), all = tmWords(), per = tmPer(); return all.slice((a - 1) * per, b * per); }
@@ -2446,12 +2450,13 @@ function gnOpen() {
   if (!nd) { toast('이 토픽에 단어가 없어요'); return; }
   $('#gnInfo').textContent = '토픽: ' + tmLabel() + ' · 단어 ' + all.length + '개 · Day ' + nd + '개 (Day당 ' + tmPer() + '단어)';
   $('#gnFrom').value = 1; $('#gnTo').value = nd; $('#gnFrom').max = $('#gnTo').max = nd;
-  $('#gnCollSt').textContent = ''; gnCollInfo();
+  $('#gnCollSt').textContent = ''; gnCollInfo(); gnBlob = null; $('#gnOut').innerHTML = '';
   $('#dlgGn').showModal();
 }
-$('#gnMode').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnMode = b.dataset.v; $$('#gnMode .chip').forEach(c => c.classList.toggle('on', c === b)); });
-$('#gnType').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnType = b.dataset.v; $$('#gnType .chip').forEach(c => c.classList.toggle('on', c === b)); gnCollInfo(); });
-$('#gnFrom').addEventListener('input', gnCollInfo); $('#gnTo').addEventListener('input', gnCollInfo);
+$('#gnMode').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnMode = b.dataset.v; $$('#gnMode .chip').forEach(c => c.classList.toggle('on', c === b)); gnStale(); });
+$('#gnFs').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnFs = parseFloat(b.dataset.v) || 1.3; $$('#gnFs .chip').forEach(c => c.classList.toggle('on', c === b)); gnStale(); });
+$('#gnType').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnType = b.dataset.v; $$('#gnType .chip').forEach(c => c.classList.toggle('on', c === b)); gnCollInfo(); gnStale(); });
+$('#gnFrom').addEventListener('input', () => { gnCollInfo(); gnStale(); }); $('#gnTo').addEventListener('input', () => { gnCollInfo(); gnStale(); });
 $('#gnCollGo').addEventListener('click', async () => {
   const miss = gnCollInfo(); if (!miss.length) return;
   const go = $('#gnCollGo'); go.disabled = true; let done = 0, fails = 0, lastErr = '';
@@ -2470,8 +2475,8 @@ $('#gnCollGo').addEventListener('click', async () => {
 $('#gnClose').addEventListener('click', () => $('#dlgGn').close());
 /* --- PDF 를 앱 안에서 직접 그린다 (캔버스 → JPEG → PDF, 링크 포함) --- */
 const GN_FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo','Pretendard',sans-serif";
-function gnDrawPages(from, to, mode, type, cv) {
-  const all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), topic = tmLabel(), blank = mode === 'blank';
+function gnDrawPages(from, to, mode, type, cv, fs) {
+  const F = fs || 1, all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), topic = tmLabel(), blank = mode === 'blank';
   const W = cv.width, S = W / 210, ctx = cv.getContext('2d'), PT = 0.3528 * S;
   const homePages = Math.ceil((to - from + 1) / 50), total = homePages + (to - from + 1);
   const px = v => v * S;
@@ -2486,7 +2491,7 @@ function gnDrawPages(from, to, mode, type, cv) {
     const sp = txt.split(' ');
     if (sp.length > 1) {                       // 두 줄로 나눈다
       let best = 1, bd = 1e9; for (let i = 1; i < sp.length; i++) { const d = Math.abs(sp.slice(0, i).join(' ').length - sp.slice(i).join(' ').length); if (d < bd) { bd = d; best = i; } }
-      p = Math.min(pt, 8); ctx.font = font(p, bold);
+      p = Math.min(pt, 8 * F); ctx.font = font(p, bold);
       const l1 = sp.slice(0, best).join(' '), l2 = sp.slice(best).join(' ');
       while ((ctx.measureText(l1).width > px(maxW) || ctx.measureText(l2).width > px(maxW)) && p > 5) { p -= 0.5; ctx.font = font(p, bold); }
       ctx.fillText(l1, px(cx), px(cy - p * 0.18)); ctx.fillText(l2, px(cx), px(cy + p * 0.2)); return;
@@ -2538,27 +2543,33 @@ function gnDrawPages(from, to, mode, type, cv) {
       const xs = [x0]; fr.forEach(f => xs.push(xs[xs.length - 1] + width * f / 100));
       const h = hh + rowH * arr.length;
       ctx.strokeStyle = '#cfd4dc'; ctx.lineWidth = Math.max(1, px(0.3)); ctx.setLineDash([]); ctx.strokeRect(px(x0), px(top), px(width), px(h));
-      heads.forEach((t, i) => { if (t) fitText(t, (xs[i] + xs[i + 1]) / 2, top + hh / 2, xs[i + 1] - xs[i] - 2, 8, false, '#777777', 6); });
+      heads.forEach((t, i) => { if (t) fitText(t, (xs[i] + xs[i + 1]) / 2, top + hh / 2, xs[i + 1] - xs[i] - 2, 8 * Math.min(F, 1.3), false, '#777777', 6); });
       line(x0, top + hh, x0 + width, top + hh, '#b9c0cc', 0.3, true);
       for (let r = 1; r < arr.length; r++) line(x0, top + hh + rowH * r, x0 + width, top + hh + rowH * r, '#c8cedb', 0.3, true);
       for (let i = 1; i < fr.length; i++) line(xs[i], top + hh, xs[i], top + h, '#d3e1f2', 0.25, false);
+      /* 같은 열은 같은 글자 크기로 맞춘다 (한 칸이 길어도 그 열 전체가 같이 줄어든다. 너무 길면 그 칸만 두 줄) */
+      const colCap = fr.map((f, i) => {
+        if (i === boxCol) return 0; let cap = 1e9; const cwid = width * f / 100 - 2.4;
+        arr.forEach(w => { const c = cellFn(w, i); if (!c || !c.t) return; let q = c.pt; const fl = c.pt * 0.78; ctx.font = font(q, c.bold); while (ctx.measureText(String(c.t)).width > px(cwid) && q > fl) { q -= 0.5; ctx.font = font(q, c.bold); } cap = Math.min(cap, q); });
+        return cap;
+      });
       arr.forEach((w, r) => {
         const cy = top + hh + rowH * r + rowH / 2;
         for (let i = 0; i < fr.length; i++) {
           const cx = (xs[i] + xs[i + 1]) / 2, cwid = xs[i + 1] - xs[i] - 2.4;
           if (i === boxCol) { ctx.fillStyle = '#f4f8fd'; rr(cx - 2.2, cy - 2.2, 4.4, 4.4, 1); ctx.fill(); ctx.strokeStyle = '#9db4d6'; ctx.lineWidth = Math.max(1, px(0.35)); rr(cx - 2.2, cy - 2.2, 4.4, 4.4, 1); ctx.stroke(); }
-          else { const c = cellFn(w, i); if (c && c.t) fitText(c.t, cx, cy, cwid, c.pt, c.bold, '#222222', 6.5); }
+          else { const c = cellFn(w, i); if (c && c.t) fitText(c.t, cx, cy, cwid, Math.min(c.pt, colCap[i]), c.bold, '#222222', 6.5); }
         }
       });
     };
     if (type === 'study') {
-      table(10, 190, [6, 19, 27, 28, 20], ['', '단어', '단어 뜻', '연어(Collocation)', '연어 뜻'], (w, i) => {
+      table(10, 190, [5, 23, 23, 26, 23], ['', '단어', '단어 뜻', '연어(Collocation)', '연어 뜻'], (w, i) => {
         const cl = collOf(w) || { c: '', k: '' };
-        return i === 1 ? { t: w.word, pt: 9.5, bold: true } : i === 2 ? { t: blank ? '' : w.meaning, pt: 8.5 } : i === 3 ? { t: cl.c, pt: 8.5 } : { t: blank ? '' : cl.k, pt: 8.5 };
+        return i === 1 ? { t: w.word, pt: 9.5 * F, bold: true } : i === 2 ? { t: blank ? '' : w.meaning, pt: 8.5 * F } : i === 3 ? { t: cl.c, pt: 8.5 * F } : { t: blank ? '' : cl.k, pt: 8.5 * F };
       }, 0);
     } else {
-      table(10, 93, [34, 50, 16], ['단어', '단어 뜻', ''], (w, i) => i === 0 ? { t: w.word, pt: 9.5, bold: true } : { t: blank ? '' : w.meaning, pt: 8.5 }, 2);
-      table(107, 93, [34, 50, 16], ['단어 뜻', '단어', ''], (w, i) => i === 0 ? { t: w.meaning, pt: 8.5 } : { t: blank ? '' : w.word, pt: 9.5, bold: true }, 2);
+      table(10, 93, [34, 50, 16], ['단어', '단어 뜻', ''], (w, i) => i === 0 ? { t: w.word, pt: 9.5 * F, bold: true } : { t: blank ? '' : w.meaning, pt: 8.5 * F }, 2);
+      table(107, 93, [34, 50, 16], ['단어 뜻', '단어', ''], (w, i) => i === 0 ? { t: w.meaning, pt: 8.5 * F } : { t: blank ? '' : w.word, pt: 9.5 * F, bold: true }, 2);
     }
     ctx.textAlign = 'center'; ctx.font = font(8, false); ctx.fillStyle = '#aaaaaa'; ctx.fillText(d + ' / ' + nd, px(105), px(291.5));
   };
@@ -2594,14 +2605,13 @@ function gnMakePdf(jpegs, linksPer, W, H) {
   return out;
 }
 const S_MM = W => W / 210;
-let gnBlob = null, gnName = 'goodnotes.pdf';
 $('#gnGo').addEventListener('click', async () => {
   const [a, b] = gnRange();
   if (gnType === 'study' && gnCollInfo().length && !confirm('연어가 비어 있는 단어가 있어요. 그대로 PDF를 만들까요? (빈 칸으로 나와요)')) return;
   const go = $('#gnGo'); go.disabled = true; $('#gnOut').innerHTML = '';
   try {
     const W = 1500, H = Math.round(W * 297 / 210), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const dr = gnDrawPages(a, b, gnMode, gnType, cv), jpegs = [], linksPer = [];
+    const dr = gnDrawPages(a, b, gnMode, gnType, cv, gnFs), jpegs = [], linksPer = [];
     for (let i = 0; i < dr.total; i++) {
       $('#gnOut').innerHTML = '<span class="spinner"></span> 페이지 만드는 중… ' + (i + 1) + '/' + dr.total;
       await new Promise(r => setTimeout(r, 0));
@@ -2612,7 +2622,7 @@ $('#gnGo').addEventListener('click', async () => {
     }
     const pdf = gnMakePdf(jpegs, linksPer, W, H);
     gnBlob = new Blob([pdf], { type: 'application/pdf' });
-    gnName = '굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_Day' + a + '-' + b + '.pdf';
+    gnName = '굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_' + (gnType === 'study' ? '학습표' : '시험지') + '_' + (gnMode === 'blank' ? '쓰기용' : '정답포함') + '_Day' + a + '-' + b + '.pdf';
     const mb = (pdf.length / 1048576).toFixed(1);
     $('#gnOut').innerHTML = '✅ <b>' + dr.total + '쪽</b> (' + mb + 'MB) 완성!<div class="row" style="margin-top:8px"><button class="btn primary grow" id="gnSave" type="button">📥 저장</button><button class="btn grow" id="gnShare" type="button">📤 공유 · 열기</button></div>';
   } catch (e) { $('#gnOut').textContent = '❌ ' + e.message; }
