@@ -855,7 +855,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.6.11', APP_DATE = '2026-10-15', SERVER_NEED = 10;
+const APP_VERSION = '5.6.12', APP_DATE = '2026-10-15', SERVER_NEED = 10;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -895,7 +895,16 @@ function updateNetUI() {
   const st = document.getElementById('sNetSt');
   if (st) st.innerHTML = (on ? '🟢 온라인' : '🟠 오프라인') + ' · 시트에 보낼 기록 <b>' + n + '</b>건';
 }
+/* Apps Script 는 한동안 안 쓰면 잠들어서 첫 요청이 느리다 → 글씨를 쓰기 시작할 때 미리 가볍게 한 번 깨워 둔다 */
+let gasTs = 0;
+function warmGas() {
+  const now = Date.now(); if (now - gasTs < 45000) return;
+  const u = gasUrl(); if (!u || u.indexOf('PASTE_GAS_URL') >= 0 || !isOnline()) return;
+  gasTs = now;
+  try { fetch(u + (u.indexOf('?') >= 0 ? '&' : '?') + 'warm=1').catch(() => {}); } catch (e) {}
+}
 async function rawApi(action, data) {
+  gasTs = Date.now();
   const url = gasUrl();
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {})) });
   const j = await res.json();
@@ -1069,6 +1078,7 @@ function allowed(e) {
 }
 pad.addEventListener('pointerdown', e => {
   if (!allowed(e)) return;
+  warmGas();
   e.preventDefault();
   try { pad.setPointerCapture(e.pointerId); } catch (x) {}
   curId = e.pointerId;
