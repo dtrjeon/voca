@@ -670,6 +670,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <label class="lbl">예문 뜻</label><textarea id="eExampleKo" rows="2"></textarea>
   <label class="lbl">어근·외우기 팁</label><input type="text" id="eTip">
   <label class="lbl">등록일</label><input type="date" id="eDate">
+  <label class="lbl" for="eSrc">구분</label><select id="eSrc"><option value="hand">✍️ 손쓰기</option><option value="import">📥 업로드</option></select>
   <label class="lbl">폴더 (폴더/서브폴더 형식)</label><input type="text" id="eFolder" list="folderList" autocomplete="off" placeholder="비워 두면 미분류"><datalist id="folderList"></datalist>
   <label class="lbl">난이도 (수능 기준)</label>
   <select id="eLevel">
@@ -815,8 +816,9 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <dialog id="dlgDays">
   <h3 style="margin:0 0 6px">📅 일자별 단어</h3>
-  <div style="font-size:13px;color:var(--sub);margin-bottom:8px">날짜를 누르면 그날 등록한 단어만 보여요. 🍅를 누르면 그 일자를 토마토 범위로 정해요.</div>
-  <div id="daysList" style="max-height:50vh;overflow:auto"></div>
+  <div style="font-size:13px;color:var(--sub);margin-bottom:8px">✍️ 손쓰기 = S펜으로 써서 등록한 단어, 📥 업로드 = 파일·내장 단어장으로 가져온 단어예요. 날짜를 누르면 그날 단어만 보이고, 🍅를 누르면 토마토 범위로 정해요.</div>
+  <div class="row" id="daysTabs" style="margin-bottom:8px"><button class="chip on" data-k="hand" type="button">✍️ 손쓰기</button><button class="chip" data-k="import" type="button">📥 업로드</button></div>
+  <div id="daysList" style="max-height:44vh;overflow:auto"></div>
   <label class="lbl" for="dfInput">달력에서 직접 고르기</label><input type="date" id="dfInput" aria-label="등록일 선택">
   <div class="row" style="margin-top:12px"><button class="btn" id="daysClear" type="button">전체 보기</button><button class="btn primary grow" id="daysClose" type="button">닫기</button></div>
 </dialog>
@@ -851,7 +853,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.5.0', APP_DATE = '2026-10-15', SERVER_NEED = 8;
+const APP_VERSION = '5.6.0', APP_DATE = '2026-10-15', SERVER_NEED = 10;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1127,7 +1129,7 @@ function renderResult(badge) {
 function applySaved(id) {
   const r = curResult; if (!r) return;
   r.id = id; r.saved = true;
-  words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '' });
+  words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: 'hand' });
   saveCache(); renderList(); updateCount(); updateSetupInfo();
   renderResult(); wDateAfterSave();
   setTimeout(() => ensureExtra(words[0]), 600);
@@ -1143,7 +1145,7 @@ async function saveCurrent() {
   try {
     const j = await api('add', { word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip, level: r.level, date: regDate() });
     r.id = j.id; r.saved = true;
-    words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '' });
+    words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: 'hand' });
     saveCache(); renderList(); updateCount(); updateSetupInfo();
     renderResult(); wDateAfterSave();
   } catch (e) {
@@ -1183,7 +1185,7 @@ $('#btnResEdit').addEventListener('click', () => {
   const r = curResult; if (!r) return;
   editId = r.saved ? r.id : '__new__';
   $('#eWord').value = r.word; $('#ePos').value = r.pos || ''; $('#eMeaning').value = r.meaning || '';
-  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || ''; $('#eLevel').value = String(r.level || 0); $('#eFolder').value = r.folder || ''; fillFolderList(); $('#eDate').value = r.saved && r.id ? (words.find(x => x.id === r.id) ? addedYmd(words.find(x => x.id === r.id)) : '') : regDate();
+  $('#eExample').value = r.example || ''; $('#eExampleKo').value = r.example_ko || ''; $('#eTip').value = r.tip || ''; $('#eLevel').value = String(r.level || 0); $('#eFolder').value = r.folder || ''; $('#eSrc').value = r.saved && r.id && words.find(x => x.id === r.id) ? srcOf(words.find(x => x.id === r.id)) : 'hand'; fillFolderList(); $('#eDate').value = r.saved && r.id ? (words.find(x => x.id === r.id) ? addedYmd(words.find(x => x.id === r.id)) : '') : regDate();
   $('#dlgEdit').showModal();
 });
 $('#btnResDel').addEventListener('click', async () => {
@@ -1308,7 +1310,7 @@ function renderList() {
   renderRecent(); renderRateBar(); renderFolderBar();
   const q = $('#search').value.trim().toLowerCase();
   renderDateBar();
-  let arr = words.filter(w => inFolder(w) && (!dateFilter || addedYmd(w) === dateFilter) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0));
+  let arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0));
   arr = arr.slice().sort((a, b) => {
     if (sortMode === 'day') return String(b.added).localeCompare(String(a.added));
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
@@ -1381,38 +1383,43 @@ $('#list').addEventListener('click', e => {
   if (e.target.id === 'tNext') { tblPage++; renderList(); window.scrollTo(0, 0); }
 });
 $('#tgMean').addEventListener('change', e => { showMean = e.target.checked; lsSet('vn_showmean', showMean ? '1' : '0'); tblRevealed.clear(); renderList(); });
-let dateFilter = '';
+let dateFilter = '', dateKind = 'hand', dayKind = 'hand';
+const srcOf = w => w.src === 'import' || w.src === 'hand' ? w.src : (w.folder ? 'import' : 'hand');
+const KIND_LB = { hand: '✍️ 손쓰기', import: '📥 업로드' };
 function renderDateBar() {
   const el = $('#dateBar'); if (!el) return;
   $('#btnDate').classList.toggle('on', !!dateFilter); $('#dfInput').value = dateFilter;
   if (!dateFilter) { el.innerHTML = ''; return; }
   const wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(dateFilter + 'T12:00:00+09:00').getDay()];
-  const n = words.filter(w => addedYmd(w) === dateFilter).length;
-  el.innerHTML = '<div class="datebar"><span>📅 ' + dateFilter.slice(5).replace('-', '/') + ' (' + wd + ') 등록 · <b>' + n + '개</b></span><button class="btn" id="dfClear" aria-label="일자 필터 해제">✕ 해제</button></div>';
+  const n = words.filter(w => addedYmd(w) === dateFilter && srcOf(w) === dateKind).length;
+  el.innerHTML = '<div class="datebar"><span>' + KIND_LB[dateKind].split(' ')[0] + ' ' + dateFilter.slice(5).replace('-', '/') + ' (' + wd + ') ' + (dateKind === 'hand' ? '손쓰기' : '업로드') + ' · <b>' + n + '개</b></span><button class="btn" id="dfClear" aria-label="일자 필터 해제">✕ 해제</button></div>';
   $('#dfClear').addEventListener('click', () => { dateFilter = ''; tblPage = 0; renderList(); });
 }
 const WDK = ['일', '월', '화', '수', '목', '금', '토'];
-function daysSummary() {
-  const m = {}; words.forEach(w => { const d = addedYmd(w); if (/^\d{4}-\d{2}-\d{2}$/.test(d)) m[d] = (m[d] || 0) + 1; });
+function daysSummary(kind) {
+  kind = kind || 'hand';
+  const m = {}; words.forEach(w => { if (srcOf(w) !== kind) return; const d = addedYmd(w); if (/^\d{4}-\d{2}-\d{2}$/.test(d)) m[d] = (m[d] || 0) + 1; });
   return Object.keys(m).sort().reverse().map(d => ({ d: d, n: m[d] }));
 }
 function renderDays() {
-  const a = daysSummary();
-  $('#daysList').innerHTML = a.length ? a.map(x => '<div class="dayrow' + (x.d === dateFilter ? ' on' : '') + '" data-d="' + x.d + '"><button class="dr-main" type="button" data-act="dview"><b>' + x.d.slice(5).replace('-', '/') + '</b> (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ')<span>' + x.n + '개</span></button><button class="btn dr-tm" type="button" data-act="dtm" aria-label="토마토 범위로 정하기">🍅</button></div>').join('') : '<div class="empty">아직 등록한 단어가 없어요</div>';
+  const a = daysSummary(dayKind);
+  $$('#daysTabs .chip').forEach(b => { const k = b.dataset.k; b.classList.toggle('on', k === dayKind); b.textContent = KIND_LB[k] + ' ' + daysSummary(k).reduce((t, x) => t + x.n, 0); });
+  $('#daysList').innerHTML = a.length ? a.map(x => '<div class="dayrow' + (x.d === dateFilter && dateKind === dayKind ? ' on' : '') + '" data-d="' + x.d + '"><button class="dr-main" type="button" data-act="dview"><b>' + x.d.slice(5).replace('-', '/') + '</b> (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ')<span>' + x.n + '개</span></button><button class="btn dr-tm" type="button" data-act="dtm" aria-label="토마토 범위로 정하기">🍅</button></div>').join('') : '<div class="empty">' + (dayKind === 'hand' ? '손쓰기로 등록한 단어가 없어요' : '업로드한 단어가 없어요') + '</div>';
 }
-function openDays() { renderDays(); $('#dfInput').value = dateFilter; $('#dlgDays').showModal(); }
+function openDays() { dayKind = dateFilter ? dateKind : 'hand'; renderDays(); $('#dfInput').value = dateFilter; $('#dlgDays').showModal(); }
 $('#btnDate').addEventListener('click', openDays);
 $('#daysClose').addEventListener('click', () => $('#dlgDays').close());
 $('#daysClear').addEventListener('click', () => { dateFilter = ''; tblPage = 0; $('#dlgDays').close(); renderList(); });
 $('#daysList').addEventListener('click', e => {
   const r = e.target.closest('.dayrow'); if (!r) return; const d = r.dataset.d;
   if (e.target.closest('[data-act="dtm"]')) {
-    tmSrc = 'd:' + d; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; $('#dlgDays').close(); $('nav button[data-tab="tomato"]').click(); return;
+    tmSrc = (dayKind === 'hand' ? 'h:' : 'u:') + d; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; $('#dlgDays').close(); $('nav button[data-tab="tomato"]').click(); return;
   }
-  setDateView(d);
+  setDateView(d, dayKind);
 });
-function setDateView(d) { dateFilter = d || ''; folderSel.f = folderSel.s = ''; tblPage = 0; $('#dlgDays').close(); renderList(); window.scrollTo(0, 0); }
-$('#dfInput').addEventListener('change', e => { if (e.target.value) setDateView(e.target.value); });
+$('#daysTabs').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; dayKind = b.dataset.k; renderDays(); });
+function setDateView(d, k) { dateFilter = d || ''; dateKind = k || dayKind; folderSel.f = folderSel.s = ''; tblPage = 0; $('#dlgDays').close(); renderList(); window.scrollTo(0, 0); }
+$('#dfInput').addEventListener('change', e => { if (e.target.value) setDateView(e.target.value, dayKind); });
 $('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
 $('#search').addEventListener('input', () => { tblPage = 0; renderList(); });
 $('#sortSel').addEventListener('change', e => { sortMode = e.target.value; tblPage = 0; renderList(); });
@@ -1443,7 +1450,7 @@ $('#list').addEventListener('click', async e => {
   if (act === 'say') { sayWord(w.word, $('.say-out', item)); return; }
   if (act === 'edit') {
     editId = w.id; $('#eWord').value = w.word; $('#ePos').value = w.pos || ''; $('#eMeaning').value = w.meaning || '';
-    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#eLevel').value = String(w.level || 0); $('#eFolder').value = w.folder || ''; fillFolderList(); $('#eDate').value = addedYmd(w); $('#dlgEdit').showModal(); return;
+    $('#eExample').value = w.example || ''; $('#eExampleKo').value = w.example_ko || ''; $('#eTip').value = w.tip || ''; $('#eLevel').value = String(w.level || 0); $('#eFolder').value = w.folder || ''; $('#eSrc').value = srcOf(w); fillFolderList(); $('#eDate').value = addedYmd(w); $('#dlgEdit').showModal(); return;
   }
   if (act === 'del') {
     if (!confirm('“' + w.word + '” 을(를) 삭제할까요?')) return;
@@ -1455,9 +1462,9 @@ $('#list').addEventListener('click', async e => {
 });
 $('#eCancel').addEventListener('click', () => $('#dlgEdit').close());
 $('#eSave').addEventListener('click', async () => {
-  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim(), level: parseInt($('#eLevel').value, 10) || 0, folder: $('#eFolder').value.trim().replace(/\s*\/\s*/g, '/'), date: $('#eDate').value };
+  const d = { id: editId, word: $('#eWord').value.trim(), pos: $('#ePos').value.trim(), meaning: $('#eMeaning').value.trim(), example: $('#eExample').value.trim(), example_ko: $('#eExampleKo').value.trim(), tip: $('#eTip').value.trim(), level: parseInt($('#eLevel').value, 10) || 0, folder: $('#eFolder').value.trim().replace(/\s*\/\s*/g, '/'), date: $('#eDate').value, src: $('#eSrc').value };
   if (!d.word) { toast('단어를 입력해 주세요'); return; }
-  const patch = { word: d.word.toLowerCase(), pos: d.pos, meaning: d.meaning, example: d.example, example_ko: d.example_ko, tip: d.tip, level: d.level, folder: d.folder };
+  const patch = { word: d.word.toLowerCase(), pos: d.pos, meaning: d.meaning, example: d.example, example_ko: d.example_ko, tip: d.tip, level: d.level, folder: d.folder, src: d.src };
   if (editId === '__new__') {
     if (curResult) { Object.assign(curResult, patch, { lowConf: false }); renderResult(); }
     $('#dlgEdit').close(); await saveCurrent(); return;
@@ -2248,7 +2255,8 @@ renderWDate();
 
 /* ====== 🍅 토마토 : Day 단위 암기장 (단어를 Day 별로 묶어 ◎ ✕ △ 로 표시하며 외우기) ====== */
 const tmPer = () => { const v = parseInt(lsGet('vn_tm_per', '20'), 10); return isNaN(v) ? 20 : Math.max(5, Math.min(50, v)); };
-let tmSrc = lsGet('vn_tm_src', '');
+let tmSrc = lsGet('vn_tm_src', ''); if (tmSrc.startsWith('d:')) tmSrc = 'h:' + tmSrc.slice(2);
+const tmIsDay = () => /^[hu]:\d{4}-\d{2}-\d{2}$/.test(tmSrc);
 let tmMarks = {}; try { tmMarks = JSON.parse(lsGet('vn_tm_marks', '{}')) || {}; } catch (e) { tmMarks = {}; }
 let tmDates = {}; try { tmDates = JSON.parse(lsGet('vn_tm_dates', '{}')) || {}; } catch (e) { tmDates = {}; }
 const tm = { view: 'home', day: 1, page: 0, mode: 'study', ex: false, rev: new Set() };
@@ -2257,7 +2265,7 @@ const tmSaveMarks = () => lsSet('vn_tm_marks', JSON.stringify(tmMarks));
 const tmSaveDates = () => lsSet('vn_tm_dates', JSON.stringify(tmDates));
 function tmWords() {
   if (!tmSrc) return words.slice();
-  if (tmSrc.startsWith('d:')) { const d = tmSrc.slice(2); return words.filter(w => addedYmd(w) === d).sort((a, b) => String(a.added).localeCompare(String(b.added))); }
+  if (tmIsDay()) { const d = tmSrc.slice(2), k = tmSrc[0] === 'h' ? 'hand' : 'import'; return words.filter(w => addedYmd(w) === d && srcOf(w) === k).sort((a, b) => String(a.added).localeCompare(String(b.added))); }
   const isSub = tmSrc.startsWith('s:'), v = tmSrc.slice(2);
   return words.filter(w => {
     if (!w.folder) return false;
@@ -2266,7 +2274,7 @@ function tmWords() {
     const i = v.indexOf('/'); return r === v.slice(0, i) && (sb || '(바로 아래)') === v.slice(i + 1);
   });
 }
-const tmLabel = () => !tmSrc ? '전체 단어' : tmSrc.startsWith('d:') ? '📅 ' + tmSrc.slice(7).replace('-', '/') + ' 등록' : tmSrc.slice(2).replace('/', ' › ');
+const tmLabel = () => !tmSrc ? '전체 단어' : tmIsDay() ? (tmSrc[0] === 'h' ? '✍️ ' : '📥 ') + tmSrc.slice(7).replace('-', '/') + (tmSrc[0] === 'h' ? ' 손쓰기' : ' 업로드') : tmSrc.slice(2).replace('/', ' › ');
 const tmDayWords = (d, all) => (all || tmWords()).slice((d - 1) * tmPer(), d * tmPer());
 function tmStat(arr) { const c = { o: 0, x: 0, t: 0, n: 0 }; arr.forEach(w => { const m = tmMarks[w.id]; if (m) c[m]++; else c.n++; }); return c; }
 const tmDateKey = d => tmSrc + '#' + d;
@@ -2279,8 +2287,10 @@ function tmSrcOptions() {
     h += '<option value="f:' + esc(r) + '">📁 ' + esc(r) + ' (' + t[r].all.length + ')</option>';
     Object.keys(t[r].subs).forEach(k => { h += '<option value="s:' + esc(r) + '/' + esc(k) + '">  └ ' + esc(k) + ' (' + t[r].subs[k].length + ')</option>'; });
   });
-  const ds = daysSummary().slice(0, 60); if (tmSrc.startsWith('d:') && !ds.some(x => 'd:' + x.d === tmSrc)) ds.push({ d: tmSrc.slice(2), n: tmWords().length });
-  if (ds.length) h += '<optgroup label="📅 등록일별">' + ds.map(x => '<option value="d:' + x.d + '">📅 ' + x.d.slice(5).replace('-', '/') + ' (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ') · ' + x.n + '개</option>').join('') + '</optgroup>';
+  [['h', 'hand', '✍️ 손쓰기 일자'], ['u', 'import', '📥 업로드 일자']].forEach(([pf, k, lb]) => {
+    const ds = daysSummary(k).slice(0, 60); if (tmIsDay() && tmSrc[0] === pf && !ds.some(x => pf + ':' + x.d === tmSrc)) ds.push({ d: tmSrc.slice(2), n: tmWords().length });
+    if (ds.length) h += '<optgroup label="' + lb + '">' + ds.map(x => '<option value="' + pf + ':' + x.d + '">' + (pf === 'h' ? '✍️ ' : '📥 ') + x.d.slice(5).replace('-', '/') + ' (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ') · ' + x.n + '개</option>').join('') + '</optgroup>';
+  });
   return h;
 }
 function tmSrcSelect() {
