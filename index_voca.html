@@ -847,14 +847,15 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
     <div class="row" style="margin-top:8px"><button class="btn grow" id="gnCollGo" type="button">✨ 연어 자동 만들기</button></div>
     <div id="gnCollSt" style="margin-top:6px;color:var(--sub)"></div>
   </div>
+  <button class="btn primary" id="gnGo" type="button" style="width:100%;margin-top:12px">① PDF 만들기</button>
   <div id="gnOut" style="margin-top:10px;font-size:13px"></div>
   <div style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5">앱이 직접 PDF 파일을 만들어요(인쇄 창 없음). 만들어진 파일을 저장하거나 <b>공유 → GoodNotes</b>로 열면 돼요. 홈 페이지의 Day 폴더를 누르면 해당 페이지로, 각 페이지 위쪽 Day 버튼을 누르면 홈으로 이동해요.</div>
-  <div class="row" style="margin-top:12px"><button class="btn" id="gnClose" type="button">닫기</button><button class="btn primary grow" id="gnGo" type="button">PDF 만들기</button></div>
+  <div class="row" style="margin-top:12px"><button class="btn grow" id="gnClose" type="button">닫기</button></div>
 </dialog>
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.6.5', APP_DATE = '2026-10-15', SERVER_NEED = 10;
+const APP_VERSION = '5.6.9', APP_DATE = '2026-10-15', SERVER_NEED = 10;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2162,7 +2163,7 @@ $('#impTpl').addEventListener('click', async () => {
     const ws2 = X.utils.aoa_to_sheet([['번호', '단어', '뜻', '예문', '해석'], [1, 'familiar', '익숙한', 'This song sounds familiar.', '이 노래는 익숙하게 들린다.']]);
     const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws1, '동사'); X.utils.book_append_sheet(wb, ws2, '형용사');
     const out = X.write(wb, { bookType: 'xlsx', type: 'array' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out], { type: 'application/octet-stream' })); a.download = 'voca_template.xlsx';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out], { type: 'application/octet-stream' })); a.download = 'handvoca_template.xlsx';
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   } catch (e) { toast(e.message, 3500); }
 });
@@ -2255,6 +2256,7 @@ renderWDate();
 /* ====== 🍅 토마토 : Day 단위 암기장 (단어를 Day 별로 묶어 ◎ ✕ △ 로 표시하며 외우기) ====== */
 const tmPer = () => { const v = parseInt(lsGet('vn_tm_per', '20'), 10); return isNaN(v) ? 20 : Math.max(5, Math.min(50, v)); };
 let tmSrc = lsGet('vn_tm_src', ''); if (tmSrc.startsWith('d:')) tmSrc = 'h:' + tmSrc.slice(2);
+const tmIsHandAll = () => tmSrc === 'h:*';
 const tmIsDay = () => /^[hu]:\d{4}-\d{2}-\d{2}$/.test(tmSrc);
 let tmMarks = {}; try { tmMarks = JSON.parse(lsGet('vn_tm_marks', '{}')) || {}; } catch (e) { tmMarks = {}; }
 let tmDates = {}; try { tmDates = JSON.parse(lsGet('vn_tm_dates', '{}')) || {}; } catch (e) { tmDates = {}; }
@@ -2264,6 +2266,7 @@ const tmSaveMarks = () => lsSet('vn_tm_marks', JSON.stringify(tmMarks));
 const tmSaveDates = () => lsSet('vn_tm_dates', JSON.stringify(tmDates));
 function tmWords() {
   if (!tmSrc) return words.slice();
+  if (tmIsHandAll()) return words.filter(w => srcOf(w) === 'hand').sort((a, b) => String(a.added).localeCompare(String(b.added)));
   if (tmIsDay()) { const d = tmSrc.slice(2), k = tmSrc[0] === 'h' ? 'hand' : 'import'; return words.filter(w => addedYmd(w) === d && srcOf(w) === k).sort((a, b) => String(a.added).localeCompare(String(b.added))); }
   const isSub = tmSrc.startsWith('s:'), v = tmSrc.slice(2);
   return words.filter(w => {
@@ -2273,7 +2276,7 @@ function tmWords() {
     const i = v.indexOf('/'); return r === v.slice(0, i) && (sb || '(바로 아래)') === v.slice(i + 1);
   });
 }
-const tmLabel = () => !tmSrc ? '전체 단어' : tmIsDay() ? (tmSrc[0] === 'h' ? '✍️ ' : '📥 ') + tmSrc.slice(7).replace('-', '/') + (tmSrc[0] === 'h' ? ' 손쓰기' : ' 업로드') : tmSrc.slice(2).replace('/', ' › ');
+const tmLabel = () => !tmSrc ? '전체 단어' : tmIsHandAll() ? '✍️ 손쓰기 전체' : tmIsDay() ? (tmSrc[0] === 'h' ? '✍️ ' : '📥 ') + tmSrc.slice(7).replace('-', '/') + (tmSrc[0] === 'h' ? ' 손쓰기' : ' 업로드') : tmSrc.slice(2).replace('/', ' › ');
 const tmDayWords = (d, all) => (all || tmWords()).slice((d - 1) * tmPer(), d * tmPer());
 function tmStat(arr) { const c = { o: 0, x: 0, t: 0, n: 0 }; arr.forEach(w => { const m = tmMarks[w.id]; if (m) c[m]++; else c.n++; }); return c; }
 const tmDateKey = d => tmSrc + '#' + d;
@@ -2286,11 +2289,14 @@ function tmSrcOptions() {
     h += '<option value="f:' + esc(r) + '">📁 ' + esc(r) + ' (' + t[r].all.length + ')</option>';
     Object.keys(t[r].subs).forEach(k => { h += '<option value="s:' + esc(r) + '/' + esc(k) + '">  └ ' + esc(k) + ' (' + t[r].subs[k].length + ')</option>'; });
   });
-  /* 등록일별 = 손글씨(손쓰기) 등록일만. 업로드 일자는 단어장 📅 일자 → 🍅로 정하고, 정해져 있을 때만 여기에 한 줄 나타난다 */
-  [['h', 'hand', '✍️ 손쓰기 등록일별'], ['u', 'import', '📥 업로드 일자 (선택됨)']].forEach(([pf, k, lb]) => {
-    const ds = pf === 'h' ? daysSummary(k).slice(0, 60) : []; if (tmIsDay() && tmSrc[0] === pf && !ds.some(x => pf + ':' + x.d === tmSrc)) ds.push({ d: tmSrc.slice(2), n: tmWords().length });
-    if (ds.length) h += '<optgroup label="' + lb + '">' + ds.map(x => '<option value="' + pf + ':' + x.d + '">' + (pf === 'h' ? '✍️ ' : '📥 ') + x.d.slice(5).replace('-', '/') + ' (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ') · ' + x.n + '개</option>').join('') + '</optgroup>';
-  });
+  /* 등록일별 = 손글씨(손쓰기) 등록일만. 제목 줄(✍️ 손쓰기 등록일별)을 고르면 손쓰기 단어 전체. 업로드 일자는 단어장 📅 일자 → 🍅로 정하고, 정해져 있을 때만 한 줄 나타난다 */
+  const hd = daysSummary('hand').slice(0, 60);
+  if (tmIsDay() && tmSrc[0] === 'h' && !hd.some(x => 'h:' + x.d === tmSrc)) hd.push({ d: tmSrc.slice(2), n: tmWords().length });
+  if (hd.length) {
+    h += '<option value="h:*">✍️ 손쓰기 등록일별 · 전체 (' + words.filter(w => srcOf(w) === 'hand').length + ')</option>';
+    hd.forEach(x => { h += '<option value="h:' + x.d + '">\u00a0\u00a0└ ' + x.d.slice(5).replace('-', '/') + ' (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ') · ' + x.n + '개</option>'; });
+  }
+  if (tmIsDay() && tmSrc[0] === 'u') h += '<option value="' + tmSrc + '">📥 업로드 ' + tmSrc.slice(7).replace('-', '/') + ' (선택됨) · ' + tmWords().length + '개</option>';
   return h;
 }
 function tmSrcSelect() {
@@ -2440,7 +2446,7 @@ $('#dupList').addEventListener('click', e => {
 /* --- 굿노트용 PDF --- */
 let gnMode = 'blank', gnType = 'study', gnFs = 1.3;
 let gnBlob = null, gnName = 'goodnotes.pdf';
-function gnStale() { const had = !!gnBlob; gnBlob = null; $('#gnOut').innerHTML = had ? '<span style="color:var(--sub)">설정이 바뀌어 이전 파일을 지웠어요. 아래 “PDF 만들기”를 다시 눌러 주세요.</span>' : ''; }
+function gnStale() { const had = !!gnBlob; gnBlob = null; $('#gnOut').innerHTML = had ? '<span style="color:var(--sub)">설정이 바뀌어 이전 파일을 지웠어요. 위의 “PDF 만들기”를 다시 눌러 주세요.</span>' : ''; }
 const collOf = w => (w.extra && w.extra.colloc) ? { c: w.extra.colloc, k: w.extra.colloc_ko || '' } : null;
 function gnRange() { const nd = Math.ceil(tmWords().length / tmPer()); let a = Math.max(1, parseInt($('#gnFrom').value, 10) || 1), b = Math.min(nd, parseInt($('#gnTo').value, 10) || nd); if (a > b) { const t = a; a = b; b = t; } return [a, b]; }
 function gnTargets() { const [a, b] = gnRange(), all = tmWords(), per = tmPer(); return all.slice((a - 1) * per, b * per); }
@@ -2622,17 +2628,17 @@ $('#gnGo').addEventListener('click', async () => {
     }
     const pdf = gnMakePdf(jpegs, linksPer, W, H);
     gnBlob = new Blob([pdf], { type: 'application/pdf' });
-    gnName = '굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_' + (gnType === 'study' ? '학습표' : '시험지') + '_' + (gnMode === 'blank' ? '쓰기용' : '정답포함') + '_Day' + a + '-' + b + '.pdf';
+    gnName = 'handvoca_굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_' + (gnType === 'study' ? '학습표' : '시험지') + '_' + (gnMode === 'blank' ? '쓰기용' : '정답포함') + '_Day' + a + '-' + b + '.pdf';
     const mb = (pdf.length / 1048576).toFixed(1);
-    $('#gnOut').innerHTML = '✅ <b>' + dr.total + '쪽</b> (' + mb + 'MB) 완성!<div class="row" style="margin-top:8px"><button class="btn primary grow" id="gnSave" type="button">📥 저장</button><button class="btn grow" id="gnShare" type="button">📤 공유 · 열기</button></div>';
+    $('#gnOut').innerHTML = '✅ <b>' + dr.total + '쪽</b> (' + mb + 'MB) 완성!<div class="row" style="margin-top:8px"><button class="btn primary grow" id="gnSave" type="button">② 📥 저장</button><button class="btn grow" id="gnShare" type="button">📤 공유 · 열기</button></div>';
   } catch (e) { $('#gnOut').textContent = '❌ ' + e.message; }
-  go.disabled = false;
+  go.disabled = false; try { $('#gnOut').scrollIntoView({ block: 'nearest' }); } catch (x) {}
 });
 $('#gnOut').addEventListener('click', async e => {
   if (!gnBlob) return;
   if (e.target.id === 'gnSave') {
     const u = URL.createObjectURL(gnBlob), a = document.createElement('a'); a.href = u; a.download = gnName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
-    toast('내 파일 > 다운로드 폴더에 저장돼요');
+    toast('내 파일 > 다운로드 폴더에 “handvoca_…” 이름으로 저장돼요');
   } else if (e.target.id === 'gnShare') {
     const f = new File([gnBlob], gnName, { type: 'application/pdf' });
     try { if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: gnName }); else { const u = URL.createObjectURL(gnBlob); window.open(u, '_blank'); } }
@@ -2658,16 +2664,18 @@ function dlFile(name, mime, data) {
   a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
 }
 const bkStamp = () => todayStr().replace(/-/g, '');
+const BK_KEYS = ['vn_tm_src', 'vn_tm_per', 'vn_tm_marks', 'vn_tm_dates', 'vn_trows', 'vn_tcols'];   // 백업에 함께 넣는 토마토·표 설정 (연결 주소 등은 제외)
 $('#sBkJson').addEventListener('click', () => {
-  const data = { app: 'voca-note', version: APP_VERSION, exported: new Date().toISOString(), words: words.map(w => Object.assign({}, w)) };
-  dlFile('단어장_백업_' + bkStamp() + '.json', 'application/json', JSON.stringify(data));
-  $('#sBkSt').textContent = '✅ ' + words.length + '개를 JSON 파일로 저장했어요 (내 파일 > 다운로드)';
+  const settings = {}; BK_KEYS.forEach(k => { const v = lsGet(k, null); if (v != null) settings[k] = v; });
+  const data = { app: 'voca-note', version: APP_VERSION, exported: new Date().toISOString(), words: words.map(w => Object.assign({}, w)), settings: settings };
+  dlFile('handvoca_백업_' + bkStamp() + '.json', 'application/json', JSON.stringify(data));
+  $('#sBkSt').textContent = '✅ 단어 ' + words.length + '개와 토마토 설정을 JSON 파일로 저장했어요 (내 파일 > 다운로드)';
 });
 $('#sBkCsv').addEventListener('click', () => {
   const q = v => { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const head = ['단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '단계', '다음복습', '어근팁', '난이도', '연어', '연어뜻', '폴더'];
   const rows = words.map(w => { const c = collOf(w) || { c: '', k: '' }; return [w.word, w.pos, w.meaning, w.example, w.example_ko, addedYmd(w), w.right || 0, w.wrong || 0, w.box || 0, w.due || '', w.tip, w.level || '', c.c, c.k, w.folder || ''].map(q).join(','); });
-  dlFile('단어장_' + bkStamp() + '.csv', 'text/csv;charset=utf-8', '﻿' + [head.map(q).join(',')].concat(rows).join('\r\n'));
+  dlFile('handvoca_단어장_' + bkStamp() + '.csv', 'text/csv;charset=utf-8', '﻿' + [head.map(q).join(',')].concat(rows).join('\r\n'));
   $('#sBkSt').textContent = '✅ ' + words.length + '개를 CSV(엑셀에서 열림)로 저장했어요';
 });
 $('#sRestore').addEventListener('click', () => $('#sRestoreFile').click());
@@ -2675,20 +2683,29 @@ $('#sRestoreFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   const st = $('#sBkSt');
   try {
-    const d = JSON.parse(await f.text()), list = Array.isArray(d) ? d : d.words;
-    if (!Array.isArray(list) || !list.length) throw new Error('백업 파일 형식이 아니에요');
+    const d = JSON.parse(await f.text()), list = Array.isArray(d) ? d : (Array.isArray(d.words) ? d.words : []);
+    const sets = d && !Array.isArray(d) && d.settings && typeof d.settings === 'object' ? BK_KEYS.filter(k => typeof d.settings[k] === 'string') : [];
+    if (!list.length && !sets.length) throw new Error('백업 파일 형식이 아니에요');
     const have = new Set(words.map(w => String(w.word).toLowerCase()));
     const miss = list.filter(w => w && w.word && !have.has(String(w.word).toLowerCase()));
-    if (!miss.length) { st.textContent = '✅ 백업의 ' + list.length + '개가 모두 이미 단어장에 있어요. 복원할 것이 없어요.'; return; }
-    if (!isOnline()) throw new Error('복원은 온라인에서 해 주세요 (시트에 다시 넣어요)');
-    if (!confirm('백업 ' + list.length + '개 중 시트에 없는 ' + miss.length + '개를 학습 기록까지 포함해 복원할까요?')) return;
+    const parts = []; if (miss.length) parts.push('시트에 없는 단어 ' + miss.length + '개(학습 기록 포함)'); if (sets.length) parts.push('토마토 설정·표시(이 기기의 현재 값을 덮어써요)');
+    if (!parts.length) { st.textContent = '✅ 백업의 ' + list.length + '개가 모두 이미 단어장에 있어요. 복원할 것이 없어요.'; return; }
+    if (miss.length && !isOnline()) throw new Error('단어 복원은 온라인에서 해 주세요 (시트에 다시 넣어요)');
+    if (!confirm('백업 파일에서 ' + parts.join(' + ') + '을(를) 복원할까요?')) return;
     let added = 0;
     for (let i = 0; i < miss.length; i += 100) {
       st.innerHTML = '<span class="spinner"></span> 복원 중… ' + added + '/' + miss.length;
       const j = await api('restore', { items: miss.slice(i, i + 100) }); added += j.added || 0;
     }
-    await refreshWords(true);
-    st.textContent = '✅ ' + added + '개를 복원했어요';
+    if (miss.length) await refreshWords(true);
+    if (sets.length) {
+      sets.forEach(k => lsSet(k, d.settings[k]));
+      tmSrc = lsGet('vn_tm_src', ''); if (tmSrc.startsWith('d:')) tmSrc = 'h:' + tmSrc.slice(2);
+      try { tmMarks = JSON.parse(lsGet('vn_tm_marks', '{}')) || {}; } catch (x) { tmMarks = {}; }
+      try { tmDates = JSON.parse(lsGet('vn_tm_dates', '{}')) || {}; } catch (x) { tmDates = {}; }
+      tm.page = 0; tm.view = 'home'; tmRender(); tblPage = 0; renderList();
+    }
+    st.textContent = '✅ ' + (miss.length ? '단어 ' + added + '개' : '') + (miss.length && sets.length ? ' · ' : '') + (sets.length ? '토마토 설정' : '') + (sets.length ? '을' : '를') + ' 복원했어요';
   } catch (err) { st.textContent = '❌ ' + err.message + (/unknown action/.test(err.message) ? ' — Code.gs 를 새 버전(v9)으로 다시 배포해 주세요' : ''); }
 });
 updateNetUI(); setTimeout(() => { if (outbox.length) flushOutbox().then(n => { if (n) refreshWords(true); }); }, 1500);
