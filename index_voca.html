@@ -467,6 +467,46 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 .de .dk{flex:0 0 auto;font-weight:700;color:var(--accent);min-width:46px}
 .de .dm{flex:1;min-width:0;word-break:break-word}
 .de .ds{color:var(--sub);font-size:12px}
+
+#gnRoot{display:none}
+@media print{
+  @page{size:A4 portrait;margin:0}
+  body.gnprint>*:not(#gnRoot){display:none!important}
+  html:has(body.gnprint),body.gnprint{height:auto!important;min-height:0!important;overflow:visible!important;background:#fff!important}
+  body.gnprint{padding:0!important;margin:0!important}
+  body.gnprint #gnRoot{position:static!important}
+  body.gnprint #gnRoot{display:block}
+}
+#gnRoot,#gnRoot *{box-sizing:border-box}
+#gnRoot{font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:#222;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.gp{width:210mm;height:296.6mm;padding:12mm 10mm 8mm;page-break-after:always;break-after:page;overflow:hidden;position:relative;background:#fff}
+.gp.home{background:#2b2b2e;color:#fff}
+.gp:last-child{page-break-after:auto;break-after:auto}
+.gp .pill{display:block;margin:0 auto 6mm;width:46mm;text-align:center;text-decoration:none;background:#ddd;color:#555;border-radius:99px;padding:2.2mm 0;font-size:11pt;font-weight:600}
+.gp.home .pill{background:#444;color:#eee}
+.gp .meta{display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3mm;color:#2f7ff0;font-weight:700}
+.gp .meta span:last-child{letter-spacing:1px}
+.gp .cols{display:flex;gap:4mm}
+.gp table{width:50%;border-collapse:collapse;table-layout:fixed;border:.3mm solid #cfd4dc}
+.gp th{font-size:8pt;font-weight:500;color:#777;padding:1.2mm 0;border-bottom:.3mm dotted #b9c0cc}
+.gp td{border-bottom:.3mm dotted #c8cedb;border-right:.2mm solid #b9d3ee;text-align:center;font-size:9.5pt;padding:0 1mm;overflow:hidden;line-height:1.15}
+.gp td:last-child{border-right:0}
+.gp td.w{font-weight:600}
+.gp td.m{font-size:8.5pt}
+.gp td.k div{width:4.4mm;height:4.4mm;margin:auto;border:.35mm solid #9db4d6;border-radius:1mm;background:#f4f8fd}
+.gp col.c1{width:34%}.gp col.c2{width:50%}.gp col.c3{width:16%}
+.gp table.st4{width:100%}
+.gp table.st4 td{border-right:.2mm solid #dfe4ee}
+.gp .ft{position:absolute;left:0;right:0;bottom:4mm;text-align:center;font-size:8pt;color:#aaa}
+.gp.home h1{font-size:15pt;text-align:center;margin:0 0 3mm;font-weight:600}
+.gp .seg{display:flex;justify-content:center;gap:2mm;margin-bottom:8mm}
+.gp .seg a{background:#fff;color:#222;text-decoration:none;border-radius:2mm;padding:1.5mm 4mm;font-size:10pt}
+.gp .seg a.on{background:#444;color:#fff;border:.3mm solid #e05a5a}
+.gp .fg{display:grid;grid-template-columns:repeat(5,1fr);gap:7mm 4mm;margin-top:6mm}
+.gp .fo{display:block;text-decoration:none;position:relative;height:19mm;margin-top:3mm}
+.gp .fo i{position:absolute;left:0;top:-2.6mm;width:46%;height:5mm;background:#2a8be8;border-radius:1.6mm 1.6mm 0 0}
+.gp .fo u{position:absolute;inset:0;background:#4fb2f5;border-radius:1.6mm;text-decoration:none}
+.gp .fo b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#3f8fd6;color:#e8f3ff;border-radius:99px;padding:.8mm 3.5mm;font-size:8.5pt;font-weight:600;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -767,9 +807,28 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div id="dupStatus" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
 </dialog>
 
+<div id="gnRoot"></div>
+<dialog id="dlgGn">
+  <h3 style="margin:0 0 6px">📄 굿노트용 PDF</h3>
+  <div style="font-size:13px;color:var(--sub)" id="gnInfo"></div>
+  <label class="lbl">만들 범위</label>
+  <div class="setgrid"><div><label class="lbl" for="gnFrom">시작 Day</label><input type="number" id="gnFrom" min="1" inputmode="numeric"></div><div><label class="lbl" for="gnTo">끝 Day</label><input type="number" id="gnTo" min="1" inputmode="numeric"></div></div>
+  <label class="lbl">양식</label>
+  <div class="row" id="gnType"><button class="chip on" data-v="study" type="button">학습표 (단어·뜻·연어·연어 뜻)</button><button class="chip" data-v="exam" type="button">좌우 시험지</button></div>
+  <label class="lbl">칸 내용</label>
+  <div class="row" id="gnMode"><button class="chip on" data-v="blank" type="button">쓰기용 (뜻 칸 비움)</button><button class="chip" data-v="full" type="button">정답 포함</button></div>
+  <div id="gnColl" style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;font-size:13px">
+    <div id="gnCollInfo"></div>
+    <div class="row" style="margin-top:8px"><button class="btn grow" id="gnCollGo" type="button">✨ 연어 자동 만들기</button></div>
+    <div id="gnCollSt" style="margin-top:6px;color:var(--sub)"></div>
+  </div>
+  <div style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5">PDF 만들기를 누르면 인쇄 창이 열려요. <b>대상: PDF로 저장</b>(용지 A4, 여백 없음, 배경 그래픽 켜기)을 고른 뒤 저장해 굿노트에서 “가져오기”로 여세요. 홈 페이지의 Day 폴더를 누르면 해당 페이지로, 각 페이지 위쪽 Day 버튼을 누르면 홈으로 이동해요.</div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="gnClose" type="button">닫기</button><button class="btn primary grow" id="gnGo" type="button">PDF 만들기</button></div>
+</dialog>
+
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '4.7', APP_DATE = '2026-10-15', SERVER_NEED = 7;
+const APP_VERSION = '4.9', APP_DATE = '2026-10-15', SERVER_NEED = 8;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1645,7 +1704,7 @@ function cvRender(keepIdx) {
 const stars = n => { n = Math.max(0, Math.min(5, n || 0)); return '<span class="st">' + '★'.repeat(n) + '<i>' + '★'.repeat(5 - n) + '</i></span>'; };
 const pending = {};
 function cvSecs(w) {
-  const x = w.extra, tot = (w.right || 0) + (w.wrong || 0), pct = tot ? Math.round((w.right || 0) * 100 / tot) : 0;
+  const x = w.extra && w.extra.freq ? w.extra : null, tot = (w.right || 0) + (w.wrong || 0), pct = tot ? Math.round((w.right || 0) * 100 / tot) : 0;
   let h = '<div class="cv-sec"><h4>정보</h4><div class="bx cv-info">' +
     '<span>사용빈도 ' + (x ? stars(x.freq) : '<span style="color:#aaa">…</span>') + '</span><span>난이도 ' + (w.level ? stars(w.level) : '<span style="color:#aaa">미정</span>') + '</span>' +
     '<span>정답 ' + (w.right || 0) + '회</span><span>오답 ' + (w.wrong || 0) + '회</span><span>정답률 ' + pct + '%</span></div></div>';
@@ -1661,7 +1720,7 @@ function cvRefreshSecs(w) {
   $$('.cv-secs').forEach(el => { const d = cv.deck[parseInt(el.dataset.i, 10)]; if (d && d.id === w.id) el.innerHTML = cvSecs(w); });
 }
 async function ensureExtra(w) {
-  if (!w || w.extra || pending[w.id] || !w.id || String(w.id).startsWith('tmp')) return;
+  if (!w || (w.extra && w.extra.freq) || pending[w.id] || !w.id || String(w.id).startsWith('tmp')) return;
   pending[w.id] = true; cvRefreshSecs(w);
   try { const j = await api('detail', { id: w.id, word: w.word, meaning: w.meaning }); w.extra = j.extra; saveCache(); }
   catch (e) { /* 서버가 아직 v5가 아니면 조용히 넘어간다 */ }
@@ -2117,6 +2176,7 @@ function tmHome() {
     h += '</div>';
   }
   if (!nd) return h + '<div class="tm-empty">이 범위에 단어가 없어요.<br>단어장에 단어를 등록하거나 위에서 범위를 바꿔 보세요.</div>';
+  h += '<div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="gn" type="button">📄 굿노트용 PDF 만들기</button></div>';
   h += '<div class="tm-grid">';
   for (let d = tm.page * 30 + 1; d <= Math.min(nd, (tm.page + 1) * 30); d++) {
     const arr = tmDayWords(d, all), st = tmStat(arr), done = arr.length && st.o === arr.length;
@@ -2166,6 +2226,7 @@ $('#tmBody').addEventListener('click', e => {
   else if (act === 'prev') { tm.day = Math.max(1, tm.day - 1); tm.rev.clear(); }
   else if (act === 'next') { tm.day++; tm.rev.clear(); }
   else if (act === 'mode') { tm.mode = el.dataset.m; tm.rev.clear(); }
+  else if (act === 'gn') { gnOpen(); return; }
   else if (act === 'ex') tm.ex = !tm.ex;
   else if (act === 'revall') { const ids = tmDayWords(tm.day).map(x => x.id); if (ids.every(i => tm.rev.has(i))) tm.rev.clear(); else ids.forEach(i => tm.rev.add(i)); }
   else if (act === 'mark' && w) { const n = TM_NEXT[tmMarks[id] || '']; if (n) tmMarks[id] = n; else delete tmMarks[id]; tmSaveMarks(); }
@@ -2243,6 +2304,90 @@ $('#dupList').addEventListener('click', e => {
   const go = e.target.closest('[data-dgo]'); if (go) { dupClean([parseInt(go.dataset.dgo, 10)]); return; }
   const de = e.target.closest('.de'); if (!de) return;
   dupGroups[parseInt(de.dataset.g, 10)].keep = de.dataset.id; renderDups();
+});
+
+/* --- 굿노트용 PDF --- */
+let gnMode = 'blank', gnType = 'study';
+const collOf = w => (w.extra && w.extra.colloc) ? { c: w.extra.colloc, k: w.extra.colloc_ko || '' } : null;
+function gnRange() { const nd = Math.ceil(tmWords().length / tmPer()); let a = Math.max(1, parseInt($('#gnFrom').value, 10) || 1), b = Math.min(nd, parseInt($('#gnTo').value, 10) || nd); if (a > b) { const t = a; a = b; b = t; } return [a, b]; }
+function gnTargets() { const [a, b] = gnRange(), all = tmWords(), per = tmPer(); return all.slice((a - 1) * per, b * per); }
+function gnCollInfo() { const t = gnTargets(), miss = t.filter(w => !collOf(w)); $('#gnCollInfo').innerHTML = '연어: <b>' + (t.length - miss.length) + '</b> / ' + t.length + '개 준비됨' + (miss.length ? ' · 비어 있는 ' + miss.length + '개' : ' ✅'); $('#gnCollGo').textContent = miss.length ? '✨ 연어 자동 만들기 (' + miss.length + '개)' : '✨ 연어 모두 준비됨'; $('#gnCollGo').disabled = !miss.length; $('#gnColl').style.display = gnType === 'study' ? '' : 'none'; return miss; }
+function gnOpen() {
+  const all = tmWords(), nd = Math.ceil(all.length / tmPer());
+  if (!nd) { toast('이 토픽에 단어가 없어요'); return; }
+  $('#gnInfo').textContent = '토픽: ' + tmLabel() + ' · 단어 ' + all.length + '개 · Day ' + nd + '개 (Day당 ' + tmPer() + '단어)';
+  $('#gnFrom').value = 1; $('#gnTo').value = nd; $('#gnFrom').max = $('#gnTo').max = nd;
+  $('#gnCollSt').textContent = ''; gnCollInfo();
+  $('#dlgGn').showModal();
+}
+$('#gnMode').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnMode = b.dataset.v; $$('#gnMode .chip').forEach(c => c.classList.toggle('on', c === b)); });
+$('#gnType').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnType = b.dataset.v; $$('#gnType .chip').forEach(c => c.classList.toggle('on', c === b)); gnCollInfo(); });
+$('#gnFrom').addEventListener('input', gnCollInfo); $('#gnTo').addEventListener('input', gnCollInfo);
+$('#gnCollGo').addEventListener('click', async () => {
+  const miss = gnCollInfo(); if (!miss.length) return;
+  const go = $('#gnCollGo'); go.disabled = true; let done = 0;
+  try {
+    for (let i = 0; i < miss.length; i += 20) {
+      $('#gnCollSt').innerHTML = '<span class="spinner"></span> 만드는 중… ' + done + '/' + miss.length;
+      const j = await api('colloc', { items: miss.slice(i, i + 20).map(w => ({ id: w.id, word: w.word, meaning: w.meaning })) });
+      (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w) { w.extra = Object.assign({}, w.extra || {}, { colloc: o.colloc, colloc_ko: o.colloc_ko }); done++; } });
+      saveCache();
+    }
+    $('#gnCollSt').textContent = '✅ ' + done + '개 만들었어요';
+  } catch (e) { $('#gnCollSt').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v8)으로 다시 배포해 주세요' : ''); }
+  gnCollInfo();
+});
+$('#gnClose').addEventListener('click', () => $('#dlgGn').close());
+function gnBuild(from, to, mode, type) {
+  const all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), topic = tmLabel();
+  const blank = mode === 'blank';
+  const rowH = Math.min(11.4, 228 / Math.max(per, 1));
+  const fs = per > 26 ? 'font-size:7.5pt' : '';
+  let h = '';
+  const homePages = Math.ceil((to - from + 1) / 50);
+  for (let p = 0; p < homePages; p++) {
+    const a = from + p * 50, b = Math.min(to, a + 49);
+    h += '<div class="gp home" id="gn-home' + (p ? '-' + p : '') + '"><span class="pill" style="background:#444">Day ' + a + '–' + b + '</span><h1>' + esc(topic) + '</h1>';
+    if (homePages > 1) { h += '<div class="seg">'; for (let q = 0; q < homePages; q++) { const qa = from + q * 50, qb = Math.min(to, qa + 49); h += '<a href="#gn-home' + (q ? '-' + q : '') + '" class="' + (q === p ? 'on' : '') + '">Day ' + qa + '–' + qb + '</a>'; } h += '</div>'; }
+    h += '<div class="fg">';
+    for (let d = a; d <= b; d++) h += '<a class="fo" href="#gn-day-' + d + '"><i></i><u></u><b>Day ' + d + '</b></a>';
+    h += '</div></div>';
+  }
+  for (let d = from; d <= to; d++) {
+    const arr = tmDayWords(d, all), hp = 'gn-home' + (Math.floor((d - from) / 50) ? '-' + Math.floor((d - from) / 50) : '');
+    if (type === 'study') {
+      const st = 'style="height:' + rowH + 'mm"';
+      const trs = arr.map(w => {
+        const cl = collOf(w) || { c: '', k: '' };
+        const fsz = (t, n) => String(t).length > n ? 'font-size:7.5pt;' : '';
+        return '<tr><td class="k"><div></div></td><td class="w" style="height:' + rowH + 'mm;' + fsz(w.word, 12) + '">' + esc(w.word) + '</td><td class="m" ' + st + '>' + (blank ? '' : esc(w.meaning || '')) + '</td><td class="m" style="height:' + rowH + 'mm;' + fsz(cl.c, 22) + '">' + esc(cl.c) + '</td><td class="m" style="height:' + rowH + 'mm;' + fsz(cl.k, 14) + '">' + (blank ? '' : esc(cl.k)) + '</td></tr>';
+      }).join('');
+      h += '<div class="gp" id="gn-day-' + d + '"><a class="pill" href="#' + hp + '">Day ' + d + '</a><div class="meta"><span>Topic <span style="color:#555;font-weight:500">' + esc(topic) + '</span></span><span>Date &nbsp; / &nbsp; / &nbsp; /</span></div>' +
+        '<table class="st4"><colgroup><col style="width:6%"><col style="width:19%"><col style="width:27%"><col style="width:28%"><col style="width:20%"></colgroup><tr><th></th><th>단어</th><th>단어 뜻</th><th>연어(Collocation)</th><th>연어 뜻</th></tr>' + trs + '</table><div class="ft">' + d + ' / ' + nd + '</div></div>';
+      continue;
+    }
+    const rows = (l) => arr.map(w => {
+      const st = 'style="height:' + rowH + 'mm"';
+      const wd = '<td class="w" ' + st.replace('"', '"' + (String(w.word).length > 12 ? 'font-size:8pt;' : '')) + '>' + esc(w.word) + '</td>';
+      const me = '<td class="m" ' + st.replace('"', '"' + (String(w.meaning || '').length > 14 ? 'font-size:7.5pt;' : '')) + '>' + esc(w.meaning || '') + '</td>';
+      const em = '<td ' + st + '></td>', mk = '<td class="k"><div></div></td>';
+      return l ? '<tr>' + wd + (blank ? em : me) + mk + '</tr>' : '<tr>' + me + (blank ? em : wd) + mk + '</tr>';
+    }).join('');
+    const pad = '';
+    const th = (a, b) => '<colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup><tr><th>' + a + '</th><th>' + b + '</th><th></th></tr>';
+    h += '<div class="gp" id="gn-day-' + d + '"><a class="pill" href="#' + hp + '">Day ' + d + '</a><div class="meta"><span>Topic <span style="color:#555;font-weight:500">' + esc(topic) + '</span></span><span>Date &nbsp; / &nbsp; / &nbsp; /</span></div>' +
+      '<div class="cols"><table>' + th('단어', '단어 뜻') + rows(true) + '</table><table>' + th('단어 뜻', '단어') + rows(false) + '</table></div><div class="ft">' + d + ' / ' + nd + '</div></div>';
+  }
+  return h;
+}
+$('#gnGo').addEventListener('click', () => {
+  const [a, b] = gnRange();
+  $('#gnRoot').innerHTML = gnBuild(a, b, gnMode, gnType);
+  $('#dlgGn').close();
+  document.body.classList.add('gnprint');
+  const done = () => { document.body.classList.remove('gnprint'); $('#gnRoot').innerHTML = ''; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(() => window.print(), 250);
 });
 </script>
 </body>
