@@ -468,45 +468,6 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 .de .dm{flex:1;min-width:0;word-break:break-word}
 .de .ds{color:var(--sub);font-size:12px}
 
-#gnRoot{display:none}
-@media print{
-  @page{size:A4 portrait;margin:0}
-  body.gnprint>*:not(#gnRoot){display:none!important}
-  html:has(body.gnprint),body.gnprint{height:auto!important;min-height:0!important;overflow:visible!important;background:#fff!important}
-  body.gnprint{padding:0!important;margin:0!important}
-  body.gnprint #gnRoot{position:static!important}
-  body.gnprint #gnRoot{display:block}
-}
-#gnRoot,#gnRoot *{box-sizing:border-box}
-#gnRoot{font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:#222;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.gp{width:210mm;height:296.6mm;padding:12mm 10mm 8mm;page-break-after:always;break-after:page;overflow:hidden;position:relative;background:#fff}
-.gp.home{background:#2b2b2e;color:#fff}
-.gp:last-child{page-break-after:auto;break-after:auto}
-.gp .pill{display:block;margin:0 auto 6mm;width:46mm;text-align:center;text-decoration:none;background:#ddd;color:#555;border-radius:99px;padding:2.2mm 0;font-size:11pt;font-weight:600}
-.gp.home .pill{background:#444;color:#eee}
-.gp .meta{display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3mm;color:#2f7ff0;font-weight:700}
-.gp .meta span:last-child{letter-spacing:1px}
-.gp .cols{display:flex;gap:4mm}
-.gp table{width:50%;border-collapse:collapse;table-layout:fixed;border:.3mm solid #cfd4dc}
-.gp th{font-size:8pt;font-weight:500;color:#777;padding:1.2mm 0;border-bottom:.3mm dotted #b9c0cc}
-.gp td{border-bottom:.3mm dotted #c8cedb;border-right:.2mm solid #b9d3ee;text-align:center;font-size:9.5pt;padding:0 1mm;overflow:hidden;line-height:1.15}
-.gp td:last-child{border-right:0}
-.gp td.w{font-weight:600}
-.gp td.m{font-size:8.5pt}
-.gp td.k div{width:4.4mm;height:4.4mm;margin:auto;border:.35mm solid #9db4d6;border-radius:1mm;background:#f4f8fd}
-.gp col.c1{width:34%}.gp col.c2{width:50%}.gp col.c3{width:16%}
-.gp table.st4{width:100%}
-.gp table.st4 td{border-right:.2mm solid #dfe4ee}
-.gp .ft{position:absolute;left:0;right:0;bottom:4mm;text-align:center;font-size:8pt;color:#aaa}
-.gp.home h1{font-size:15pt;text-align:center;margin:0 0 3mm;font-weight:600}
-.gp .seg{display:flex;justify-content:center;gap:2mm;margin-bottom:8mm}
-.gp .seg a{background:#fff;color:#222;text-decoration:none;border-radius:2mm;padding:1.5mm 4mm;font-size:10pt}
-.gp .seg a.on{background:#444;color:#fff;border:.3mm solid #e05a5a}
-.gp .fg{display:grid;grid-template-columns:repeat(5,1fr);gap:7mm 4mm;margin-top:6mm}
-.gp .fo{display:block;text-decoration:none;position:relative;height:19mm;margin-top:3mm}
-.gp .fo i{position:absolute;left:0;top:-2.6mm;width:46%;height:5mm;background:#2a8be8;border-radius:1.6mm 1.6mm 0 0}
-.gp .fo u{position:absolute;inset:0;background:#4fb2f5;border-radius:1.6mm;text-decoration:none}
-.gp .fo b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#3f8fd6;color:#e8f3ff;border-radius:99px;padding:.8mm 3.5mm;font-size:8.5pt;font-weight:600;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -807,7 +768,6 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div id="dupStatus" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
 </dialog>
 
-<div id="gnRoot"></div>
 <dialog id="dlgGn">
   <h3 style="margin:0 0 6px">📄 굿노트용 PDF</h3>
   <div style="font-size:13px;color:var(--sub)" id="gnInfo"></div>
@@ -822,13 +782,14 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
     <div class="row" style="margin-top:8px"><button class="btn grow" id="gnCollGo" type="button">✨ 연어 자동 만들기</button></div>
     <div id="gnCollSt" style="margin-top:6px;color:var(--sub)"></div>
   </div>
-  <div style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5">PDF 만들기를 누르면 인쇄 창이 열려요. <b>대상: PDF로 저장</b>(용지 A4, 여백 없음, 배경 그래픽 켜기)을 고른 뒤 저장해 굿노트에서 “가져오기”로 여세요. 홈 페이지의 Day 폴더를 누르면 해당 페이지로, 각 페이지 위쪽 Day 버튼을 누르면 홈으로 이동해요.</div>
+  <div id="gnOut" style="margin-top:10px;font-size:13px"></div>
+  <div style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5">앱이 직접 PDF 파일을 만들어요(인쇄 창 없음). 만들어진 파일을 저장하거나 <b>공유 → GoodNotes</b>로 열면 돼요. 홈 페이지의 Day 폴더를 누르면 해당 페이지로, 각 페이지 위쪽 Day 버튼을 누르면 홈으로 이동해요.</div>
   <div class="row" style="margin-top:12px"><button class="btn" id="gnClose" type="button">닫기</button><button class="btn primary grow" id="gnGo" type="button">PDF 만들기</button></div>
 </dialog>
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '4.9.1', APP_DATE = '2026-10-15', SERVER_NEED = 8;
+const APP_VERSION = '5.0', APP_DATE = '2026-10-15', SERVER_NEED = 8;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2339,57 +2300,168 @@ $('#gnCollGo').addEventListener('click', async () => {
   gnCollInfo();
 });
 $('#gnClose').addEventListener('click', () => $('#dlgGn').close());
-function gnBuild(from, to, mode, type) {
-  const all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), topic = tmLabel();
-  const blank = mode === 'blank';
-  const rowH = Math.min(11.4, 228 / Math.max(per, 1));
-  const fs = per > 26 ? 'font-size:7.5pt' : '';
-  let h = '';
-  const homePages = Math.ceil((to - from + 1) / 50);
-  for (let p = 0; p < homePages; p++) {
-    const a = from + p * 50, b = Math.min(to, a + 49);
-    h += '<div class="gp home" id="gn-home' + (p ? '-' + p : '') + '"><span class="pill" style="background:#444">Day ' + a + '–' + b + '</span><h1>' + esc(topic) + '</h1>';
-    if (homePages > 1) { h += '<div class="seg">'; for (let q = 0; q < homePages; q++) { const qa = from + q * 50, qb = Math.min(to, qa + 49); h += '<a href="#gn-home' + (q ? '-' + q : '') + '" class="' + (q === p ? 'on' : '') + '">Day ' + qa + '–' + qb + '</a>'; } h += '</div>'; }
-    h += '<div class="fg">';
-    for (let d = a; d <= b; d++) h += '<a class="fo" href="#gn-day-' + d + '"><i></i><u></u><b>Day ' + d + '</b></a>';
-    h += '</div></div>';
-  }
-  for (let d = from; d <= to; d++) {
-    const arr = tmDayWords(d, all), hp = 'gn-home' + (Math.floor((d - from) / 50) ? '-' + Math.floor((d - from) / 50) : '');
-    if (type === 'study') {
-      const st = 'style="height:' + rowH + 'mm"';
-      const trs = arr.map(w => {
-        const cl = collOf(w) || { c: '', k: '' };
-        const fsz = (t, n) => String(t).length > n ? 'font-size:7.5pt;' : '';
-        return '<tr><td class="k"><div></div></td><td class="w" style="height:' + rowH + 'mm;' + fsz(w.word, 12) + '">' + esc(w.word) + '</td><td class="m" ' + st + '>' + (blank ? '' : esc(w.meaning || '')) + '</td><td class="m" style="height:' + rowH + 'mm;' + fsz(cl.c, 22) + '">' + esc(cl.c) + '</td><td class="m" style="height:' + rowH + 'mm;' + fsz(cl.k, 14) + '">' + (blank ? '' : esc(cl.k)) + '</td></tr>';
-      }).join('');
-      h += '<div class="gp" id="gn-day-' + d + '"><a class="pill" href="#' + hp + '">Day ' + d + '</a><div class="meta"><span>Topic <span style="color:#555;font-weight:500">' + esc(topic) + '</span></span><span>Date &nbsp; / &nbsp; / &nbsp; /</span></div>' +
-        '<table class="st4"><colgroup><col style="width:6%"><col style="width:19%"><col style="width:27%"><col style="width:28%"><col style="width:20%"></colgroup><tr><th></th><th>단어</th><th>단어 뜻</th><th>연어(Collocation)</th><th>연어 뜻</th></tr>' + trs + '</table><div class="ft">' + d + ' / ' + nd + '</div></div>';
-      continue;
+/* --- PDF 를 앱 안에서 직접 그린다 (캔버스 → JPEG → PDF, 링크 포함) --- */
+const GN_FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo','Pretendard',sans-serif";
+function gnDrawPages(from, to, mode, type, cv) {
+  const all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), topic = tmLabel(), blank = mode === 'blank';
+  const W = cv.width, S = W / 210, ctx = cv.getContext('2d'), PT = 0.3528 * S;
+  const homePages = Math.ceil((to - from + 1) / 50), total = homePages + (to - from + 1);
+  const px = v => v * S;
+  const rr = (x, y, w, h, r) => { x = px(x); y = px(y); w = px(w); h = px(h); r = px(r); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+  const font = (pt, bold) => (bold ? '700 ' : '500 ') + Math.round(pt * PT) + 'px ' + GN_FONT;
+  const fitText = (txt, cx, cy, maxW, pt, bold, color, minPt) => {
+    txt = String(txt || ''); if (!txt) return;
+    let p = pt; ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = font(p, bold);
+    while (ctx.measureText(txt).width > px(maxW) && p > (minPt || 6.5)) { p -= 0.5; ctx.font = font(p, bold); }
+    if (ctx.measureText(txt).width <= px(maxW)) { ctx.fillText(txt, px(cx), px(cy)); return; }
+    const sp = txt.split(' ');
+    if (sp.length > 1) {                       // 두 줄로 나눈다
+      let best = 1, bd = 1e9; for (let i = 1; i < sp.length; i++) { const d = Math.abs(sp.slice(0, i).join(' ').length - sp.slice(i).join(' ').length); if (d < bd) { bd = d; best = i; } }
+      p = Math.min(pt, 8); ctx.font = font(p, bold);
+      const l1 = sp.slice(0, best).join(' '), l2 = sp.slice(best).join(' ');
+      while ((ctx.measureText(l1).width > px(maxW) || ctx.measureText(l2).width > px(maxW)) && p > 5) { p -= 0.5; ctx.font = font(p, bold); }
+      ctx.fillText(l1, px(cx), px(cy - p * 0.18)); ctx.fillText(l2, px(cx), px(cy + p * 0.2)); return;
     }
-    const rows = (l) => arr.map(w => {
-      const st = 'style="height:' + rowH + 'mm"';
-      const wd = '<td class="w" ' + st.replace('"', '"' + (String(w.word).length > 12 ? 'font-size:8pt;' : '')) + '>' + esc(w.word) + '</td>';
-      const me = '<td class="m" ' + st.replace('"', '"' + (String(w.meaning || '').length > 14 ? 'font-size:7.5pt;' : '')) + '>' + esc(w.meaning || '') + '</td>';
-      const em = '<td ' + st + '></td>', mk = '<td class="k"><div></div></td>';
-      return l ? '<tr>' + wd + (blank ? em : me) + mk + '</tr>' : '<tr>' + me + (blank ? em : wd) + mk + '</tr>';
-    }).join('');
-    const pad = '';
-    const th = (a, b) => '<colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup><tr><th>' + a + '</th><th>' + b + '</th><th></th></tr>';
-    h += '<div class="gp" id="gn-day-' + d + '"><a class="pill" href="#' + hp + '">Day ' + d + '</a><div class="meta"><span>Topic <span style="color:#555;font-weight:500">' + esc(topic) + '</span></span><span>Date &nbsp; / &nbsp; / &nbsp; /</span></div>' +
-      '<div class="cols"><table>' + th('단어', '단어 뜻') + rows(true) + '</table><table>' + th('단어 뜻', '단어') + rows(false) + '</table></div><div class="ft">' + d + ' / ' + nd + '</div></div>';
-  }
-  return h;
+    ctx.font = font(p, bold); ctx.fillText(txt, px(cx), px(cy));
+  };
+  const line = (x1, y1, x2, y2, color, wmm, dash) => { ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, px(wmm)); ctx.setLineDash(dash ? [px(0.8), px(0.7)] : []); ctx.beginPath(); ctx.moveTo(px(x1), px(y1)); ctx.lineTo(px(x2), px(y2)); ctx.stroke(); ctx.setLineDash([]); };
+  const pill = (cx, y, w, h, fill, txt, tcol, pt) => { ctx.fillStyle = fill; rr(cx - w / 2, y, w, h, h / 2); ctx.fill(); fitText(txt, cx, y + h / 2 + 0.2, w - 4, pt, true, tcol, 6); };
+  const links = [], pages = [];
+  const draw = (idx, links) => {
+    ctx.setLineDash([]);
+    if (idx < homePages) {                    // ---- 홈 페이지 ----
+      ctx.fillStyle = '#2b2b2e'; ctx.fillRect(0, 0, W, cv.height);
+      const a = from + idx * 50, b = Math.min(to, a + 49);
+      pill(105, 12, 46, 9, '#444', 'Day ' + a + '–' + b, '#eeeeee', 11);
+      fitText(topic, 105, 30, 180, 15, true, '#ffffff', 9);
+      let gy = 42;
+      if (homePages > 1) {
+        const bw = 36, gap = 3, x0 = 105 - (homePages * bw + (homePages - 1) * gap) / 2;
+        for (let q = 0; q < homePages; q++) {
+          const qa = from + q * 50, qb = Math.min(to, qa + 49), x = x0 + q * (bw + gap);
+          ctx.fillStyle = q === idx ? '#444444' : '#ffffff'; rr(x, 36, bw, 8, 2); ctx.fill();
+          if (q === idx) { ctx.strokeStyle = '#e05a5a'; ctx.lineWidth = px(0.4); rr(x, 36, bw, 8, 2); ctx.stroke(); }
+          fitText('Day ' + qa + '–' + qb, x + bw / 2, 40.2, bw - 3, 10, false, q === idx ? '#ffffff' : '#222222', 7);
+          links.push({ x: x, y: 36, w: bw, h: 8, to: q });
+        }
+        gy = 54;
+      }
+      const cw = (190 - 16) / 5, rh = 18, pitch = 24;
+      for (let d = a; d <= b; d++) {
+        const k = d - a, x = 10 + (k % 5) * (cw + 4), y = gy + Math.floor(k / 5) * pitch;
+        ctx.fillStyle = '#2a8be8'; rr(x, y - 2.6, cw * 0.46, 6, 1.6); ctx.fill();
+        ctx.fillStyle = '#4fb2f5'; rr(x, y, cw, rh, 1.6); ctx.fill();
+        pill(x + cw / 2, y + rh / 2 - 2.9, Math.min(cw - 6, 20), 5.8, '#3f8fd6', 'Day ' + d, '#e8f3ff', 8.5);
+        links.push({ x: x, y: y - 2.6, w: cw, h: rh + 2.6, to: homePages + (d - from) });
+      }
+      return;
+    }
+    // ---- Day 페이지 ----
+    const d = from + (idx - homePages), arr = tmDayWords(d, all);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, cv.height);
+    pill(105, 12, 46, 9, '#dddddd', 'Day ' + d, '#555555', 11);
+    links.push({ x: 82, y: 12, w: 46, h: 9, to: Math.floor((d - from) / 50) });
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = font(10, true); ctx.fillStyle = '#2f7ff0'; ctx.fillText('Topic', px(10), px(27.5));
+    const tw = ctx.measureText('Topic ').width; ctx.font = font(10, false); ctx.fillStyle = '#555555'; ctx.fillText(topic, px(10) + tw, px(27.5));
+    ctx.textAlign = 'right'; ctx.font = font(10, true); ctx.fillStyle = '#2f7ff0'; ctx.fillText('Date    /    /    /', px(200), px(27.5));
+    const top = 33, hh = 6, rowH = Math.min(11.4, 246 / Math.max(per, 1));
+    const table = (x0, width, fr, heads, cellFn, boxCol) => {
+      const xs = [x0]; fr.forEach(f => xs.push(xs[xs.length - 1] + width * f / 100));
+      const h = hh + rowH * arr.length;
+      ctx.strokeStyle = '#cfd4dc'; ctx.lineWidth = Math.max(1, px(0.3)); ctx.setLineDash([]); ctx.strokeRect(px(x0), px(top), px(width), px(h));
+      heads.forEach((t, i) => { if (t) fitText(t, (xs[i] + xs[i + 1]) / 2, top + hh / 2, xs[i + 1] - xs[i] - 2, 8, false, '#777777', 6); });
+      line(x0, top + hh, x0 + width, top + hh, '#b9c0cc', 0.3, true);
+      for (let r = 1; r < arr.length; r++) line(x0, top + hh + rowH * r, x0 + width, top + hh + rowH * r, '#c8cedb', 0.3, true);
+      for (let i = 1; i < fr.length; i++) line(xs[i], top + hh, xs[i], top + h, '#d3e1f2', 0.25, false);
+      arr.forEach((w, r) => {
+        const cy = top + hh + rowH * r + rowH / 2;
+        for (let i = 0; i < fr.length; i++) {
+          const cx = (xs[i] + xs[i + 1]) / 2, cwid = xs[i + 1] - xs[i] - 2.4;
+          if (i === boxCol) { ctx.fillStyle = '#f4f8fd'; rr(cx - 2.2, cy - 2.2, 4.4, 4.4, 1); ctx.fill(); ctx.strokeStyle = '#9db4d6'; ctx.lineWidth = Math.max(1, px(0.35)); rr(cx - 2.2, cy - 2.2, 4.4, 4.4, 1); ctx.stroke(); }
+          else { const c = cellFn(w, i); if (c && c.t) fitText(c.t, cx, cy, cwid, c.pt, c.bold, '#222222', 6.5); }
+        }
+      });
+    };
+    if (type === 'study') {
+      table(10, 190, [6, 19, 27, 28, 20], ['', '단어', '단어 뜻', '연어(Collocation)', '연어 뜻'], (w, i) => {
+        const cl = collOf(w) || { c: '', k: '' };
+        return i === 1 ? { t: w.word, pt: 9.5, bold: true } : i === 2 ? { t: blank ? '' : w.meaning, pt: 8.5 } : i === 3 ? { t: cl.c, pt: 8.5 } : { t: blank ? '' : cl.k, pt: 8.5 };
+      }, 0);
+    } else {
+      table(10, 93, [34, 50, 16], ['단어', '단어 뜻', ''], (w, i) => i === 0 ? { t: w.word, pt: 9.5, bold: true } : { t: blank ? '' : w.meaning, pt: 8.5 }, 2);
+      table(107, 93, [34, 50, 16], ['단어 뜻', '단어', ''], (w, i) => i === 0 ? { t: w.meaning, pt: 8.5 } : { t: blank ? '' : w.word, pt: 9.5, bold: true }, 2);
+    }
+    ctx.textAlign = 'center'; ctx.font = font(8, false); ctx.fillStyle = '#aaaaaa'; ctx.fillText(d + ' / ' + nd, px(105), px(291.5));
+  };
+  return { total: total, draw: draw };
 }
-$('#gnGo').addEventListener('click', () => {
+/* 아주 작은 PDF 작성기: 쪽마다 JPEG 한 장 + 링크 주석 */
+function gnMakePdf(jpegs, linksPer, W, H) {
+  const enc = new TextEncoder(), chunks = [], offs = []; let len = 0;
+  const push = x => { const u = typeof x === 'string' ? enc.encode(x) : x; chunks.push(u); len += u.length; };
+  const n = jpegs.length, PW = 595.28, PH = 841.89, k = PW / W;
+  const pageObj = i => 3 + 3 * i, annBase = 3 + 3 * n;
+  let annCount = 0; const annIds = linksPer.map(l => l.map(() => annBase + annCount++));
+  const obj = (id, body) => { offs[id] = len; push(id + ' 0 obj\n'); if (typeof body === 'string') push(body); else body.forEach(push); push('\nendobj\n'); };
+  push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R /PageMode /UseNone >>');
+  obj(2, '<< /Type /Pages /Count ' + n + ' /Kids [' + jpegs.map((_, i) => pageObj(i) + ' 0 R').join(' ') + '] >>');
+  jpegs.forEach((j, i) => {
+    const annots = annIds[i].length ? ' /Annots [' + annIds[i].map(a => a + ' 0 R').join(' ') + ']' : '';
+    obj(pageObj(i), '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PW + ' ' + PH + '] /Resources << /XObject << /Im0 ' + (pageObj(i) + 2) + ' 0 R >> >> /Contents ' + (pageObj(i) + 1) + ' 0 R' + annots + ' >>');
+    const cs = 'q ' + PW + ' 0 0 ' + PH + ' 0 0 cm /Im0 Do Q';
+    obj(pageObj(i) + 1, '<< /Length ' + cs.length + ' >>\nstream\n' + cs + '\nendstream');
+    obj(pageObj(i) + 2, ['<< /Type /XObject /Subtype /Image /Width ' + W + ' /Height ' + H + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + j.length + ' >>\nstream\n', j, '\nendstream']);
+  });
+  linksPer.forEach((ls, i) => ls.forEach((l, m) => {
+    const x1 = l.x * S_MM(W) * k, x2 = (l.x + l.w) * S_MM(W) * k, y2 = PH - l.y * S_MM(W) * k, y1 = PH - (l.y + l.h) * S_MM(W) * k;
+    obj(annIds[i][m], '<< /Type /Annot /Subtype /Link /Rect [' + [x1, y1, x2, y2].map(v => v.toFixed(2)).join(' ') + '] /Border [0 0 0] /Dest [' + pageObj(l.to) + ' 0 R /Fit] >>');
+  }));
+  const total = 3 + 3 * n + annCount, xo = len;
+  push('xref\n0 ' + total + '\n0000000000 65535 f \n');
+  for (let i = 1; i < total; i++) push(String(offs[i]).padStart(10, '0') + ' 00000 n \n');
+  push('trailer\n<< /Size ' + total + ' /Root 1 0 R >>\nstartxref\n' + xo + '\n%%EOF');
+  const out = new Uint8Array(len); let p = 0; chunks.forEach(c => { out.set(c, p); p += c.length; });
+  return out;
+}
+const S_MM = W => W / 210;
+let gnBlob = null, gnName = 'goodnotes.pdf';
+$('#gnGo').addEventListener('click', async () => {
   const [a, b] = gnRange();
-  $('#gnRoot').innerHTML = gnBuild(a, b, gnMode, gnType);
-  $('#dlgGn').close();
-  document.body.classList.add('gnprint');
-  const done = () => { document.body.classList.remove('gnprint'); $('#gnRoot').innerHTML = ''; window.removeEventListener('afterprint', done); };
-  window.addEventListener('afterprint', done);
-  setTimeout(() => window.print(), 250);
+  if (gnType === 'study' && gnCollInfo().length && !confirm('연어가 비어 있는 단어가 있어요. 그대로 PDF를 만들까요? (빈 칸으로 나와요)')) return;
+  const go = $('#gnGo'); go.disabled = true; $('#gnOut').innerHTML = '';
+  try {
+    const W = 1500, H = Math.round(W * 297 / 210), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const dr = gnDrawPages(a, b, gnMode, gnType, cv), jpegs = [], linksPer = [];
+    for (let i = 0; i < dr.total; i++) {
+      $('#gnOut').innerHTML = '<span class="spinner"></span> 페이지 만드는 중… ' + (i + 1) + '/' + dr.total;
+      await new Promise(r => setTimeout(r, 0));
+      const ls = []; dr.draw(i, ls);
+      const url = cv.toDataURL('image/jpeg', 0.88), bin = atob(url.slice(url.indexOf(',') + 1)), u = new Uint8Array(bin.length);
+      for (let j = 0; j < bin.length; j++) u[j] = bin.charCodeAt(j);
+      jpegs.push(u); linksPer.push(ls);
+    }
+    const pdf = gnMakePdf(jpegs, linksPer, W, H);
+    gnBlob = new Blob([pdf], { type: 'application/pdf' });
+    gnName = '굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_Day' + a + '-' + b + '.pdf';
+    const mb = (pdf.length / 1048576).toFixed(1);
+    $('#gnOut').innerHTML = '✅ <b>' + dr.total + '쪽</b> (' + mb + 'MB) 완성!<div class="row" style="margin-top:8px"><button class="btn primary grow" id="gnSave" type="button">📥 저장</button><button class="btn grow" id="gnShare" type="button">📤 공유 · 열기</button></div>';
+  } catch (e) { $('#gnOut').textContent = '❌ ' + e.message; }
+  go.disabled = false;
 });
+$('#gnOut').addEventListener('click', async e => {
+  if (!gnBlob) return;
+  if (e.target.id === 'gnSave') {
+    const u = URL.createObjectURL(gnBlob), a = document.createElement('a'); a.href = u; a.download = gnName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
+    toast('내 파일 > 다운로드 폴더에 저장돼요');
+  } else if (e.target.id === 'gnShare') {
+    const f = new File([gnBlob], gnName, { type: 'application/pdf' });
+    try { if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: gnName }); else { const u = URL.createObjectURL(gnBlob); window.open(u, '_blank'); } }
+    catch (err) { if (err && err.name !== 'AbortError') toast('공유할 수 없어요. 저장을 눌러 주세요', 3000); }
+  }
+});
+
 </script>
 </body>
 </html>
