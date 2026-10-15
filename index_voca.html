@@ -892,7 +892,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.1.0', APP_DATE = '2026-10-15', SERVER_NEED = 15;
+const APP_VERSION = '1.1.1', APP_DATE = '2026-10-15', SERVER_NEED = 15;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2853,7 +2853,7 @@ $('#gnGo').addEventListener('click', async () => {
     gnBlob = new Blob([pdf], { type: 'application/pdf' });
     gnName = 'handvoca_굿노트_' + tmLabel().replace(/[\\/:*?"<>|›]/g, '').replace(/\s+/g, '_') + '_' + (gnLang === 'en' ? '영영_' : '') + (gnType === 'study' ? '학습표' : '시험지') + '_' + (gnMode === 'blank' ? '쓰기용' : '정답포함') + '_Day' + a + '-' + b + '.pdf';
     const mb = (pdf.length / 1048576).toFixed(1);
-    $('#gnOut').innerHTML = '✅ <b>' + dr.total + '쪽</b> (' + mb + 'MB) 완성!<div class="row" style="margin-top:8px"><button class="btn primary grow" id="gnSave" type="button">② 📥 저장</button><button class="btn grow" id="gnShare" type="button">📤 공유 · 열기</button></div>';
+    $('#gnOut').innerHTML = '✅ <b>' + dr.total + '쪽</b> (' + mb + 'MB) 완성!<div class="row" style="margin-top:8px"><button class="btn primary grow" id="gnSave" type="button">② 📥 저장</button><button class="btn grow" id="gnShare" type="button" style="background:#fff;color:var(--pri,#3b4cca);border:2px solid var(--pri,#3b4cca);font-weight:700">③ 📤 공유 · 열기</button></div>';
   } catch (e) { $('#gnOut').textContent = '❌ ' + e.message; }
   go.disabled = false; try { $('#gnOut').scrollIntoView({ block: 'nearest' }); } catch (x) {}
 });
@@ -2864,8 +2864,10 @@ $('#gnOut').addEventListener('click', async e => {
     toast('내 파일 > 다운로드 폴더에 “handvoca_…” 이름으로 저장돼요');
   } else if (e.target.id === 'gnShare') {
     const f = new File([gnBlob], gnName, { type: 'application/pdf' });
-    try { if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: gnName }); else { const u = URL.createObjectURL(gnBlob); window.open(u, '_blank'); } }
-    catch (err) { if (err && err.name !== 'AbortError') toast('공유할 수 없어요. 저장을 눌러 주세요', 3000); }
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: gnName });
+      else { const u = URL.createObjectURL(gnBlob); const w = window.open(u, '_blank'); if (!w) { const a = document.createElement('a'); a.href = u; a.download = gnName; document.body.appendChild(a); a.click(); a.remove(); toast('이 브라우저는 바로 공유가 안 돼서 저장했어요. 내 파일에서 GoodNotes로 열어 주세요', 4500); } }
+    } catch (err) { if (err && err.name !== 'AbortError') toast('공유할 수 없어요. ② 저장을 눌러 주세요', 3000); }
   }
 });
 
