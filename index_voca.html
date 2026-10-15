@@ -459,6 +459,14 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   .tm-t.wide{min-width:0}
   .tm-mk{width:40px;height:40px;font-size:20px}
 }
+
+.dg{border-top:1px solid var(--line);padding:10px 0}
+.dg h4{margin:0 0 6px;font-size:15px}
+.de{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--line);border-radius:10px;margin:6px 0;cursor:pointer;font-size:13px}
+.de.keep{border-color:var(--accent);background:var(--accent-soft)}
+.de .dk{flex:0 0 auto;font-weight:700;color:var(--accent);min-width:46px}
+.de .dm{flex:1;min-width:0;word-break:break-word}
+.de .ds{color:var(--sub);font-size:12px}
 </style>
 </head>
 <body>
@@ -741,6 +749,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <select id="sTmSrc"></select>
   <label class="lbl">🍅 토마토 · Day 하나에 들어갈 단어 수</label>
   <div class="step" data-for="sTmPer"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sTmPer" min="5" max="50" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div>
+  <label class="lbl">단어장 관리</label>
+  <div class="row"><button class="btn grow" id="sDup" type="button">🔍 중복 단어 찾기</button></div>
   <div class="row" style="margin-top:14px">
     <button class="btn" id="sTestBtn">연결 테스트</button>
     <button class="btn" id="sCancel">닫기</button>
@@ -748,9 +758,18 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   </div>
 </dialog>
 
+<dialog id="dlgDup">
+  <h3 style="margin:0 0 6px">🔍 중복 단어 찾기</h3>
+  <div class="tg-line" style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--sub);margin:4px 0 8px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dupLoose"> 비슷한 모양도 찾기 (예: <i>run · runs · running</i>)</label></div>
+  <div id="dupSum" style="font-size:14px;margin:4px 0 8px"></div>
+  <div id="dupList" style="max-height:52vh;overflow:auto"></div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="dupClose" type="button">닫기</button><button class="btn primary grow" id="dupAll" type="button" disabled>모두 정리 (표시된 것 남기고 삭제)</button></div>
+  <div id="dupStatus" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
+</dialog>
+
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '4.6', APP_DATE = '2026-10-15', SERVER_NEED = 7;
+const APP_VERSION = '4.7', APP_DATE = '2026-10-15', SERVER_NEED = 7;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2179,6 +2198,52 @@ resizePad();
 renderList(); updateCount(); updateSetupInfo();
 if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) refreshWords(true);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw_voca.js').catch(() => {});
+
+/* --- 중복 단어 찾기 --- */
+function dupKey(w, loose) {
+  let k = String(w.word || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (loose) k = k.split(' ').map(t => t.length > 4 ? t.replace(/(ies)$/, 'y').replace(/(ing|ed|es|s)$/, '').replace(/([b-df-hj-np-tv-z])\1$/, '$1') : t.replace(/s$/, '')).join(' ');
+  return k;
+}
+let dupGroups = [];
+function dupScore(w) { return (w.folder ? 1000 : 0) + ((w.right || 0) + (w.wrong || 0)) * 5 + (w.example ? 2 : 0) + (w.meaning ? 1 : 0); }
+function findDups() {
+  const loose = $('#dupLoose').checked, m = {};
+  words.forEach(w => { const k = dupKey(w, loose); if (k) (m[k] = m[k] || []).push(w); });
+  dupGroups = Object.keys(m).filter(k => m[k].length > 1).map(k => {
+    const list = m[k].slice().sort((a, b) => dupScore(b) - dupScore(a));
+    return { key: k, list: list, keep: list[0].id };
+  }).sort((a, b) => a.key < b.key ? -1 : 1);
+  renderDups();
+}
+function renderDups() {
+  const n = dupGroups.reduce((s, g) => s + g.list.length - 1, 0);
+  $('#dupSum').innerHTML = dupGroups.length ? '중복 <b>' + dupGroups.length + '</b>묶음 · 지울 수 있는 단어 <b>' + n + '</b>개<div style="font-size:12px;color:var(--sub)">초록 테두리가 남길 단어예요. 다른 것을 누르면 바뀝니다.</div>' : '✅ 중복된 단어가 없어요 (전체 ' + words.length + '개)';
+  $('#dupAll').disabled = !dupGroups.length;
+  $('#dupList').innerHTML = dupGroups.map((g, gi) => '<div class="dg"><h4>' + esc(g.key) + ' <span style="color:var(--sub);font-weight:400">· ' + g.list.length + '개</span></h4>' + g.list.map(w => '<div class="de' + (w.id === g.keep ? ' keep' : '') + '" data-g="' + gi + '" data-id="' + esc(w.id) + '"><span class="dk">' + (w.id === g.keep ? '✔ 남김' : '삭제') + '</span><div class="dm"><b>' + esc(w.word) + '</b> ' + (w.pos ? '<span class="w-pos">' + esc(w.pos) + '</span> ' : '') + esc(w.meaning || '') + '<div class="ds">📁 ' + esc(w.folder || '폴더 없음') + ' · ' + esc(addedYmd(w) || '') + ' · 맞 ' + (w.right || 0) + ' / 틀 ' + (w.wrong || 0) + '</div></div></div>').join('') + '<div class="row"><button class="btn" data-dgo="' + gi + '" type="button">이 묶음 정리</button></div></div>').join('');
+}
+async function dupClean(gis) {
+  const ids = [];
+  gis.forEach(gi => { const g = dupGroups[gi]; g.list.forEach(w => { if (w.id !== g.keep) ids.push(w.id); }); });
+  if (!ids.length) return;
+  if (!confirm('중복 ' + ids.length + '개를 삭제할까요? (되돌릴 수 없어요)')) return;
+  let done = 0;
+  try {
+    for (const id of ids) { $('#dupStatus').innerHTML = '<span class="spinner"></span> 삭제 중… ' + done + '/' + ids.length; await api('delete', { id: id }); words = words.filter(x => x.id !== id); done++; }
+    saveCache(); renderList(); updateCount(); updateSetupInfo(); try { renderHome(); } catch (e) {}
+    $('#dupStatus').textContent = '✅ ' + done + '개를 삭제했어요';
+  } catch (e) { saveCache(); $('#dupStatus').textContent = '❌ ' + done + '개 삭제 후 중단: ' + e.message; }
+  findDups();
+}
+$('#sDup').addEventListener('click', () => { $('#dupStatus').textContent = ''; findDups(); $('#dlgDup').showModal(); });
+$('#dupClose').addEventListener('click', () => $('#dlgDup').close());
+$('#dupLoose').addEventListener('change', findDups);
+$('#dupAll').addEventListener('click', () => dupClean(dupGroups.map((g, i) => i)));
+$('#dupList').addEventListener('click', e => {
+  const go = e.target.closest('[data-dgo]'); if (go) { dupClean([parseInt(go.dataset.dgo, 10)]); return; }
+  const de = e.target.closest('.de'); if (!de) return;
+  dupGroups[parseInt(de.dataset.g, 10)].keep = de.dataset.id; renderDups();
+});
 </script>
 </body>
 </html>
