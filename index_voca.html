@@ -45,6 +45,7 @@ button{font:inherit;cursor:pointer}
 .gnprev canvas{width:100%;display:block;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);background:#fff}
 .gnprev.big{flex:1 1 100%;cursor:zoom-out}
 .gnprevcap{font-size:11px;color:var(--sub);margin-top:4px}
+.gnprevwarn{font-size:11px;color:#c0392b;margin-top:3px;line-height:1.4}
 #dlgGn{width:min(94vw,800px)}
 .gnrow{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;gap:10px;margin-top:10px}
 .gnrange{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;text-align:center}
@@ -875,12 +876,13 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
     <div id="gnCap" class="gncap"></div>
     <div id="gnColl" class="gncoll">
       <div class="gncoll-r"><span id="gnCollInfo"></span><button class="btn" id="gnCollGo" type="button">✨ 만들기</button></div>
+      <div class="gncoll-r" id="gnRedoRow" style="margin-top:6px;display:none"><span style="font-size:12px;color:var(--sub)">예전에 AI가 만든 뜻을 영영사전 기준으로 다시 만들 수 있어요</span><button class="btn" id="gnRedo" type="button">↻ 사전으로 다시</button></div>
       <div id="gnCollSt" style="margin-top:6px;color:var(--sub)"></div>
     </div>
     </div>
-    <div class="gnprev" id="gnPrevBox"><canvas id="gnPrev"></canvas><div class="gnprevcap">미리보기 (Day <span id="gnPrevDay">1</span>) · 눌러서 크게/작게</div></div>
+    <div class="gnprev" id="gnPrevBox"><canvas id="gnPrev"></canvas><div class="gnprevcap">미리보기 (Day <span id="gnPrevDay">1</span>) · 눌러서 크게/작게</div><div class="gnprevwarn" id="gnPrevWarn"></div></div>
     </div>
-    <div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.5">만들어진 파일은 저장하거나 <b>공유 → GoodNotes</b>로 열어요. 홈 페이지의 Day 폴더는 해당 페이지로, 각 페이지 위쪽 Day 버튼은 홈으로 이동해요.</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.5">영어 뜻은 영영사전(Free Dictionary)에서 찾아 AI가 한국어 뜻에 맞게 골라 줄여요(사전에 없으면 AI가 직접 씀). 연어 뜻은 AI. 만들어진 파일은 저장하거나 <b>공유 → GoodNotes</b>로 열어요. 홈 페이지의 Day 폴더는 해당 페이지로, 각 페이지 위쪽 Day 버튼은 홈으로 이동해요.</div>
   </div>
   <div class="gnfoot">
     <div id="gnOut" style="margin-bottom:8px;font-size:13px"></div>
@@ -890,7 +892,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.0.3', APP_DATE = '2026-10-15', SERVER_NEED = 14;
+const APP_VERSION = '1.1.0', APP_DATE = '2026-10-15', SERVER_NEED = 15;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2586,6 +2588,7 @@ function gnRange() { const nd = Math.ceil(tmWords().length / tmPer()); let a = M
 function gnTargets() { const [a, b] = gnRange(), all = tmWords(), per = tmPer(); return all.slice((a - 1) * per, b * per); }
 const enOf = w => { const x = w.extra || {}; return { m: x.meaning_en || '', c: x.colloc_en || '' }; };
 /* 준비가 덜 된 단어: 영한 학습표 → 연어 / 영영 → 영어 뜻(+학습표면 연어·연어 영어 뜻) */
+const redoCand = w => !!(w.extra && w.extra.meaning_en && !w.extra.meaning_en_src);   // 예전 방식(AI)으로 만든 영어 뜻
 function gnMiss(w) {
   const x = w.extra || {};
   if (gnLang === 'en') return !x.meaning_en || (gnType === 'study' && (!x.colloc || !x.colloc_en));
@@ -2597,6 +2600,8 @@ function gnPreview() {
     const a = gnRange()[0], W = 640, H = Math.round(W * 297 / 210); cv.width = W; cv.height = H;
     const dr = gnDrawPages(a, a, gnMode, gnType, cv, gnFs, gnLang); dr.draw(1, []);
     $('#gnPrevDay').textContent = a;
+    const n = gnTargets().filter(gnMiss).length;     // 자료가 없으면 그 칸은 비어 보인다 — 이유를 알려 준다
+    $('#gnPrevWarn').textContent = n ? '⚠️ ' + (gnLang === 'en' ? '영어 뜻·연어' : '연어') + ' 자료가 없는 단어 ' + n + '개는 칸이 비어 보여요 (“정답 포함”이어도). ✨ 만들기를 눌러 주세요' : '';
   } catch (e) {}
 }
 document.getElementById('gnPrevBox').addEventListener('click', () => document.getElementById('gnPrevBox').classList.toggle('big'));
@@ -2609,6 +2614,8 @@ function gnCollInfo() {
   const t = gnTargets(), miss = t.filter(gnMiss), en = gnLang === 'en';
   $('#gnCollInfo').innerHTML = (en ? '영어 뜻·연어' : '연어') + ' <b>' + (t.length - miss.length) + '</b> / ' + t.length + (miss.length ? ' 준비됨' : ' ✅ 준비 완료');
   $('#gnCollGo').textContent = miss.length ? '✨ 만들기 (' + miss.length + '개)' : '✅ 준비 완료'; $('#gnCollGo').style.display = miss.length ? '' : 'none';
+  const redo = en ? t.filter(redoCand).length : 0;
+  $('#gnRedoRow').style.display = redo ? '' : 'none'; $('#gnRedo').textContent = '↻ 사전으로 다시 (' + redo + '개)';
   $('#gnCollGo').disabled = !miss.length; $('#gnColl').style.display = (gnType === 'study' || en) ? '' : 'none'; return miss;
 }
 function gnOpen() {
@@ -2630,13 +2637,33 @@ $('#gnMode').addEventListener('click', e => { const b = e.target.closest('[data-
 $('#gnFs').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnFs = parseFloat(b.dataset.v) || 1.3; $$('#gnFs .chip').forEach(c => c.classList.toggle('on', c === b)); gnStale(); });
 $('#gnType').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; gnType = b.dataset.v; $$('#gnType .chip').forEach(c => c.classList.toggle('on', c === b)); gnCollInfo(); gnStale(); });
 $('#gnFrom').addEventListener('input', () => { gnCollInfo(); gnStale(); }); $('#gnTo').addEventListener('input', () => { gnCollInfo(); gnStale(); });
-$('#gnCollGo').addEventListener('click', async () => {
-  const miss = gnCollInfo(); if (!miss.length) return;
-  const go = $('#gnCollGo'); go.disabled = true; let done = 0, fails = 0, lastErr = '';
+/* 영영사전(Free Dictionary, 위키낱말사전 기반)에서 풀이를 가져온다. 없으면 [] , 일시 오류면 null */
+const dictCache = {}, POSMAP = { '동': 'verb', '명': 'noun', '형': 'adjective', '부': 'adverb', '전': 'preposition', '접': 'conjunction', '대': 'pronoun', '감': 'interjection' };
+async function dictDefs(word, pos) {
+  const k = String(word || '').toLowerCase().trim(); if (!k) return [];
+  if (!(k in dictCache)) {
+    try {
+      const c = new AbortController(), t = setTimeout(() => c.abort(), 7000);
+      const r = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(k), { signal: c.signal }); clearTimeout(t);
+      if (r.status === 404) dictCache[k] = [];
+      else if (!r.ok) return null;
+      else { const j = await r.json(), out = []; (Array.isArray(j) ? j : []).forEach(e => (e.meanings || []).forEach(m => (m.definitions || []).forEach(d => { if (d.definition) out.push({ p: m.partOfSpeech || '', d: String(d.definition) }); }))); dictCache[k] = out; }
+    } catch (e) { return null; }
+  }
+  const want = Object.keys(POSMAP).filter(h => String(pos || '').indexOf(h) >= 0).map(h => POSMAP[h]);
+  const all = dictCache[k].slice().sort((a, b) => (want.indexOf(b.p) >= 0 ? 1 : 0) - (want.indexOf(a.p) >= 0 ? 1 : 0));
+  return all.slice(0, 6).map(x => x.p + ': ' + x.d.slice(0, 220));
+}
+async function gnPrepare(opts) {
+  const redo = !!(opts && opts.redo);
+  let miss = gnCollInfo();
+  if (redo) miss = gnTargets().filter(redoCand);
+  if (!miss.length) return;
+  const go = $('#gnCollGo'); go.disabled = true; $('#gnRedo').disabled = true; let done = 0, fails = 0, lastErr = '';
   const st = t => { $('#gnCollSt').innerHTML = '<span class="spinner"></span> ' + t; };
   try {
     // 1) 연어 (학습표에서 연어가 비어 있는 단어)
-    const needC = gnType === 'study' ? miss.filter(w => !collOf(w)) : [];
+    const needC = (!redo && gnType === 'study') ? miss.filter(w => !collOf(w)) : [];
     for (let i = 0; i < needC.length; i += 15) {
       st('연어 만드는 중… ' + i + '/' + needC.length);
       let j; try { j = await api('colloc', { items: needC.slice(i, i + 15).map(w => ({ id: w.id, word: w.word, meaning: w.meaning })) }); }
@@ -2644,21 +2671,27 @@ $('#gnCollGo').addEventListener('click', async () => {
       (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w) { w.extra = Object.assign({}, w.extra || {}, { colloc: o.colloc, colloc_ko: o.colloc_ko }); done++; } });
       saveCache();
     }
-    // 2) 영영: 영어 뜻 (+ 연어의 영어 뜻)
+    // 2) 영영: 영어 뜻(영영사전 → AI 정리) + 연어의 영어 뜻(AI)
     if (gnLang === 'en') {
-      const needE = miss.filter(w => { const x = w.extra || {}; return !x.meaning_en || (gnType === 'study' && x.colloc && !x.colloc_en); });
+      const needE = redo ? miss : miss.filter(w => { const x = w.extra || {}; return !x.meaning_en || (gnType === 'study' && x.colloc && !x.colloc_en); });
       for (let i = 0; i < needE.length; i += 15) {
-        st('영어 뜻 만드는 중… ' + i + '/' + needE.length);
-        let j; try { j = await api('defen', { items: needE.slice(i, i + 15).map(w => ({ id: w.id, word: w.word, meaning: w.meaning, colloc: gnType === 'study' && w.extra ? (w.extra.colloc || '') : '' })) }); }
+        const grp = needE.slice(i, i + 15);
+        st('영영사전에서 찾는 중… ' + i + '/' + needE.length);
+        const defsOf = {}; let q = 0;
+        await Promise.all([0, 1, 2, 3].map(async () => { while (q < grp.length) { const w = grp[q++]; if (redo || !(w.extra && w.extra.meaning_en)) defsOf[w.id] = await dictDefs(w.word, w.pos); } }));
+        st('영어 뜻 정리하는 중… ' + i + '/' + needE.length);
+        let j; try { j = await api('defen', { items: grp.map(w => { const x = w.extra || {}, only = !redo && !!x.meaning_en; return { id: w.id, word: w.word, meaning: w.meaning, colloc: gnType === 'study' ? (x.colloc || '') : '', defs: only ? [] : (defsOf[w.id] || []), onlyColloc: only }; }) }); }
         catch (e) { if (/unknown action/.test(e.message)) throw e; fails++; lastErr = e.message; continue; }
-        (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w) { const add = { meaning_en: o.meaning_en }; if (o.colloc_en) add.colloc_en = o.colloc_en; w.extra = Object.assign({}, w.extra || {}, add); done++; } });
+        (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w) { const add = {}; if (o.meaning_en) { add.meaning_en = o.meaning_en; add.meaning_en_src = o.meaning_en_src || 'ai'; } if (o.colloc_en) add.colloc_en = o.colloc_en; w.extra = Object.assign({}, w.extra || {}, add); done++; } });
         saveCache();
       }
     }
     $('#gnCollSt').textContent = (done ? '✅ ' + done + '건 만들었어요' : '') + (fails ? ' ⚠️ 일부 묶음 실패(' + lastErr.slice(0, 80) + ') — 다시 누르면 비어 있는 것만 이어서 만들어요' : '');
-  } catch (e) { $('#gnCollSt').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v14)으로 다시 배포해 주세요' : ''); }
-  gnCollInfo();
-});
+  } catch (e) { $('#gnCollSt').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v15)으로 다시 배포해 주세요' : ''); }
+  $('#gnRedo').disabled = false; gnCollInfo();
+}
+$('#gnRedo').addEventListener('click', () => { if (confirm('예전에 AI가 만든 영어 뜻을 영영사전 기준으로 다시 만들까요? (기존 뜻은 바뀌어요)')) gnPrepare({ redo: true }); });
+$('#gnCollGo').addEventListener('click', () => gnPrepare());
 $('#gnClose').addEventListener('click', () => $('#dlgGn').close());
 /* --- PDF 를 앱 안에서 직접 그린다 (캔버스 → JPEG → PDF, 링크 포함) --- */
 const GN_FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo','Pretendard',sans-serif";
@@ -2796,7 +2829,14 @@ function gnMakePdf(jpegs, linksPer, W, H) {
 const S_MM = W => W / 210;
 $('#gnGo').addEventListener('click', async () => {
   const [a, b] = gnRange();
-  if (gnCollInfo().length && !confirm((gnLang === 'en' ? '영어 뜻·연어가 비어 있는 단어가 있어요' : '연어가 비어 있는 단어가 있어요') + '. 그대로 PDF를 만들까요? (빈 칸으로 나와요)')) return;
+  let nMiss = gnCollInfo().length;
+  if (nMiss && gnLang === 'en') {             // 영영: 영어 뜻이 없으면 칸이 텅 비므로 먼저 만들어 준다
+    if (!confirm('영어 뜻·연어가 없는 단어가 ' + nMiss + '개 있어요.\n먼저 자동으로 만든 뒤 PDF를 만들까요?\n(취소하면 PDF를 만들지 않아요)')) return;
+    const go0 = $('#gnGo'); go0.disabled = true; $('#gnOut').innerHTML = '<span class="spinner"></span> 영어 뜻 만드는 중… (잠시 걸려요)';
+    await gnPrepare(); go0.disabled = false; $('#gnOut').innerHTML = '';
+    nMiss = gnCollInfo().length;
+    if (nMiss && !confirm('아직 ' + nMiss + '개가 비어 있어요. 그대로 PDF를 만들까요? (빈 칸으로 나와요)')) return;
+  } else if (nMiss && !confirm('연어가 비어 있는 단어가 있어요. 그대로 PDF를 만들까요? (빈 칸으로 나와요)')) return;
   const go = $('#gnGo'); go.disabled = true; $('#gnOut').innerHTML = '';
   try {
     const W = 1500, H = Math.round(W * 297 / 210), cv = document.createElement('canvas'); cv.width = W; cv.height = H;

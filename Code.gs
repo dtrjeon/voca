@@ -90,6 +90,7 @@ function doPost(e) {
       case 'detail':    return json_(detail_(req));
       case 'import':    return json_(import_(req));
       case 'colloc':    return json_(colloc_(req));
+      case 'defen':     return json_(defen_(req));
       case 'restore':   return json_(restore_(req));
       default:          return json_({ ok: false, error: 'unknown action' });
     }
@@ -99,7 +100,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 13 });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 15 });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -483,6 +484,72 @@ function colloc_(req) {
       ex.colloc = g.c; ex.colloc_ko = g.ck;
       sh.getRange(i + 1, 15).setValue(JSON.stringify(ex));
       out.push({ id: String(it.id), colloc: g.c, colloc_ko: g.ck });
+    });
+    return { ok: true, items: out };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- 영영 버전: 단어 뜻·연어 뜻을 영어로 (한 번에 최대 25개) ----------
+   req.items = [{ id, word, meaning, colloc, defs?:["verb: …", …], onlyColloc?:true }]
+   - defs 가 있으면(앱이 영영사전에서 가져온 풀이) 그중 한국어 뜻에 맞는 것을 골라 줄여서 쓴다 → meaning_en_src = 'dict'
+   - 없으면 AI 가 직접 쓴다 → 'ai'.   연어 뜻은 사전에 없어서 항상 AI.
+   결과는 extra.meaning_en / colloc_en / meaning_en_src 에 저장 */
+function defen_(req) {
+  const props = PropertiesService.getScriptProperties();
+  const key = props.getProperty('ANTHROPIC_API_KEY');
+  if (!key) return { ok: false, error: 'ANTHROPIC_API_KEY 가 스크립트 속성에 없습니다.' };
+  const model = props.getProperty('MODEL') || 'claude-haiku-5-5';
+  const items = (req.items || []).slice(0, 25);
+  if (!items.length) return { ok: true, items: [] };
+  const list = items.map(function (it, n) {
+    let t = n + '. ' + String(it.word || '') + (it.meaning ? ' (' + String(it.meaning).slice(0, 40) + ')' : '') + (it.colloc ? ' [연어: ' + String(it.colloc).slice(0, 60) + ']' : '');
+    if (it.onlyColloc) t += ' [뜻은 이미 있음: 연어 뜻만]';
+    else if (it.defs && it.defs.length) t += '\n   [사전] ' + it.defs.slice(0, 6).map(function (d, k) { return (k + 1) + ') ' + String(d).slice(0, 220); }).join(' ');
+    return t;
+  }).join('\n');
+  const prompt =
+    '아래 영어 단어(또는 숙어)마다 영영 풀이를 만드세요. 한국어 뜻은 어떤 의미인지 정하는 참고용입니다.\n' +
+    '- 영어 뜻: [사전] 목록이 있으면 그 중에서 한국어 뜻과 가장 잘 맞는 항목 하나를 골라, 사전 표현을 최대한 그대로 살려 10단어 안팎으로 줄이세요(없는 내용을 지어내지 마세요). 이 경우 4번째 칸에 D.\n' +
+    '  [사전] 이 없거나 맞는 항목이 없으면 학습자 사전처럼 쉬운 영어로 8단어 이내로 직접 쓰고(동사는 to 로 시작, 명사는 a/an/the 로 시작) 4번째 칸에 A.\n' +
+    '- 연어 뜻: [연어: …] 가 있으면 그 구의 뜻을 짧은 영어로(8단어 이내). 연어가 없으면 비워 두세요.\n' +
+    '- [뜻은 이미 있음] 표시가 있으면 영어 뜻 칸은 비우고 연어 뜻만 쓰세요(4번째 칸 A).\n\n' + list + '\n\n' +
+    '반드시 한 줄에 하나씩, 아래 형식의 텍스트로만 답하세요(JSON·따옴표·설명 금지).\n' +
+    '번호|영어 뜻|연어의 영어 뜻|D 또는 A\n예) 0|to leave completely|to stop having something|D';
+  const r = callClaudeText_(key, { model: model, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] });
+  if (!r.ok) return r;
+  const got = {};
+  String(r.text || '').split(/\r?\n/).forEach(function (ln) {
+    const p = ln.replace(/^[\s\-*]+/, '').split('|');
+    if (p.length < 2) return;
+    const n = parseInt(p[0], 10);
+    if (isNaN(n)) return;
+    const clean = function (x) { return String(x || '').replace(/^["'\s]+|["'\s]+$/g, ''); };
+    const flag = p.length >= 4 ? clean(p[p.length - 1]).toUpperCase() : '';
+    got[n] = { m: clean(p[1]), c: p.length >= 3 ? clean(p[2]) : '', f: flag === 'D' ? 'D' : 'A' };
+  });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
+    const data = sh.getDataRange().getValues();
+    const rowOf = {};
+    for (let i = 1; i < data.length; i++) if (data[i][0]) rowOf[String(data[i][0])] = i;
+    const out = [];
+    items.forEach(function (it, n) {
+      const g = got[n]; if (!g) return;
+      if (!it.onlyColloc && !g.m) return;
+      const i = rowOf[String(it.id)]; if (i === undefined) return;
+      let ex = {}; try { ex = JSON.parse(data[i][14] || '{}') || {}; } catch (e) { ex = {}; }
+      const o = { id: String(it.id) };
+      if (!it.onlyColloc) {
+        ex.meaning_en = g.m; ex.meaning_en_src = (g.f === 'D' && it.defs && it.defs.length) ? 'dict' : 'ai';
+        o.meaning_en = ex.meaning_en; o.meaning_en_src = ex.meaning_en_src;
+      }
+      if (g.c) { ex.colloc_en = g.c; o.colloc_en = g.c; }
+      sh.getRange(i + 1, 15).setValue(JSON.stringify(ex));
+      out.push(o);
     });
     return { ok: true, items: out };
   } finally {
