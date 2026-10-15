@@ -855,7 +855,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.6.9', APP_DATE = '2026-10-15', SERVER_NEED = 10;
+const APP_VERSION = '5.6.10', APP_DATE = '2026-10-15', SERVER_NEED = 10;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1062,7 +1062,7 @@ function allowed(e) {
   if (e.pointerType === 'pen') { penSeen = true; return true; }
   if (e.pointerType === 'touch' && !fingerOK) {
     const t = Date.now();
-    if (t - (allowed._t || 0) > 4000) { allowed._t = t; toast('S펜으로 써 주세요. 손가락으로 쓰려면 "손가락도 쓰기"를 켜세요'); }
+    if (t - (allowed._t || 0) > 4000) { allowed._t = t; toast('S펜으로 써 주세요 (감지: ' + e.pointerType + ' · 크기 ' + Math.round(e.width || 0) + '×' + Math.round(e.height || 0) + ' · 압력 ' + (e.pressure || 0).toFixed(2) + '). S펜이 안 써지면 “손가락도 쓰기”를 켜 주세요', 5000); }
     return false;
   }
   return true;
