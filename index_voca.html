@@ -815,9 +815,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 </dialog>
 
 <dialog id="dlgDays">
-  <h3 style="margin:0 0 6px">📅 일자별 단어</h3>
-  <div style="font-size:13px;color:var(--sub);margin-bottom:8px">✍️ 손쓰기 = S펜으로 써서 등록한 단어, 📥 업로드 = 파일·내장 단어장으로 가져온 단어예요. 날짜를 누르면 그날 단어만 보이고, 🍅를 누르면 토마토 범위로 정해요.</div>
-  <div class="row" id="daysTabs" style="margin-bottom:8px"><button class="chip on" data-k="hand" type="button">✍️ 손쓰기</button><button class="chip" data-k="import" type="button">📥 업로드</button></div>
+  <h3 style="margin:0 0 6px">✍️ 손쓰기 일자별 단어</h3>
+  <div style="font-size:13px;color:var(--sub);margin-bottom:8px">S펜(손글씨)으로 써서 등록한 단어의 등록일이에요. 파일·내장 단어장으로 가져온 단어는 포함하지 않아요. 날짜를 누르면 그날 단어만 보이고, 🍅를 누르면 토마토 범위로 정해요.</div>
   <div id="daysList" style="max-height:44vh;overflow:auto"></div>
   <label class="lbl" for="dfInput">달력에서 직접 고르기</label><input type="date" id="dfInput" aria-label="등록일 선택">
   <div class="row" style="margin-top:12px"><button class="btn" id="daysClear" type="button">전체 보기</button><button class="btn primary grow" id="daysClose" type="button">닫기</button></div>
@@ -853,7 +852,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.6.0', APP_DATE = '2026-10-15', SERVER_NEED = 10;
+const APP_VERSION = '5.6.2', APP_DATE = '2026-10-15', SERVER_NEED = 10;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1403,10 +1402,9 @@ function daysSummary(kind) {
 }
 function renderDays() {
   const a = daysSummary(dayKind);
-  $$('#daysTabs .chip').forEach(b => { const k = b.dataset.k; b.classList.toggle('on', k === dayKind); b.textContent = KIND_LB[k] + ' ' + daysSummary(k).reduce((t, x) => t + x.n, 0); });
   $('#daysList').innerHTML = a.length ? a.map(x => '<div class="dayrow' + (x.d === dateFilter && dateKind === dayKind ? ' on' : '') + '" data-d="' + x.d + '"><button class="dr-main" type="button" data-act="dview"><b>' + x.d.slice(5).replace('-', '/') + '</b> (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ')<span>' + x.n + '개</span></button><button class="btn dr-tm" type="button" data-act="dtm" aria-label="토마토 범위로 정하기">🍅</button></div>').join('') : '<div class="empty">' + (dayKind === 'hand' ? '손쓰기로 등록한 단어가 없어요' : '업로드한 단어가 없어요') + '</div>';
 }
-function openDays() { dayKind = dateFilter ? dateKind : 'hand'; renderDays(); $('#dfInput').value = dateFilter; $('#dlgDays').showModal(); }
+function openDays() { dayKind = 'hand'; renderDays(); $('#dfInput').value = dateFilter; $('#dlgDays').showModal(); }
 $('#btnDate').addEventListener('click', openDays);
 $('#daysClose').addEventListener('click', () => $('#dlgDays').close());
 $('#daysClear').addEventListener('click', () => { dateFilter = ''; tblPage = 0; $('#dlgDays').close(); renderList(); });
@@ -1417,7 +1415,6 @@ $('#daysList').addEventListener('click', e => {
   }
   setDateView(d, dayKind);
 });
-$('#daysTabs').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; dayKind = b.dataset.k; renderDays(); });
 function setDateView(d, k) { dateFilter = d || ''; dateKind = k || dayKind; folderSel.f = folderSel.s = ''; tblPage = 0; $('#dlgDays').close(); renderList(); window.scrollTo(0, 0); }
 $('#dfInput').addEventListener('change', e => { if (e.target.value) setDateView(e.target.value, dayKind); });
 $('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
@@ -2287,8 +2284,9 @@ function tmSrcOptions() {
     h += '<option value="f:' + esc(r) + '">📁 ' + esc(r) + ' (' + t[r].all.length + ')</option>';
     Object.keys(t[r].subs).forEach(k => { h += '<option value="s:' + esc(r) + '/' + esc(k) + '">  └ ' + esc(k) + ' (' + t[r].subs[k].length + ')</option>'; });
   });
-  [['h', 'hand', '✍️ 손쓰기 일자'], ['u', 'import', '📥 업로드 일자']].forEach(([pf, k, lb]) => {
-    const ds = daysSummary(k).slice(0, 60); if (tmIsDay() && tmSrc[0] === pf && !ds.some(x => pf + ':' + x.d === tmSrc)) ds.push({ d: tmSrc.slice(2), n: tmWords().length });
+  /* 등록일별 = 손글씨(손쓰기) 등록일만. 업로드 일자는 단어장 📅 일자 → 🍅로 정하고, 정해져 있을 때만 여기에 한 줄 나타난다 */
+  [['h', 'hand', '✍️ 손쓰기 등록일별'], ['u', 'import', '📥 업로드 일자 (선택됨)']].forEach(([pf, k, lb]) => {
+    const ds = pf === 'h' ? daysSummary(k).slice(0, 60) : []; if (tmIsDay() && tmSrc[0] === pf && !ds.some(x => pf + ':' + x.d === tmSrc)) ds.push({ d: tmSrc.slice(2), n: tmWords().length });
     if (ds.length) h += '<optgroup label="' + lb + '">' + ds.map(x => '<option value="' + pf + ':' + x.d + '">' + (pf === 'h' ? '✍️ ' : '📥 ') + x.d.slice(5).replace('-', '/') + ' (' + WDK[new Date(x.d + 'T12:00:00+09:00').getDay()] + ') · ' + x.n + '개</option>').join('') + '</optgroup>';
   });
   return h;
