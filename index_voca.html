@@ -398,7 +398,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   /* 쓰기: 왼쪽 큰 캔버스 / 오른쪽 결과 + 최근 단어 */
   #tab-write.active{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);gap:24px;align-items:start}
   .w-left{grid-column:1;grid-row:1}
-  .w-right{grid-column:2;grid-row:1;position:sticky;top:80px}
+  .w-right{grid-column:2;grid-row:1;position:sticky;top:80px;max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow-y:auto;overscroll-behavior:contain}
   .pad-wrap{height:clamp(340px,58vh,680px)}
   .pad-hint{font-size:22px}
   .result-word{font-size:40px}
@@ -855,7 +855,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.7.0', APP_DATE = '2026-10-15', SERVER_NEED = 13;
+const APP_VERSION = '5.7.1', APP_DATE = '2026-10-15', SERVER_NEED = 13;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -982,12 +982,13 @@ async function flushUnsaved(manual) {
         for (const it of items) { try { const j = await api('add', it); res.push({ lid: it.lid, ok: true, id: j.id }); } catch (x) { res.push({ lid: it.lid, ok: false, duplicate: !!(x.data && x.data.duplicate) }); } }
       } else throw e;
     }
-    const saved = [];
+    const saved = []; let curChanged = false;
     res.forEach(r => {
       const w = words.find(x => x.id === r.lid); if (!w) return;
-      if (r.ok) { idMap[r.lid] = r.id; w.id = r.id; if (curResult && curResult.id === r.lid) curResult.id = r.id; done++; saved.push(w); }
+      if (r.ok) { idMap[r.lid] = r.id; w.id = r.id; if (curResult && curResult.id === r.lid) { curResult.id = r.id; curChanged = true; } done++; saved.push(w); }
       else if (r.duplicate) { words = words.filter(x => x !== w); dup++; if (curResult && curResult.id === r.lid) { curResult = null; $('#resultCard').style.display = 'none'; } }
     });
+    if (curChanged) renderResult();     // 카드의 “곧 시트에 저장” → “저장됨”
     saved.forEach((w, i) => setTimeout(() => ensureExtra(w), 1500 + i * 1500));
     saveCache(); renderList(); updateCount(); updateSetupInfo();
     if (done || dup) toast('시트에 ' + done + '개 저장했어요' + (dup ? ' (이미 있는 ' + dup + '개는 건너뜀)' : ''), 2500);
@@ -1109,6 +1110,7 @@ async function refreshWords(silent) {
 $$('nav button').forEach(b => b.addEventListener('click', () => {
   $$('nav button').forEach(x => x.classList.toggle('active', x === b));
   $$('main section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + b.dataset.tab));
+  if (b.dataset.tab === 'write') setTimeout(() => { fitPad(); resizePad(); }, 0);
   if (b.dataset.tab === 'list') renderList();
   if (b.dataset.tab === 'quiz') updateSetupInfo();
   if (b.dataset.tab === 'cal') { calInit(); renderCal(); }
@@ -1121,6 +1123,19 @@ const pad = $('#pad'), ctx = pad.getContext('2d');
 let strokes = [], cur = null, curId = null, penSeen = false, fingerOK = false;
 let W = 0, H = 0, dpr = 1;
 
+/* 넓은 화면(2단)에서는 쓰기 칸 + 버튼이 화면 안에 다 들어오게 높이를 맞춘다 → 페이지가 위아래로 밀리지 않는다 */
+function fitPad() {
+  const wrap = document.getElementById('padWrap'), tab = document.getElementById('tab-write'); if (!wrap || !tab) return;
+  if (!tab.classList.contains('active')) return;
+  if (getComputedStyle(tab).display !== 'grid') { wrap.style.height = ''; return; }
+  wrap.style.height = '';
+  const top = wrap.getBoundingClientRect().top + window.scrollY;
+  const rowEl = document.getElementById('btnRecog').parentElement, rb = rowEl.getBoundingClientRect(), bh = rb.height + 20;
+  const h = Math.max(240, Math.min(680, Math.round(window.innerHeight - top - bh - 48)));
+  wrap.style.height = h + 'px';
+}
+let fitTimer = null;
+window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { fitPad(); resizePad(); }, 150); });
 function resizePad() {
   const r = pad.getBoundingClientRect();
   dpr = window.devicePixelRatio || 1; W = r.width; H = r.height;
@@ -1196,6 +1211,12 @@ function exportPng() {
 }
 
 let curResult = null;
+/* 결과 카드가 화면 밖일 때만 스크롤한다 (보이면 그대로 둔다) */
+function revealResult() {
+  const el = document.getElementById('resultCard'); if (!el || el.style.display === 'none') return;
+  const r = el.getBoundingClientRect();
+  if (r.top < 0 || r.top > window.innerHeight * 0.6) window.scrollTo({ top: Math.max(0, window.scrollY + r.top - 80), behavior: 'smooth' });
+}
 
 function renderResult(badge) {
   const r = curResult; if (!r) return;
@@ -1249,12 +1270,12 @@ $('#btnRecog').addEventListener('click', async () => {
     if (!word) { toast('글자를 읽지 못했어요. 더 크고 또박또박 써 보세요.', 3000); return; }
     curResult = { id: null, saved: false, word: word, pos: r.pos || '', meaning: r.meaning || '', example: r.example || '', example_ko: r.example_ko || '', tip: r.tip || '', level: clampLv(r.level), lowConf: typeof r.confidence === 'number' && r.confidence < 0.7 };
     strokes = []; redraw();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (curResult.lowConf) renderResult('철자를 확인해 주세요');
     else if (j.saved && j.saved.ok) { applySaved(j.saved.id); }     // (옛 서버가 바로 저장해 준 경우)
     else if (words.some(x => x.word === word)) { await handleDup(); }
     else { await saveCurrent(); }
     if (curResult && curResult.word) humanAudio(curResult.word);
+    setTimeout(revealResult, 80);
   } catch (e) { toast(e.message, 3500); }
   finally { btn.disabled = false; btn.textContent = '인식하기'; }
 });
@@ -2470,7 +2491,7 @@ const wideMQ = window.matchMedia('(min-width:768px)');
 function syncWide() { const d = $('#quizSetup details'); if (d) d.open = wideMQ.matches; }
 if (wideMQ.addEventListener) wideMQ.addEventListener('change', syncWide);
 syncWide();
-resizePad();
+fitPad(); resizePad();
 renderList(); updateCount(); updateSetupInfo();
 if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) refreshWords(true);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw_voca.js').catch(() => {});
