@@ -468,12 +468,29 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 .de .dm{flex:1;min-width:0;word-break:break-word}
 .de .ds{color:var(--sub);font-size:12px}
 
+
+.stabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:0 0 4px}
+.stabs .chip{padding:9px 2px;font-size:14px;text-align:center;white-space:nowrap;min-width:0}
+.spane{display:none}.spane.on{display:block}
+.spane>.lbl:first-child{margin-top:8px}
+
+#dlgSettings[open]{display:flex;flex-direction:column;height:min(88dvh,620px);max-height:88vh;overflow:hidden}
+#dlgSettings .stabs{flex:0 0 auto}
+#dlgSettings .sbody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:2px}
+
+.inst{border:1px solid var(--line);border-radius:12px;padding:0 12px;margin:6px 0}
+.inst summary{cursor:pointer;padding:10px 0;font-weight:600;font-size:14px}
+.inst div{font-size:13px;line-height:1.6;padding-bottom:10px;color:var(--ink)}
+.inst ol{margin:4px 0 8px;padding-left:20px}
+
+#dlgSettings[open]{height:calc(min(88dvh,620px) / var(--z,1));max-height:calc(88vh / var(--z,1))}
+#dlgSettings .setgrid{grid-template-columns:1fr!important;gap:0}
 </style>
 </head>
 <body>
 
 <header>
-  <div><h1 style="display:inline">✍️ 손글씨 단어노트</h1><span class="count" id="cnt"></span><span class="count" id="verTag" style="margin-left:6px;opacity:.7"></span></div>
+  <div><h1 style="display:inline">✍️ 손글씨 단어노트</h1><span class="count" id="cnt"></span><span class="count" id="netDot" style="margin-left:6px;display:none;color:#ffd9a0"></span><span class="count" id="verTag" style="margin-left:6px;opacity:.7"></span></div>
   <button class="icon-btn" id="btnSettings" aria-label="설정">⚙️</button>
 </header>
 
@@ -726,11 +743,25 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 </dialog>
 
 <dialog id="dlgSettings">
-  <h3 style="margin:0 0 6px">설정</h3>
+  <h3 style="margin:0 0 8px">설정</h3>
+  <div class="stabs" id="sTabs"><button class="chip on" data-p="conn" type="button">🔗 연결</button><button class="chip" data-p="sound" type="button">🔊 소리</button><button class="chip" data-p="study" type="button">📚 학습</button><button class="chip" data-p="manage" type="button">🧰 관리</button></div>
+  <div class="sbody">
+  <div class="spane on" data-p="conn">
+
+  <div id="sVer" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  <label class="lbl">저장 · 연결</label>
+  <div class="row" id="sMode"><button class="chip" data-v="auto" type="button">자동</button><button class="chip" data-v="online" type="button">항상 온라인</button><button class="chip" data-v="offline" type="button">항상 오프라인</button></div>
+  <div id="sNetSt" style="font-size:13px;margin-top:6px"></div>
+  <div style="font-size:12px;color:var(--sub);margin-top:4px;line-height:1.5">자동: 인터넷이 되면 온라인, 끊기면 오프라인. 오프라인 기록은 연결되면 자동으로 시트에 반영돼요.</div>
+  <div class="row" style="margin-top:8px"><button class="btn grow" id="sSync" type="button">🔄 지금 동기화</button></div>
+  <details id="sAdv" style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--sub);padding:6px 0">⚙️ 고급 · 서버 주소 (보통은 건드리지 않아도 돼요)</summary>
   <label class="lbl">Apps Script 웹 앱 URL</label>
   <input type="text" id="sGas" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="none" autocomplete="off" spellcheck="false">
   <div id="sTest" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
-  <div id="sVer" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="sTestBtn" type="button">연결 테스트</button></div>
+  </details>
+  </div>
+  <div class="spane" data-p="sound">
   <label class="lbl">발음 소리</label>
   <div class="row" id="sSrc">
     <button class="chip" data-v="human">사람 녹음 우선</button>
@@ -741,6 +772,11 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <label class="lbl">읽는 속도 <b id="sRateVal"></b></label>
   <input type="range" id="sRate" min="0.5" max="1.2" step="0.05" style="width:100%">
   <div class="row" style="margin-top:8px"><button class="btn" id="sVoiceTry">🔊 들어보기</button></div>
+  </div>
+  <div class="spane" data-p="study">
+  <label class="lbl">🔍 화면 크기 (크롬에서 너무 크게 보일 때)</label>
+  <div class="step" id="zStep"><button type="button" data-z="-5" aria-label="작게">−</button><div id="zVal" style="flex:1;text-align:center;font-weight:700;font-size:18px;align-self:center">100%</div><button type="button" data-z="5" aria-label="크게">＋</button><button type="button" data-z="0" style="width:auto;padding:0 12px;font-size:14px">기본</button></div>
+  <div style="font-size:12px;color:var(--sub);margin-top:4px;line-height:1.5">누르면 바로 바뀌어요 (70~150%). 이 기기에서만 적용돼요.<br>💡 <b>크롬에서 너무 크게 보이면</b>: 크롬 ⋮ → 설정 → 접근성에서 글자 크기를 100%로 두고, 앱 안에서는 90% 안팎으로 맞추는 것을 권해요.</div>
   <label class="lbl">하루에 새로 외울 단어 수 (복습은 따로 자동 계산돼요)</label>
   <div class="step" data-for="sNewPerDay"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sNewPerDay" min="0" max="50" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div>
   <label class="lbl">단어장 표 크기 (행 × 열 · 한 페이지에 행×열 개)</label>
@@ -750,10 +786,23 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <select id="sTmSrc"></select>
   <label class="lbl">🍅 토마토 · Day 하나에 들어갈 단어 수</label>
   <div class="step" data-for="sTmPer"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sTmPer" min="5" max="50" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div>
+  </div>
+  <div class="spane" data-p="manage">
+  <label class="lbl">백업 (기기에 파일로 저장)</label>
+  <div class="row"><button class="btn grow" id="sBkJson" type="button">💾 JSON 백업</button><button class="btn grow" id="sBkCsv" type="button">📊 엑셀용 CSV</button></div>
+  <div class="row" style="margin-top:8px"><button class="btn grow" id="sRestore" type="button">📂 백업 불러오기</button><input type="file" id="sRestoreFile" accept=".json,application/json" style="display:none"></div>
+  <div id="sBkSt" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  <label class="lbl">📲 홈 화면에 설치 (앱처럼 쓰기)</label>
+  <div id="sInstNote" style="font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:6px">설치하면 주소창 없이 전체 화면으로 열리고, 한 번 접속해 두면 인터넷이 없어도 열려요.</div>
+  <div class="row" id="sInstRow" style="display:none"><button class="btn primary grow" id="sInstall" type="button">📲 지금 설치</button></div>
+  <details class="inst"><summary>🤖 삼성 폰 · 갤럭시 탭</summary><div><b>삼성 인터넷</b><ol><li>앱 주소(dtrjeon.github.io/voca/index_voca.html)를 엽니다.</li><li>아래 <b>≡ 메뉴</b>를 누릅니다.</li><li><b>현재 페이지 추가</b> → <b>홈 화면</b>을 고릅니다.</li><li>이름을 확인하고 <b>추가</b>를 누릅니다.</li></ol><b>크롬</b><ol><li>오른쪽 위 <b>⋮</b>를 누릅니다.</li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 누릅니다.</li><li><b>설치 / 추가</b>를 누릅니다.</li></ol></div></details>
+  <details class="inst"><summary>🍎 아이폰 · 아이패드</summary><div><b>Safari로 열어야 해요</b> (다른 앱 안의 브라우저에서는 안 보일 수 있어요)<ol><li>앱 주소를 Safari에서 엽니다.</li><li>아이폰은 아래쪽, 아이패드는 위쪽의 <b>공유 버튼(□ 위쪽 화살표)</b>을 누릅니다.</li><li>목록을 올려 <b>홈 화면에 추가</b>를 누릅니다.</li><li>이름을 확인하고 <b>추가</b>를 누릅니다.</li></ol></div></details>
+  <div style="font-size:12px;color:var(--sub);line-height:1.5;margin-top:6px">설치한 뒤 홈 화면의 아이콘으로 열어야 앱처럼 보여요. 앱 파일을 새로 올린 뒤에는 한 번 완전히 닫았다가 다시 열면 새 버전이 적용돼요.</div>
   <label class="lbl">단어장 관리</label>
   <div class="row"><button class="btn grow" id="sDup" type="button">🔍 중복 단어 찾기</button></div>
-  <div class="row" style="margin-top:14px">
-    <button class="btn" id="sTestBtn">연결 테스트</button>
+  </div>
+  </div>
+  <div class="row" style="margin-top:10px;flex:0 0 auto">
     <button class="btn" id="sCancel">닫기</button>
     <button class="btn primary grow" id="sSave">저장</button>
   </div>
@@ -789,7 +838,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.0', APP_DATE = '2026-10-15', SERVER_NEED = 8;
+const APP_VERSION = '5.4.1', APP_DATE = '2026-10-15', SERVER_NEED = 8;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -814,14 +863,80 @@ function toast(msg, ms = 2200) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
 }
 
-async function api(action, data) {
+/* ====== 온라인 / 오프라인 ====== */
+const OFFQ = new Set(['record', 'update', 'delete']);      // 오프라인이면 대기열에 쌓았다가 연결되면 시트로 보낸다
+let netDown = false, outbox = [];
+try { outbox = JSON.parse(lsGet('vn_outbox', '[]')) || []; } catch (e) { outbox = []; }
+const netMode = () => lsGet('vn_mode', 'auto');
+function isOnline() { const m = netMode(); return m === 'online' ? true : m === 'offline' ? false : (navigator.onLine !== false && !netDown); }
+function saveOutbox() { lsSet('vn_outbox', JSON.stringify(outbox)); updateNetUI(); }
+function updateNetUI() {
+  const el = document.getElementById('netDot'); if (!el) return;
+  const on = isOnline(), n = outbox.length;
+  el.style.display = (!on || n) ? '' : 'none';
+  el.textContent = !on ? ('🟠 오프라인' + (n ? ' · 대기 ' + n : '')) : ('🔄 대기 ' + n);
+  const st = document.getElementById('sNetSt');
+  if (st) st.innerHTML = (on ? '🟢 온라인' : '🟠 오프라인') + ' · 시트에 보낼 기록 <b>' + n + '</b>건';
+}
+async function rawApi(action, data) {
   const url = gasUrl();
-  if (!url || url.indexOf('PASTE_GAS_URL') >= 0) { $('#dlgSettings').showModal(); throw new Error('설정에서 Apps Script URL을 먼저 입력해 주세요.'); }
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {})) });
   const j = await res.json();
   if (!j.ok) { const err = new Error(j.error || '요청 실패'); err.data = j; throw err; }
   return j;
 }
+function queueOp(action, data) {
+  outbox.push({ action: action, data: JSON.parse(JSON.stringify(data || {})), t: Date.now() });
+  saveOutbox();
+  return { ok: true, queued: true, updates: [] };
+}
+async function api(action, data) {
+  const url = gasUrl();
+  if (!url || url.indexOf('PASTE_GAS_URL') >= 0) { $('#dlgSettings').showModal(); throw new Error('설정에서 Apps Script URL을 먼저 입력해 주세요.'); }
+  if (!isOnline()) {
+    if (OFFQ.has(action)) return queueOp(action, data);
+    throw new Error('오프라인 상태예요. 이 기능은 온라인에서 사용해 주세요.');
+  }
+  if (outbox.length && action !== 'list') await flushOutbox();
+  try {
+    const j = await rawApi(action, data);
+    if (netDown) { netDown = false; updateNetUI(); }
+    return j;
+  } catch (e) {
+    if (e.data) throw e;                                  // 서버가 답한 오류는 그대로
+    if (netMode() === 'auto') { netDown = true; updateNetUI(); if (OFFQ.has(action)) return queueOp(action, data); }
+    throw e;
+  }
+}
+let flushing = false;
+async function flushOutbox() {
+  if (flushing || !outbox.length || !isOnline()) return 0;
+  flushing = true; let done = 0;
+  try {
+    while (outbox.length) {
+      const op = outbox[0];
+      try { await rawApi(op.action, op.data); } catch (e) { if (!e.data) throw e; }   // 서버가 거절한 건 버린다(이미 지워진 단어 등)
+      outbox.shift(); done++; saveOutbox();
+    }
+  } catch (e) { if (netMode() === 'auto') netDown = true; updateNetUI(); }
+  finally { flushing = false; }
+  if (done) { toast('오프라인 기록 ' + done + '건을 시트에 반영했어요'); }
+  return done;
+}
+async function probeNet() {
+  if (netMode() !== 'auto' || !(netDown || outbox.length) || navigator.onLine === false) return;
+  try {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 6000);
+    const r = await fetch(gasUrl(), { cache: 'no-store', signal: c.signal }); clearTimeout(t);
+    if (!r.ok) throw 0;
+    netDown = false; updateNetUI();
+    if (outbox.length) { const n = await flushOutbox(); if (n) refreshWords(true); } else refreshWords(true);
+  } catch (e) {}
+}
+window.addEventListener('online', () => { netDown = false; updateNetUI(); flushOutbox().then(n => { if (n) refreshWords(true); }); });
+window.addEventListener('offline', updateNetUI);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) probeNet(); });
+setInterval(probeNet, 30000);
 
 /* ====== 복습 일정(간격 반복) ====== */
 // 정답 → 단계 +1(최대 5) / 오답 → 단계 0. 단계별로 다음 복습까지 며칠 뒤인지:
@@ -878,6 +993,8 @@ function saveCache() { lsSet('vn_words', JSON.stringify(words)); }
 function updateCount() { $('#cnt').textContent = words.length ? words.length + '단어' : ''; }
 
 async function refreshWords(silent) {
+  if (!isOnline()) { if (!silent) toast('오프라인이에요 — 기기에 저장된 단어를 보여 드려요'); updateNetUI(); return; }
+  if (outbox.length) { await flushOutbox(); if (outbox.length) { updateNetUI(); return; } }   // 대기 중인 기록을 먼저 올려야 덮어쓰지 않는다
   try {
     const j = await api('list');
     words = (j.words || []).map(w => { let ex = null; try { ex = w.extra ? JSON.parse(w.extra) : null; } catch (e) {} w.extra = ex; return w; }); saveCache(); if ($('#tab-tomato') && $('#tab-tomato').classList.contains('active')) tmRender();
@@ -1566,6 +1683,7 @@ $('#btnQuit').addEventListener('click', () => { if (confirm('퀴즈를 그만할
 $('#btnSettings').addEventListener('click', () => {
   $('#sGas').value = lsGet('vn_gas', '') || (DEFAULT_GAS_URL.indexOf('PASTE') >= 0 ? '' : DEFAULT_GAS_URL);
   $('#sTmSrc').innerHTML = tmSrcOptions(); $('#sTmSrc').value = tmSrc; $('#sTmPer').value = tmPer(); $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
+  syncMode(); updateNetUI(); $('#sBkSt').textContent = ''; $('#sTabs [data-p="conn"]').click(); $('#sAdv').open = !$('#sGas').value;
   fillVoices(); syncSrc(lsGet('vn_src', 'human'));
   $('#sRate').value = lsGet('vn_rate', '0.85'); $('#sRateVal').textContent = $('#sRate').value + '배';
   $('#dlgSettings').showModal();
@@ -2462,6 +2580,76 @@ $('#gnOut').addEventListener('click', async e => {
   }
 });
 
+
+/* --- 온라인/오프라인 설정 · 백업 --- */
+function syncMode() { const m = netMode(); $$('#sMode .chip').forEach(c => c.classList.toggle('on', c.dataset.v === m)); }
+$('#sMode').addEventListener('click', e => {
+  const c = e.target.closest('[data-v]'); if (!c) return;
+  lsSet('vn_mode', c.dataset.v); netDown = false; syncMode(); updateNetUI();
+  if (c.dataset.v !== 'offline') flushOutbox().then(n => { if (n) refreshWords(true); });
+});
+$('#sSync').addEventListener('click', async () => {
+  if (netMode() === 'offline') { toast('“항상 오프라인”이에요. 자동 또는 온라인으로 바꿔 주세요', 3000); return; }
+  netDown = false; const b = $('#sSync'); b.disabled = true; b.textContent = '동기화 중…';
+  try { await flushOutbox(); await refreshWords(); } finally { b.disabled = false; b.textContent = '🔄 지금 동기화'; updateNetUI(); }
+});
+function dlFile(name, mime, data) {
+  const u = URL.createObjectURL(new Blob([data], { type: mime })), a = document.createElement('a');
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
+}
+const bkStamp = () => todayStr().replace(/-/g, '');
+$('#sBkJson').addEventListener('click', () => {
+  const data = { app: 'voca-note', version: APP_VERSION, exported: new Date().toISOString(), words: words.map(w => Object.assign({}, w)) };
+  dlFile('단어장_백업_' + bkStamp() + '.json', 'application/json', JSON.stringify(data));
+  $('#sBkSt').textContent = '✅ ' + words.length + '개를 JSON 파일로 저장했어요 (내 파일 > 다운로드)';
+});
+$('#sBkCsv').addEventListener('click', () => {
+  const q = v => { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const head = ['단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '단계', '다음복습', '어근팁', '난이도', '연어', '연어뜻', '폴더'];
+  const rows = words.map(w => { const c = collOf(w) || { c: '', k: '' }; return [w.word, w.pos, w.meaning, w.example, w.example_ko, addedYmd(w), w.right || 0, w.wrong || 0, w.box || 0, w.due || '', w.tip, w.level || '', c.c, c.k, w.folder || ''].map(q).join(','); });
+  dlFile('단어장_' + bkStamp() + '.csv', 'text/csv;charset=utf-8', '﻿' + [head.map(q).join(',')].concat(rows).join('\r\n'));
+  $('#sBkSt').textContent = '✅ ' + words.length + '개를 CSV(엑셀에서 열림)로 저장했어요';
+});
+$('#sRestore').addEventListener('click', () => $('#sRestoreFile').click());
+$('#sRestoreFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const st = $('#sBkSt');
+  try {
+    const d = JSON.parse(await f.text()), list = Array.isArray(d) ? d : d.words;
+    if (!Array.isArray(list) || !list.length) throw new Error('백업 파일 형식이 아니에요');
+    const have = new Set(words.map(w => String(w.word).toLowerCase()));
+    const miss = list.filter(w => w && w.word && !have.has(String(w.word).toLowerCase()));
+    if (!miss.length) { st.textContent = '✅ 백업의 ' + list.length + '개가 모두 이미 단어장에 있어요. 복원할 것이 없어요.'; return; }
+    if (!isOnline()) throw new Error('복원은 온라인에서 해 주세요 (시트에 다시 넣어요)');
+    if (!confirm('백업 ' + list.length + '개 중 시트에 없는 ' + miss.length + '개를 학습 기록까지 포함해 복원할까요?')) return;
+    let added = 0;
+    for (let i = 0; i < miss.length; i += 100) {
+      st.innerHTML = '<span class="spinner"></span> 복원 중… ' + added + '/' + miss.length;
+      const j = await api('restore', { items: miss.slice(i, i + 100) }); added += j.added || 0;
+    }
+    await refreshWords(true);
+    st.textContent = '✅ ' + added + '개를 복원했어요';
+  } catch (err) { st.textContent = '❌ ' + err.message + (/unknown action/.test(err.message) ? ' — Code.gs 를 새 버전(v9)으로 다시 배포해 주세요' : ''); }
+});
+updateNetUI(); setTimeout(() => { if (outbox.length) flushOutbox().then(n => { if (n) refreshWords(true); }); }, 1500);
+
+$('#sTabs').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; $$('#sTabs .chip').forEach(c => c.classList.toggle('on', c === b)); $$('#dlgSettings .spane').forEach(p => p.classList.toggle('on', p.dataset.p === b.dataset.p)); });
+
+/* --- 설치 버튼 (지원하는 브라우저에서만) --- */
+let instEv = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; const r = $('#sInstRow'); if (r) r.style.display = ''; });
+window.addEventListener('appinstalled', () => { instEv = null; const r = $('#sInstRow'); if (r) r.style.display = 'none'; toast('설치했어요'); });
+$('#sInstall').addEventListener('click', async () => { if (!instEv) return; instEv.prompt(); try { await instEv.userChoice; } catch (e) {} instEv = null; $('#sInstRow').style.display = 'none'; });
+if (window.matchMedia && matchMedia('(display-mode: standalone)').matches || navigator.standalone) { const n = $('#sInstNote'); if (n) n.textContent = '✅ 이미 홈 화면 앱으로 실행 중이에요.'; }
+
+/* --- 화면 크기 (페이지 확대/축소) --- */
+const zoomPct = () => { const v = parseInt(lsGet('vn_zoom', '100'), 10); return isNaN(v) ? 100 : Math.max(70, Math.min(150, v)); };
+function applyZoom() { const z = zoomPct() / 100, r = document.documentElement; r.style.zoom = z === 1 ? '' : String(z); r.style.setProperty('--z', String(z)); const el = document.getElementById('zVal'); if (el) el.textContent = zoomPct() + '%'; }
+$('#zStep').addEventListener('click', e => {
+  const b = e.target.closest('[data-z]'); if (!b) return;
+  const d = parseInt(b.dataset.z, 10); lsSet('vn_zoom', String(d === 0 ? 100 : Math.max(70, Math.min(150, zoomPct() + d)))); applyZoom();
+});
+applyZoom();
 </script>
 </body>
 </html>
