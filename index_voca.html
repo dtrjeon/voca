@@ -828,7 +828,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '4.9', APP_DATE = '2026-10-15', SERVER_NEED = 8;
+const APP_VERSION = '4.9.1', APP_DATE = '2026-10-15', SERVER_NEED = 8;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2325,15 +2325,16 @@ $('#gnType').addEventListener('click', e => { const b = e.target.closest('[data-
 $('#gnFrom').addEventListener('input', gnCollInfo); $('#gnTo').addEventListener('input', gnCollInfo);
 $('#gnCollGo').addEventListener('click', async () => {
   const miss = gnCollInfo(); if (!miss.length) return;
-  const go = $('#gnCollGo'); go.disabled = true; let done = 0;
+  const go = $('#gnCollGo'); go.disabled = true; let done = 0, fails = 0, lastErr = '';
   try {
-    for (let i = 0; i < miss.length; i += 20) {
+    for (let i = 0; i < miss.length; i += 15) {
       $('#gnCollSt').innerHTML = '<span class="spinner"></span> 만드는 중… ' + done + '/' + miss.length;
-      const j = await api('colloc', { items: miss.slice(i, i + 20).map(w => ({ id: w.id, word: w.word, meaning: w.meaning })) });
+      let j; try { j = await api('colloc', { items: miss.slice(i, i + 15).map(w => ({ id: w.id, word: w.word, meaning: w.meaning })) }); }
+      catch (e) { if (/unknown action/.test(e.message)) throw e; fails++; lastErr = e.message; continue; }
       (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w) { w.extra = Object.assign({}, w.extra || {}, { colloc: o.colloc, colloc_ko: o.colloc_ko }); done++; } });
       saveCache();
     }
-    $('#gnCollSt').textContent = '✅ ' + done + '개 만들었어요';
+    $('#gnCollSt').textContent = (done ? '✅ ' + done + '개 만들었어요' : '') + (fails ? ' ⚠️ 일부 묶음 실패(' + lastErr.slice(0, 80) + ') — 다시 누르면 비어 있는 것만 이어서 만들어요' : '');
   } catch (e) { $('#gnCollSt').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v8)으로 다시 배포해 주세요' : ''); }
   gnCollInfo();
 });
