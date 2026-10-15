@@ -40,15 +40,23 @@ button{font:inherit;cursor:pointer}
 #dlgGn[open]{display:flex;flex-direction:column;max-height:94vh;max-height:94dvh;padding-bottom:14px}
 .gnfoot{flex:none;padding-top:10px;border-top:1px solid var(--line);margin-top:8px}
 .gnmain{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:2px}
-.gnopts{flex:1 1 320px;min-width:0}
+.gnopts{flex:1 1 280px;min-width:0;max-width:100%}
 .gnprev{flex:0 0 230px;margin:10px auto 0;cursor:zoom-in;text-align:center}
 .gnprev canvas{width:100%;display:block;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);background:#fff}
 .gnprev.big{flex:1 1 100%;cursor:zoom-out}
 .gnprevcap{font-size:11px;color:var(--sub);margin-top:4px}
 #dlgGn{width:min(94vw,800px)}
-.gnrow{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.gnrow{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;gap:10px;margin-top:10px}
+.gnrange{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;text-align:center}
+#gnType,#gnMode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#gnFs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#dlgGn .row .chip{width:100%;text-align:center;white-space:nowrap;padding-left:4px;padding-right:4px}
+#dlgGn .gnsw{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px}
+#dlgGn .gnsw>span:first-child{text-align:left}
+#dlgGn .gnsw>span:last-child{text-align:right}
+.gnbody{overflow-x:hidden}
 .gnlb{flex:0 0 70px;font-size:13px;color:var(--sub)}
-.gnnum{width:96px!important;padding:8px 10px!important}
+.gnnum{width:100%!important;min-width:0;padding:8px 10px!important;box-sizing:border-box}
 .gncap{font-size:12px;color:var(--sub);margin-top:8px}
 .gncoll{margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;font-size:13px}
 .gncoll-r{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -859,7 +867,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
     <h3 style="margin:0 0 4px">📄 굿노트용 PDF</h3>
     <div style="font-size:13px;color:var(--sub)" id="gnInfo"></div>
     <div class="gnmain"><div class="gnopts">
-    <div class="gnrow"><span class="gnlb">Day 범위</span><input type="number" id="gnFrom" min="1" inputmode="numeric" aria-label="시작 Day" class="gnnum"><span>~</span><input type="number" id="gnTo" min="1" inputmode="numeric" aria-label="끝 Day" class="gnnum"></div>
+    <div class="gnrow"><span class="gnlb">Day 범위</span><div class="gnrange"><input type="number" id="gnFrom" min="1" inputmode="numeric" aria-label="시작 Day" class="gnnum"><span>~</span><input type="number" id="gnTo" min="1" inputmode="numeric" aria-label="끝 Day" class="gnnum"></div></div>
     <div class="gnrow"><span class="gnlb">종류</span><div class="gnsw" id="gnLang" role="switch" aria-checked="false" tabindex="0"><span id="gnLangKo"><b>영한</b></span><span class="sw"></span><span id="gnLangEn">영영</span></div></div>
     <div class="gnrow"><span class="gnlb">형태</span><div class="row" id="gnType"><button class="chip on" data-v="study" type="button">학습형</button><button class="chip" data-v="exam" type="button">시험형</button></div></div>
     <div class="gnrow"><span class="gnlb">칸 내용</span><div class="row" id="gnMode"><button class="chip on" data-v="blank" type="button">쓰기용</button><button class="chip" data-v="full" type="button">정답 포함</button></div></div>
@@ -882,7 +890,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.0.2', APP_DATE = '2026-10-15', SERVER_NEED = 14;
+const APP_VERSION = '1.0.3', APP_DATE = '2026-10-15', SERVER_NEED = 14;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
