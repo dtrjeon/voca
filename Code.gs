@@ -66,7 +66,9 @@ function doPost(e) {
     const req = JSON.parse(e.postData.contents);
     switch (req.action) {
       case 'recognize': {
+        const t0 = Date.now();
         const r = recognize_(req);
+        const t1 = Date.now();
         // autosave: 인식 결과가 확실하면 같은 요청 안에서 바로 저장 (왕복 1회 절약)
         if (r.ok && req.autosave) {
           const x = r.result || {};
@@ -74,8 +76,11 @@ function doPost(e) {
           const conf = typeof x.confidence === 'number' ? x.confidence : 1;
           if (w && conf >= 0.7) r.saved = addWord_({ word: w, pos: x.pos, meaning: x.meaning, example: x.example, example_ko: x.example_ko, tip: x.tip, level: x.level, date: req.date });
         }
+        r.t = { ai: t1 - t0, save: Date.now() - t1 };   // 걸린 시간(ms): AI 인식 / 시트 저장
         return json_(r);
       }
+      case 'enrich':    return json_(enrich_(req));
+      case 'addmany':   return json_(addMany_(req));
       case 'add':       return json_(addWord_(req));
       case 'list':      return json_(listWords_());
       case 'delete':    return json_(deleteWord_(req));
@@ -94,7 +99,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 10 });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 13 });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -104,19 +109,28 @@ function recognize_(req) {
   if (!key) return { ok: false, error: 'ANTHROPIC_API_KEY 가 스크립트 속성에 없습니다.' };
   const model = props.getProperty('MODEL') || 'claude-haiku-5-5';
 
-  const prompt =
+  // 빠른 인식(quick): 철자·품사·뜻·난이도만 먼저 돌려준다. 예문·팁은 enrich 가 따로 채운다.
+  const quick = !!req.quick;
+  const prompt = quick ?
     '이미지는 영어 단어 하나를 손으로 쓴 것입니다. 글자를 정확히 읽어서 JSON 으로만 답하세요.\n' +
-    '{"word":"읽은 영단어(소문자, 표제어 원형)","pos":"품사(명/동/형/부 등 한글)",' +
-    '"meaning":"한국어 뜻(핵심 1~3개, 쉼표 구분)","example":"해당 단어를 쓴 자연스러운 영어 예문 1개(고등학생 수준)",' +
-    '"example_ko":"예문의 한국어 번역",' +
-    '"tip":"외우기 팁 한 줄(한국어). 어근·접두사·접미사 구성, 같은 어근의 단어 1~2개, 또는 연상 암기법. 마땅한 게 없으면 빈 문자열",' +
+    '{"word":"쓴 글씨 그대로 읽은 영단어(소문자). 철자만 바로잡고, 원형으로 바꾸거나 -ing/-ed/복수형을 임의로 고치지 마세요",' +
+    '"confidence":0~1 숫자,"pos":"품사(명/동/형/부 등 한글)","meaning":"한국어 뜻(핵심 1~3개, 쉼표 구분)",' +
+    '"level":한국 고등학생(수능) 기준 난이도 정수 1~5 (1=중학 기초, 2=고1 기본, 3=고2·3 필수·수능 빈출, 4=수능 고난도, 5=상위권·대학 수준)}\n' +
+    '글자를 알아볼 수 없으면 word 를 빈 문자열로 두세요. JSON 외의 설명은 쓰지 마세요.' :
+    '이미지는 영어 단어 하나를 손으로 쓴 것입니다. 글자를 정확히 읽어서 JSON 으로만 답하세요. 아래 순서를 지키세요.\n' +
+    '{"word":"쓴 글씨 그대로 읽은 영단어(소문자). 철자만 바로잡고, 원형으로 바꾸거나 -ing/-ed/복수형을 임의로 고치지 마세요(예: booming 은 booming)",' +
+    '"confidence":0~1 숫자,' +
+    '"pos":"품사(명/동/형/부 등 한글)",' +
+    '"meaning":"한국어 뜻(핵심 1~3개, 쉼표 구분)",' +
     '"level":한국 고등학생(수능) 기준 난이도 정수 1~5 (1=중학 기초, 2=고1 기본, 3=고2·3 필수·수능 빈출, 4=수능 고난도, 5=상위권·대학 수준),' +
-    '"confidence":0~1 숫자}\n' +
+    '"example":"해당 단어를 쓴 자연스러운 영어 예문 1개(고등학생 수준, 짧게)",' +
+    '"example_ko":"예문의 한국어 번역",' +
+    '"tip":"외우기 팁 한 줄(한국어). 어근·접두사·접미사 구성, 같은 어근의 단어 1~2개, 또는 연상 암기법. 마땅한 게 없으면 빈 문자열"}\n' +
     '글자를 알아볼 수 없으면 word 를 빈 문자열로 두세요. JSON 외의 설명은 쓰지 마세요.';
 
   const payload = {
     model: model,
-    max_tokens: 400,
+    max_tokens: quick ? 250 : 900,
     messages: [{
       role: 'user',
       content: [
@@ -125,7 +139,58 @@ function recognize_(req) {
       ]
     }]
   };
-  return callClaude_(key, payload);
+  const r = callClaudeText_(key, payload);
+  if (!r.ok) return r;
+  const parsed = parseRecog_(r.text);
+  if (!parsed) return { ok: false, error: '응답 해석 실패: ' + String(r.text).slice(0, 200) };
+  return { ok: true, result: parsed };
+}
+
+// 인식 응답 해석: 정상 JSON 이면 그대로, 답이 중간에 잘렸으면 읽은 항목만 건져 쓴다
+function parseRecog_(text) {
+  text = String(text || '');
+  const m = text.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch (e) { /* 아래에서 건진다 */ } }
+  const s = text.indexOf('{'); if (s < 0) return null;
+  const body = text.slice(s);
+  const str = function (k) {
+    const r = body.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
+    return r ? r[1].replace(/\\"/g, '"').replace(/\\n/g, ' ') : '';
+  };
+  const num = function (k) {
+    const r = body.match(new RegExp('"' + k + '"\\s*:\\s*([0-9.]+)'));
+    return r ? Number(r[1]) : undefined;
+  };
+  const word = str('word'); if (!word) return null;
+  return { word: word, pos: str('pos'), meaning: str('meaning'), example: str('example'), example_ko: str('example_ko'), tip: str('tip'), level: num('level'), confidence: num('confidence') };
+}
+
+// 예문·번역·암기 팁만 글자(텍스트)로 채운다 — 이미지가 없어서 빠르다
+function enrich_(req) {
+  const props = PropertiesService.getScriptProperties();
+  const key = props.getProperty('ANTHROPIC_API_KEY');
+  if (!key) return { ok: false, error: 'ANTHROPIC_API_KEY 가 스크립트 속성에 없습니다.' };
+  const model = props.getProperty('MODEL') || 'claude-haiku-5-5';
+  const word = String(req.word || '').trim();
+  if (!word) return { ok: false, error: '단어가 비어 있습니다.' };
+  const prompt =
+    '영어 단어 "' + word + '"' + (req.meaning ? ' (뜻: ' + req.meaning + ')' : '') + ' 에 대해 JSON 으로만 답하세요.\n' +
+    '{"example":"해당 단어를 쓴 자연스러운 영어 예문 1개(고등학생 수준, 짧게)",' +
+    '"example_ko":"예문의 한국어 번역",' +
+    '"tip":"외우기 팁 한 줄(한국어). 어근·접두사·접미사 구성, 같은 어근의 단어 1~2개, 또는 연상 암기법. 마땅한 게 없으면 빈 문자열"}\n' +
+    'JSON 외의 설명은 쓰지 마세요.';
+  const t0 = Date.now();
+  const r = callClaudeText_(key, { model: model, max_tokens: 400, messages: [{ role: 'user', content: prompt }] });
+  if (!r.ok) return r;
+  const m = String(r.text).match(/\{[\s\S]*\}/);
+  let x = null;
+  if (m) { try { x = JSON.parse(m[0]); } catch (e) { x = null; } }
+  if (!x) {
+    const body = String(r.text);
+    const str = function (k) { const q = body.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"')); return q ? q[1].replace(/\\"/g, '"') : ''; };
+    x = { example: str('example'), example_ko: str('example_ko'), tip: str('tip') };
+  }
+  return { ok: true, example: String(x.example || ''), example_ko: String(x.example_ko || ''), tip: String(x.tip || ''), t: { ai: Date.now() - t0 } };
 }
 
 function callClaudeText_(key, payload) {
@@ -171,14 +236,47 @@ function addWord_(req) {
   const w = String(req.word || '').trim().toLowerCase();
   if (!w) return { ok: false, error: '단어가 비어 있습니다.' };
 
-  const rows = sh.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][1]).toLowerCase() === w) return { ok: false, error: '이미 저장된 단어입니다: ' + w, duplicate: true };
+  // 중복 검사는 '단어' 열(2번째)만 읽는다 (시트 전체를 읽는 것보다 훨씬 빠름)
+  const last = sh.getLastRow();
+  if (last > 1) {
+    const col = sh.getRange(2, 2, last - 1, 1).getValues();
+    for (let i = 0; i < col.length; i++) {
+      if (String(col[i][0]).toLowerCase() === w) return { ok: false, error: '이미 저장된 단어입니다: ' + w, duplicate: true };
+    }
   }
   const id = Utilities.getUuid().slice(0, 8);
   const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
   sh.appendRow([id, w, req.pos || '', req.meaning || '', req.example || '', req.example_ko || '', parseYmd_(req.date) || new Date(), 0, 0, '', 0, today, req.tip || '', Number(req.level) || '', '', req.folder || '', req.src === 'import' ? 'import' : 'hand']);
   return { ok: true, id: id };
+}
+
+// 여러 단어를 한 번에 저장한다 (시트를 한 번만 읽고 한 번만 쓴다)
+function addMany_(req) {
+  const items = (req.items || []).slice(0, 100);
+  if (!items.length) return { ok: true, results: [] };
+  const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  const results = [], rows = [];
+  try {
+    const have = {};
+    const last = sh.getLastRow();
+    if (last > 1) sh.getRange(2, 2, last - 1, 1).getValues().forEach(function (r) { have[String(r[0]).toLowerCase()] = true; });
+    const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    items.forEach(function (it) {
+      const w = String(it.word || '').trim().toLowerCase();
+      if (!w) { results.push({ lid: it.lid, ok: false, error: '단어가 비어 있습니다.' }); return; }
+      if (have[w]) { results.push({ lid: it.lid, ok: false, duplicate: true }); return; }
+      have[w] = true;
+      const id = Utilities.getUuid().slice(0, 8);
+      rows.push([id, w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', parseYmd_(it.date) || new Date(), 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', it.folder || '', it.src === 'import' ? 'import' : 'hand']);
+      results.push({ lid: it.lid, ok: true, id: id });
+    });
+    if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, results: results };
 }
 
 function listWords_() {

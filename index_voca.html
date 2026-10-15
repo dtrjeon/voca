@@ -855,7 +855,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '5.6.13', APP_DATE = '2026-10-15', SERVER_NEED = 12;
+const APP_VERSION = '5.7.0', APP_DATE = '2026-10-15', SERVER_NEED = 13;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -887,13 +887,17 @@ try { outbox = JSON.parse(lsGet('vn_outbox', '[]')) || []; } catch (e) { outbox 
 const netMode = () => lsGet('vn_mode', 'auto');
 function isOnline() { const m = netMode(); return m === 'online' ? true : m === 'offline' ? false : (navigator.onLine !== false && !netDown); }
 function saveOutbox() { lsSet('vn_outbox', JSON.stringify(outbox)); updateNetUI(); }
+/* 인식한 단어는 먼저 기기에 담고(id 가 L 로 시작), 시트에는 모아서 한 번에 저장한다 */
+const isLocalId = id => String(id || '').charAt(0) === 'L' && String(id).length > 5;
+function unsavedCount() { try { return words.filter(w => isLocalId(w.id)).length; } catch (e) { return 0; } }
 function updateNetUI() {
   const el = document.getElementById('netDot'); if (!el) return;
-  const on = isOnline(), n = outbox.length;
-  el.style.display = (!on || n) ? '' : 'none';
-  el.textContent = !on ? ('🟠 오프라인' + (n ? ' · 대기 ' + n : '')) : ('🔄 대기 ' + n);
+  const on = isOnline(), n = outbox.length, u = unsavedCount();
+  el.style.display = (!on || n || u) ? '' : 'none';
+  el.style.cursor = 'pointer';
+  el.textContent = !on ? ('🟠 오프라인' + ((n + u) ? ' · 대기 ' + (n + u) : '')) : (u ? ('☁️ 저장 대기 ' + u + (n ? ' +' + n : '')) : ('🔄 대기 ' + n));
   const st = document.getElementById('sNetSt');
-  if (st) st.innerHTML = (on ? '🟢 온라인' : '🟠 오프라인') + ' · 시트에 보낼 기록 <b>' + n + '</b>건';
+  if (st) st.innerHTML = (on ? '🟢 온라인' : '🟠 오프라인') + ' · 시트에 보낼 기록 <b>' + n + '</b>건 · 모아서 저장 대기 <b>' + u + '</b>개';
 }
 /* Apps Script 는 한동안 안 쓰면 잠들어서 첫 요청이 느리다 → 글씨를 쓰기 시작할 때 미리 가볍게 한 번 깨워 둔다 */
 let gasTs = 0;
@@ -919,6 +923,11 @@ function queueOp(action, data) {
 async function api(action, data) {
   const url = gasUrl();
   if (!url || url.indexOf('PASTE_GAS_URL') >= 0) { $('#dlgSettings').showModal(); throw new Error('설정에서 Apps Script URL을 먼저 입력해 주세요.'); }
+  if ((action === 'update' || action === 'delete') && data && isLocalId(data.id)) return { ok: true, local: true, updates: [] };   // 아직 시트에 없는 단어는 기기에서만 고친다
+  if ((action === 'record' || action === 'rate') && data && data.items) {
+    if (unsavedCount() && isOnline()) await flushUnsaved(true);
+    data = Object.assign({}, data, { items: data.items.map(it => Object.assign({}, it, { id: idMap[it.id] || it.id })).filter(it => !isLocalId(it.id)) });
+  }
   if (!isOnline()) {
     if (OFFQ.has(action)) return queueOp(action, data);
     throw new Error('오프라인 상태예요. 이 기능은 온라인에서 사용해 주세요.');
@@ -949,6 +958,68 @@ async function flushOutbox() {
   if (done) { toast('오프라인 기록 ' + done + '건을 시트에 반영했어요'); }
   return done;
 }
+let flushingU = false, flushTimer = null;
+const idMap = {}, enrichSet = new Set();
+function scheduleFlush() {
+  clearTimeout(flushTimer);
+  const n = unsavedCount(); if (!n) return;
+  if (n >= 5) { flushUnsaved(false); return; }
+  flushTimer = setTimeout(() => flushUnsaved(false), 10000);
+}
+async function flushUnsaved(manual) {
+  if (flushingU) return 0;
+  const list = words.filter(w => isLocalId(w.id) && (manual || !enrichSet.has(w.id)));
+  if (!list.length) { if (manual && !unsavedCount()) toast('저장할 단어가 없어요'); return 0; }
+  if (!isOnline()) { if (manual) toast('오프라인이에요 — 연결되면 자동으로 저장해요'); return 0; }
+  flushingU = true; let done = 0, dup = 0;
+  try {
+    const items = list.map(w => ({ lid: w.id, word: w.word, pos: w.pos || '', meaning: w.meaning || '', example: w.example || '', example_ko: w.example_ko || '', tip: w.tip || '', level: w.level || 0, date: addedYmd(w), folder: w.folder || '', src: srcOf(w) }));
+    let res;
+    try { const j = await api('addmany', { items: items }); res = j.results || []; }
+    catch (e) {
+      if (e.data && /unknown action/.test(e.data.error || '')) {      // 서버가 아직 v13 이전이면 한 개씩 저장
+        res = [];
+        for (const it of items) { try { const j = await api('add', it); res.push({ lid: it.lid, ok: true, id: j.id }); } catch (x) { res.push({ lid: it.lid, ok: false, duplicate: !!(x.data && x.data.duplicate) }); } }
+      } else throw e;
+    }
+    const saved = [];
+    res.forEach(r => {
+      const w = words.find(x => x.id === r.lid); if (!w) return;
+      if (r.ok) { idMap[r.lid] = r.id; w.id = r.id; if (curResult && curResult.id === r.lid) curResult.id = r.id; done++; saved.push(w); }
+      else if (r.duplicate) { words = words.filter(x => x !== w); dup++; if (curResult && curResult.id === r.lid) { curResult = null; $('#resultCard').style.display = 'none'; } }
+    });
+    saved.forEach((w, i) => setTimeout(() => ensureExtra(w), 1500 + i * 1500));
+    saveCache(); renderList(); updateCount(); updateSetupInfo();
+    if (done || dup) toast('시트에 ' + done + '개 저장했어요' + (dup ? ' (이미 있는 ' + dup + '개는 건너뜀)' : ''), 2500);
+  } catch (e) {
+    if (!e.data && netMode() === 'auto') netDown = true;
+    if (manual) toast('저장 실패: ' + e.message, 3000);
+  } finally { flushingU = false; updateNetUI(); }
+  if (unsavedCount()) scheduleFlush();
+  return done;
+}
+/* 새 단어를 기기에 먼저 담는다 (시트 저장은 flushUnsaved 가 모아서) */
+function addLocal(r) {
+  const id = 'L' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  r.id = id; r.saved = true;
+  words.unshift({ id: id, word: r.word, pos: r.pos || '', meaning: r.meaning || '', example: r.example || '', example_ko: r.example_ko || '', tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: r.src || 'hand', folder: r.folder || '' });
+  saveCache(); renderList(); updateCount(); updateSetupInfo(); updateNetUI(); wDateAfterSave();
+  if (!r.example) enrichWord(words[0]);
+  scheduleFlush();
+  return words[0];
+}
+/* 예문·번역·팁은 뒤에서 따로 채운다 */
+async function enrichWord(w) {
+  const lid = w.id; enrichSet.add(lid);
+  try {
+    const j = await api('enrich', { word: w.word, meaning: w.meaning });
+    if (!w.example) w.example = j.example || ''; if (!w.example_ko) w.example_ko = j.example_ko || ''; if (!w.tip) w.tip = j.tip || '';
+    saveCache(); renderList();
+    if (curResult && (curResult.id === w.id)) { curResult.example = w.example; curResult.example_ko = w.example_ko; curResult.tip = w.tip; }
+    if (!isLocalId(w.id) && w.id) { try { await api('update', { id: w.id, word: w.word, pos: w.pos, meaning: w.meaning, example: w.example, example_ko: w.example_ko, tip: w.tip, level: w.level, folder: w.folder || '', src: srcOf(w) }); } catch (e) {} }   // 이미 저장된 뒤에 끝났으면 시트에도 반영
+  } catch (e) { /* 예문 없이도 저장은 진행 */ }
+  finally { enrichSet.delete(lid); if (curResult && curResult.id === w.id) renderResult(); if (unsavedCount()) scheduleFlush(); }
+}
 async function probeNet() {
   if (netMode() !== 'auto' || !(netDown || outbox.length) || navigator.onLine === false) return;
   try {
@@ -959,10 +1030,14 @@ async function probeNet() {
     if (outbox.length) { const n = await flushOutbox(); if (n) refreshWords(true); } else refreshWords(true);
   } catch (e) {}
 }
-window.addEventListener('online', () => { netDown = false; updateNetUI(); flushOutbox().then(n => { if (n) refreshWords(true); }); });
+window.addEventListener('online', () => { netDown = false; updateNetUI(); flushOutbox().then(n => { if (n) refreshWords(true); }); if (unsavedCount()) flushUnsaved(false); });
 window.addEventListener('offline', updateNetUI);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) probeNet(); });
 setInterval(probeNet, 30000);
+setInterval(() => { if (unsavedCount() && !flushingU) flushUnsaved(false); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.hidden && unsavedCount()) flushUnsaved(true); });
+window.addEventListener('pagehide', () => { if (unsavedCount()) flushUnsaved(true); });
+document.getElementById('netDot').addEventListener('click', () => { if (unsavedCount()) flushUnsaved(true); else if (outbox.length) flushOutbox().then(n => { if (n) refreshWords(true); }); });
 
 /* ====== 복습 일정(간격 반복) ====== */
 // 정답 → 단계 +1(최대 5) / 오답 → 단계 0. 단계별로 다음 복습까지 며칠 뒤인지:
@@ -1021,9 +1096,11 @@ function updateCount() { $('#cnt').textContent = words.length ? words.length + '
 async function refreshWords(silent) {
   if (!isOnline()) { if (!silent) toast('오프라인이에요 — 기기에 저장된 단어를 보여 드려요'); updateNetUI(); return; }
   if (outbox.length) { await flushOutbox(); if (outbox.length) { updateNetUI(); return; } }   // 대기 중인 기록을 먼저 올려야 덮어쓰지 않는다
+  if (unsavedCount()) await flushUnsaved(true);
   try {
     const j = await api('list');
-    words = (j.words || []).map(w => { let ex = null; try { ex = w.extra ? JSON.parse(w.extra) : null; } catch (e) {} w.extra = ex; return w; }); saveCache(); if ($('#tab-tomato') && $('#tab-tomato').classList.contains('active')) tmRender();
+    const loc = words.filter(w => isLocalId(w.id));   // 저장이 안 끝난 단어는 그대로 둔다
+    words = loc.concat((j.words || []).map(w => { let ex = null; try { ex = w.extra ? JSON.parse(w.extra) : null; } catch (e) {} w.extra = ex; return w; })); saveCache(); if ($('#tab-tomato') && $('#tab-tomato').classList.contains('active')) tmRender();
     renderList(); updateCount(); updateSetupInfo(); setTimeout(() => prefetchAudio(), 800);
   } catch (e) { if (!silent) toast(e.message); }
 }
@@ -1131,7 +1208,7 @@ function renderResult(badge) {
   $('#rLvTxt').innerHTML = lvChip(r.level);
   const tp = $('#rTipTxt'); tp.textContent = r.tip ? '💡 ' + r.tip : ''; tp.style.display = r.tip ? 'block' : 'none';
   const b = $('#rBadge');
-  b.textContent = badge || (r.saved ? '✓ 단어장에 저장됨' : '아직 저장 안 됨');
+  b.textContent = badge || (r.saved ? (isLocalId(r.id) ? ('✓ 단어장에 담김 · 곧 시트에 저장' + (enrichSet.has(r.id) ? ' · 예문 준비 중…' : '')) : '✓ 단어장에 저장됨') : '아직 저장 안 됨');
   b.className = 'badge ' + (r.saved ? 'ok' : 'warn');
   $('#confWarn').style.display = (!r.saved && r.lowConf) ? 'block' : 'none';
   $('#btnResSave').style.display = r.saved ? 'none' : 'inline-block';
@@ -1154,21 +1231,9 @@ async function handleDup() {
 }
 async function saveCurrent() {
   const r = curResult; if (!r || r.saved) return;
-  try {
-    const j = await api('add', { word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip, level: r.level, date: regDate() });
-    r.id = j.id; r.saved = true;
-    words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: 'hand' });
-    saveCache(); renderList(); updateCount(); updateSetupInfo();
-    renderResult(); wDateAfterSave();
-  } catch (e) {
-    if (e.data && e.data.duplicate) {
-      let ex = words.find(x => x.word === r.word);
-      if (!ex) { await refreshWords(true); ex = words.find(x => x.word === r.word); }
-      if (ex) { curResult = Object.assign({ saved: true }, ex); renderResult('ℹ️ 이미 단어장에 있는 단어예요'); return; }
-    }
-    renderResult('⚠️ 저장 실패 — 저장 버튼을 눌러 주세요');
-    toast(e.message, 3000);
-  }
+  const ex = words.find(x => x.word === r.word);
+  if (ex) { curResult = Object.assign({ saved: true }, ex); renderResult('ℹ️ 이미 단어장에 있는 단어예요'); return; }
+  addLocal(r); renderResult();
 }
 
 $('#btnRecog').addEventListener('click', async () => {
@@ -1176,9 +1241,9 @@ $('#btnRecog').addEventListener('click', async () => {
   const btn = $('#btnRecog'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>인식 중…';
   try {
     const tStart = performance.now();
-    const j = await api('recognize', { image: exportPng(), autosave: true, date: regDate() });
+    const j = await api('recognize', { image: exportPng(), quick: true, autosave: false, date: regDate() });
     const tTotal = (performance.now() - tStart) / 1000;
-    if (j.t) toast('⏱ 총 ' + tTotal.toFixed(1) + '초 (AI ' + (j.t.ai / 1000).toFixed(1) + ' · 저장 ' + (j.t.save / 1000).toFixed(1) + ' · 통신 ' + Math.max(0, tTotal - (j.t.ai + j.t.save) / 1000).toFixed(1) + ')', 5000); else toast('⏱ 총 ' + tTotal.toFixed(1) + '초', 4000);
+    if (j.t) toast('⏱ 총 ' + tTotal.toFixed(1) + '초 (AI ' + (j.t.ai / 1000).toFixed(1) + ' · 통신 ' + Math.max(0, tTotal - j.t.ai / 1000).toFixed(1) + ')', 4000); else toast('⏱ 총 ' + tTotal.toFixed(1) + '초', 4000);
     const r = j.result || {};
     const word = String(r.word || '').trim().toLowerCase();
     if (!word) { toast('글자를 읽지 못했어요. 더 크고 또박또박 써 보세요.', 3000); return; }
@@ -1186,9 +1251,9 @@ $('#btnRecog').addEventListener('click', async () => {
     strokes = []; redraw();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (curResult.lowConf) renderResult('철자를 확인해 주세요');
-    else if (j.saved && j.saved.ok) { applySaved(j.saved.id); }
-    else if (j.saved && j.saved.duplicate) { await handleDup(); }
-    else { renderResult('저장 중…'); await saveCurrent(); }
+    else if (j.saved && j.saved.ok) { applySaved(j.saved.id); }     // (옛 서버가 바로 저장해 준 경우)
+    else if (words.some(x => x.word === word)) { await handleDup(); }
+    else { await saveCurrent(); }
     if (curResult && curResult.word) humanAudio(curResult.word);
   } catch (e) { toast(e.message, 3500); }
   finally { btn.disabled = false; btn.textContent = '인식하기'; }
@@ -1858,7 +1923,7 @@ function cvRefreshSecs(w) {
   $$('.cv-secs').forEach(el => { const d = cv.deck[parseInt(el.dataset.i, 10)]; if (d && d.id === w.id) el.innerHTML = cvSecs(w); });
 }
 async function ensureExtra(w) {
-  if (!w || (w.extra && w.extra.freq) || pending[w.id] || !w.id || String(w.id).startsWith('tmp')) return;
+  if (!w || (w.extra && w.extra.freq) || pending[w.id] || !w.id || isLocalId(w.id) || String(w.id).startsWith('tmp')) return;
   pending[w.id] = true; cvRefreshSecs(w);
   try { const j = await api('detail', { id: w.id, word: w.word, meaning: w.meaning }); w.extra = j.extra; saveCache(); }
   catch (e) { /* 서버가 아직 v5가 아니면 조용히 넘어간다 */ }
@@ -2721,7 +2786,7 @@ $('#sRestoreFile').addEventListener('change', async e => {
     st.textContent = '✅ ' + (miss.length ? '단어 ' + added + '개' : '') + (miss.length && sets.length ? ' · ' : '') + (sets.length ? '토마토 설정' : '') + (sets.length ? '을' : '를') + ' 복원했어요';
   } catch (err) { st.textContent = '❌ ' + err.message + (/unknown action/.test(err.message) ? ' — Code.gs 를 새 버전(v9)으로 다시 배포해 주세요' : ''); }
 });
-updateNetUI(); setTimeout(() => { if (outbox.length) flushOutbox().then(n => { if (n) refreshWords(true); }); }, 1500);
+updateNetUI(); setTimeout(() => { if (outbox.length) flushOutbox().then(n => { if (n) refreshWords(true); }); if (unsavedCount()) flushUnsaved(false); }, 1500);
 
 $('#sTabs').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; $$('#sTabs .chip').forEach(c => c.classList.toggle('on', c === b)); $$('#dlgSettings .spane').forEach(p => p.classList.toggle('on', p.dataset.p === b.dataset.p)); });
 
