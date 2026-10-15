@@ -1,6 +1,6 @@
 {
-  "name": "손글씨 단어노트",
-  "short_name": "단어노트",
+  "name": "handvoca",
+  "short_name": "handvoca",
   "description": "S펜으로 쓴 영어 단어를 자동 저장하고 암기 점검까지",
   "start_url": "./index_voca.html",
   "scope": "./",

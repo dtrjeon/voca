@@ -1,4 +1,4 @@
-const CACHE = 'voca-shell-v1';
+const CACHE = 'voca-shell-v4';
 const SHELL = ['./index_voca.html', './manifest_voca.json', './icon_voca.svg'];
 
 self.addEventListener('install', e => {
@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(req).then(res => {
+    Promise.race([fetch(req), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))]).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
       return res;

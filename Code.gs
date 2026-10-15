@@ -1,5 +1,5 @@
 /**
- * 손글씨 단어노트 - Google Apps Script 백엔드 (v7: 등록일(일자별 등록) · 폴더/서브폴더 + 단어 가져오기 · 간격 반복 복습 + 어근 팁 + 난이도 + 인식·저장 한 번에 + 상세 정보(사용빈도·예문·변형·파생어))
+ * handvoca - Google Apps Script 백엔드 (v9: 백업 복원 · v8: 연어(Collocation) 자동 생성 · v7: 등록일(일자별 등록) · 폴더/서브폴더 + 단어 가져오기 · 간격 반복 복습 + 어근 팁 + 난이도 + 인식·저장 한 번에 + 상세 정보(사용빈도·예문·변형·파생어))
  *
  * [설정]
  * 1) 구글시트를 새로 만들고, 확장 프로그램 > Apps Script 에 이 코드를 붙여넣기
@@ -16,7 +16,7 @@
 
 const SHEET_WORDS = '단어';
 const SHEET_LOG = '학습기록';
-const HEADERS_WORDS = ['id', '단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '마지막학습', '단계', '다음복습', '어근팁', '난이도', '추가정보', '폴더'];
+const HEADERS_WORDS = ['id', '단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '마지막학습', '단계', '다음복습', '어근팁', '난이도', '추가정보', '폴더', '구분'];
 const HEADERS_LOG = ['시각', 'id', '단어', '유형', '결과'];
 
 // 간격 반복: 단계(0~5)별로 "다음 복습까지 며칠"
@@ -84,6 +84,8 @@ function doPost(e) {
       case 'rate':      return json_(rate_(req));
       case 'detail':    return json_(detail_(req));
       case 'import':    return json_(import_(req));
+      case 'colloc':    return json_(colloc_(req));
+      case 'restore':   return json_(restore_(req));
       default:          return json_({ ok: false, error: 'unknown action' });
     }
   } catch (err) {
@@ -92,7 +94,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 7 });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 10 });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -124,6 +126,21 @@ function recognize_(req) {
     }]
   };
   return callClaude_(key, payload);
+}
+
+function callClaudeText_(key, payload) {
+  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  const code = res.getResponseCode();
+  const body = res.getContentText();
+  if (code !== 200) return { ok: false, error: 'Claude API ' + code + ': ' + body.slice(0, 300) };
+  const data = JSON.parse(body);
+  return { ok: true, text: (data.content || []).map(function (c) { return c.text || ''; }).join('') };
 }
 
 function callClaude_(key, payload) {
@@ -160,7 +177,7 @@ function addWord_(req) {
   }
   const id = Utilities.getUuid().slice(0, 8);
   const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  sh.appendRow([id, w, req.pos || '', req.meaning || '', req.example || '', req.example_ko || '', parseYmd_(req.date) || new Date(), 0, 0, '', 0, today, req.tip || '', Number(req.level) || '', '', req.folder || '']);
+  sh.appendRow([id, w, req.pos || '', req.meaning || '', req.example || '', req.example_ko || '', parseYmd_(req.date) || new Date(), 0, 0, '', 0, today, req.tip || '', Number(req.level) || '', '', req.folder || '', req.src === 'import' ? 'import' : 'hand']);
   return { ok: true, id: id };
 }
 
@@ -176,7 +193,7 @@ function listWords_() {
       added: r[6] instanceof Date ? r[6].toISOString() : String(r[6]),
       right: Number(r[7]) || 0, wrong: Number(r[8]) || 0,
       last: r[9] instanceof Date ? r[9].toISOString() : String(r[9] || ''),
-      box: Number(r[10]) || 0, due: dstr_(r[11]), tip: String(r[12] || ''), level: Number(r[13]) || 0, extra: String(r[14] || ''), folder: String(r[15] || '')
+      box: Number(r[10]) || 0, due: dstr_(r[11]), tip: String(r[12] || ''), level: Number(r[13]) || 0, extra: String(r[14] || ''), folder: String(r[15] || ''), src: String(r[16] || '')
     });
   }
   return { ok: true, words: out };
@@ -205,6 +222,7 @@ function updateWord_(req) {
   ]]);
   sh.getRange(row, 13, 1, 2).setValues([[req.tip || '', Number(req.level) || '']]);
   if (req.folder !== undefined) sh.getRange(row, 16).setValue(String(req.folder || ''));
+  if (req.src === 'hand' || req.src === 'import') sh.getRange(row, 17).setValue(req.src);   // 구분(손쓰기/업로드)
   const dd = parseYmd_(req.date);
   if (dd) sh.getRange(row, 7).setValue(dd);   // 등록일 변경
   return { ok: true };
@@ -301,7 +319,14 @@ function detail_(req) {
   const r = callClaude_(key, { model: model, max_tokens: 700, messages: [{ role: 'user', content: prompt }] });
   if (!r.ok) return r;
   const x = r.result || {};
+  let old = {};
+  if (req.id) {
+    const sh0 = getSheet_(SHEET_WORDS, HEADERS_WORDS);
+    const d0 = sh0.getDataRange().getValues();
+    for (let i = 1; i < d0.length; i++) if (String(d0[i][0]) === String(req.id)) { try { old = JSON.parse(d0[i][14] || '{}') || {}; } catch (e) { old = {}; } break; }
+  }
   const extra = {
+    colloc: old.colloc || '', colloc_ko: old.colloc_ko || '',
     freq: Math.max(1, Math.min(5, Math.round(Number(x.freq)) || 3)),
     examples: (x.examples || []).slice(0, 3).map(function (e) { return { en: String(e.en || ''), ko: String(e.ko || '') }; }),
     forms: String(x.forms || ''),
@@ -315,6 +340,88 @@ function detail_(req) {
     }
   }
   return { ok: true, extra: extra };
+}
+
+/* ---------- 연어(Collocation) 자동 생성 ----------
+   req.items = [{ id, word, meaning }]  (한 번에 최대 25개)
+   결과를 '추가정보(JSON)' 열에 colloc / colloc_ko 로 합쳐서 저장한다 (기존 상세 정보는 그대로 유지) */
+function colloc_(req) {
+  const props = PropertiesService.getScriptProperties();
+  const key = props.getProperty('ANTHROPIC_API_KEY');
+  if (!key) return { ok: false, error: 'ANTHROPIC_API_KEY 가 스크립트 속성에 없습니다.' };
+  const model = props.getProperty('MODEL') || 'claude-haiku-5-5';
+  const items = (req.items || []).slice(0, 25);
+  if (!items.length) return { ok: true, items: [] };
+  const list = items.map(function (it, n) { return n + '. ' + String(it.word || '') + (it.meaning ? ' (' + String(it.meaning).slice(0, 40) + ')' : ''); }).join('\n');
+  const prompt =
+    '아래 영어 단어(또는 숙어) 각각에 대해, 가장 대표적이고 자주 쓰이는 연어(collocation) 하나와 그 한국어 뜻을 만드세요.\n' +
+    '- 연어는 2~4단어의 짧은 구입니다. 예: authority → legal authority / 법적 권위, shift → shift focus / 초점을 전환하다, substitute → substitute A for B / B 대신 A를 쓰다, appreciate → appreciate art / 예술을 감상하다\n' +
+    '- 해당 단어(활용형 가능)가 반드시 들어가야 합니다. 동사는 목적어와, 형용사는 명사와, 명사는 수식어나 동사와 함께 씁니다.\n' +
+    '- 한국어 뜻은 짧게(10자 안팎).\n\n' + list + '\n\n' +
+    '반드시 한 줄에 하나씩, 아래 형식의 텍스트로만 답하세요(JSON·따옴표·설명 금지).\n' +
+    '번호|영어 연어|한국어 뜻\n예) 0|legal authority|법적 권위';
+  const r = callClaudeText_(key, { model: model, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] });
+  if (!r.ok) return r;
+  const got = {};
+  String(r.text || '').split(/\r?\n/).forEach(function (ln) {
+    const p = ln.replace(/^[\s\-*]+/, '').split('|');
+    if (p.length < 3) return;
+    const n = parseInt(p[0], 10);
+    if (isNaN(n)) return;
+    got[n] = { c: p[1].replace(/^["'\s]+|["'\s]+$/g, ''), ck: p.slice(2).join('|').replace(/^["'\s]+|["'\s]+$/g, '') };
+  });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
+    const data = sh.getDataRange().getValues();
+    const rowOf = {};
+    for (let i = 1; i < data.length; i++) if (data[i][0]) rowOf[String(data[i][0])] = i;
+    const out = [];
+    items.forEach(function (it, n) {
+      const g = got[n]; if (!g || !g.c) return;
+      const i = rowOf[String(it.id)]; if (i === undefined) return;
+      let ex = {}; try { ex = JSON.parse(data[i][14] || '{}') || {}; } catch (e) { ex = {}; }
+      ex.colloc = g.c; ex.colloc_ko = g.ck;
+      sh.getRange(i + 1, 15).setValue(JSON.stringify(ex));
+      out.push({ id: String(it.id), colloc: g.c, colloc_ko: g.ck });
+    });
+    return { ok: true, items: out };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- 백업 복원 ----------
+   req.items = [{ word, pos, meaning, example, example_ko, added, right, wrong, last, box, due, tip, level, extra, folder }]  (한 번에 최대 150개)
+   - 시트에 이미 있는 단어는 건드리지 않고, 없는 단어만 학습 기록까지 그대로 채워 넣는다 */
+function restore_(req) {
+  const items = (req.items || []).slice(0, 150);
+  if (!items.length) return { ok: true, added: 0, skipped: 0 };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
+    const data = sh.getDataRange().getValues();
+    const have = {};
+    for (let i = 1; i < data.length; i++) if (data[i][0]) have[String(data[i][1]).toLowerCase()] = true;
+    const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    const rows = []; let skipped = 0;
+    items.forEach(function (it) {
+      const w = String(it.word || '').trim().toLowerCase();
+      if (!w || have[w]) { skipped++; return; }
+      have[w] = true;
+      const d = it.added ? new Date(it.added) : new Date();
+      let ex = '';
+      if (it.extra && typeof it.extra === 'object') ex = JSON.stringify(it.extra); else if (typeof it.extra === 'string') ex = it.extra;
+      rows.push([Utilities.getUuid().slice(0, 8), w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', isNaN(d) ? new Date() : d,
+        Number(it.right) || 0, Number(it.wrong) || 0, it.last || '', Number(it.box) || 0, it.due || today, it.tip || '', Number(it.level) || '', ex, it.folder || '', (it.src === 'hand' || it.src === 'import') ? it.src : '']);
+    });
+    if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+    return { ok: true, added: rows.length, skipped: skipped };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /* ---------- 단어 묶음 가져오기 (폴더/서브폴더 지정) ----------
@@ -344,7 +451,7 @@ function import_(req) {
         return;
       }
       rowOf[w] = -1;
-      rows.push([Utilities.getUuid().slice(0, 8), w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', now, 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', folder]);
+      rows.push([Utilities.getUuid().slice(0, 8), w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', now, 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', folder, 'import']);
     });
     if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
     return { ok: true, added: rows.length, moved: moved, skipped: skipped };
