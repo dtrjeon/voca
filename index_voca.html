@@ -21,6 +21,23 @@ body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:var(--accent);color:#fff}
 header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.2px}
 header .count{font-size:13px;opacity:.85;margin-left:8px;font-weight:400}
+header .hdr-r{display:flex;align-items:center;gap:10px;flex:none}
+.hsw{display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,.7);user-select:none;cursor:pointer;padding:4px 2px}
+.hsw b{color:#fff}
+.hsw .sw{position:relative;width:40px;height:24px;border-radius:999px;background:rgba(255,255,255,.35);flex:none;transition:background .15s}
+.hsw .sw::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:left .15s}
+.hsw.on .sw{background:#ffd166}
+.hsw.on .sw::after{left:19px}
+.impmv{display:flex;align-items:center;gap:8px;font-size:14px;margin:8px 0 0}
+.impmv input{width:20px;height:20px;flex:none}
+#impResult{margin-top:8px}
+#impResult .ires{border:1px solid var(--line,#dfe3f1);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6;background:#f6fbf7}
+#impResult .isk{max-height:150px;overflow-y:auto;font-size:12.5px;color:var(--sub);margin-top:4px}
+#impResult .irow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+#impResult .irow .btn{flex:1 1 auto}
+.enbar{display:none;align-items:center;gap:8px;justify-content:space-between;font-size:13px;color:var(--sub);background:#fff7e0;border:1px solid #f0dca0;border-radius:12px;padding:8px 10px;margin-bottom:8px}
+.enbar .btn{flex:none;padding:6px 10px;font-size:13px}
+.m-miss{color:#9aa0b5;font-style:italic}
 .icon-btn{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:18px}
 main{max-width:760px;margin:0 auto;padding:14px}
 section{display:none}
@@ -548,7 +565,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <header>
   <div><h1 style="display:inline">✍️ handvoca</h1><span class="count" id="cnt"></span><span class="count" id="netDot" style="margin-left:6px;display:none;color:#ffd9a0"></span><span class="count" id="verTag" style="margin-left:6px;opacity:.7"></span></div>
-  <button class="icon-btn" id="btnSettings" aria-label="설정">⚙️</button>
+  <div class="hdr-r"><div class="hsw" id="mlSw" role="switch" aria-checked="false" tabindex="0" title="뜻 보기: 영한 / 영영"><span id="mlKo"><b>영한</b></span><span class="sw"></span><span id="mlEn">영영</span></div><button class="icon-btn" id="btnSettings" aria-label="설정">⚙️</button></div>
 </header>
 
 <main>
@@ -614,6 +631,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
     </div>
     <div id="dateBar"></div>
     <div id="rateBar"></div>
+    <div class="enbar" id="enBar"></div>
     <div id="list"></div>
   </section>
 
@@ -794,15 +812,17 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <dialog id="dlgImport">
   <h3 style="margin:0 0 6px">단어 가져오기</h3>
-  <div style="font-size:14px;color:var(--sub)">폴더와 서브폴더를 만들어 단어장에 한꺼번에 등록해요. 이미 있는 단어는 새로 만들지 않고, 폴더가 비어 있으면 그 폴더로만 넣어요.</div>
+  <div style="font-size:14px;color:var(--sub)"><b>고르면 바로 등록</b>돼요 (읽기 → 폴더 만들기 → 등록 → 완료). 이미 있는 단어는 새로 만들지 않고, 폴더가 비어 있으면 그 폴더로 넣어요.</div>
+  <label class="impmv"><input type="checkbox" id="impMove"> 이미 <b>다른 폴더</b>에 있는 단어도 이 폴더로 옮기기</label>
   <label class="lbl">기본 제공</label>
   <div id="impBuiltin"></div>
   <label class="lbl">내 파일로 가져오기 (엑셀 .xls .xlsx · .csv · .md)</label>
-  <input type="file" id="impFile" accept=".md,.txt,.csv,.tsv,.xls,.xlsx,.xlsm,.ods,text/markdown,text/plain,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+  <input type="file" id="impFile" multiple accept=".md,.txt,.csv,.tsv,.xls,.xlsx,.xlsm,.ods,text/markdown,text/plain,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
   <div style="font-size:13px;color:var(--sub);margin-top:6px">엑셀: <b>파일 이름 = 폴더</b>, <b>시트 탭 이름 = 서브폴더</b>. 열 머리글은 <b>단어 · 뜻 · 예문 · 해석</b>(품사·폴더·서브폴더·난이도·팁도 가능)으로 쓰면 자동 인식해요. <button class="chip" id="impTpl" style="padding:3px 10px;font-size:13px">양식 받기</button></div>
   <div id="impPreview" style="margin-top:8px;font-size:14px;color:var(--sub)"></div>
   <div id="impStatus" style="margin-top:8px;font-size:14px"></div>
-  <div class="row" style="margin-top:14px"><button class="btn" id="impClose">닫기</button><button class="btn primary grow" id="impGo" disabled>등록</button></div>
+  <div id="impResult"></div>
+  <div class="row" style="margin-top:14px"><button class="btn grow" id="impClose">닫기</button></div>
 </dialog>
 
 <dialog id="dlgSettings">
@@ -917,7 +937,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.4.0', APP_DATE = '2026-10-15', SERVER_NEED = 16;
+const APP_VERSION = '1.6.0', APP_DATE = '2026-10-15', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1052,7 +1072,7 @@ async function flushUnsaved(manual) {
     });
     if (curChanged) renderResult();     // 카드의 “곧 시트에 저장” → “저장됨”
     saved.forEach((w, i) => setTimeout(() => ensureExtra(w), 1500 + i * 1500));
-    saveCache(); renderList(); updateCount(); updateSetupInfo();
+    saveCache(); syncMlSw(); renderList(); updateCount(); updateSetupInfo();
     if (done || dup) toast('시트에 ' + done + '개 저장했어요' + (dup ? ' (이미 있는 ' + dup + '개는 건너뜀)' : ''), 2500);
   } catch (e) {
     if (!e.data && netMode() === 'auto') netDown = true;
@@ -1150,6 +1170,9 @@ try { words = JSON.parse(lsGet('vn_words', '[]')) || []; } catch (e) { words = [
 let sortMode = 'new';
 const tblRows = () => { const v = parseInt(lsGet('vn_trows', '5'), 10); return isNaN(v) ? 5 : Math.max(1, Math.min(30, v)); };
 const tblCols = () => { const v = parseInt(lsGet('vn_tcols', '3'), 10); return isNaN(v) ? 3 : Math.max(1, Math.min(6, v)); };
+let meanLang = lsGet('vn_mlang', 'ko') === 'en' ? 'en' : 'ko';
+const meanTxt = w => meanLang === 'en' ? ((w.extra && w.extra.meaning_en) || '') : (w.meaning || '');
+const meanHtml = w => { const t = meanTxt(w); return t ? esc(t) : (meanLang === 'en' ? '<span class="m-miss">' + esc(w.meaning || '') + '</span>' : ''); };
 let showMean = lsGet('vn_showmean', '1') !== '0', tblView = lsGet('vn_tblview', '0') === '1', tblPage = 0;
 const tblRevealed = new Set();
 
@@ -1469,11 +1492,48 @@ async function rateAll() {
   finally { rating = false; renderList(); }
 }
 
+function syncMlSw() { const on = meanLang === 'en', sw = $('#mlSw'); sw.classList.toggle('on', on); sw.setAttribute('aria-checked', on); $('#mlKo').innerHTML = on ? '영한' : '<b>영한</b>'; $('#mlEn').innerHTML = on ? '<b>영영</b>' : '영영'; }
+function setMeanLang(v) { meanLang = v; lsSet('vn_mlang', v); syncMlSw(); tblRevealed.clear(); renderList(); if (typeof tmRender === 'function') tmRender(); }
+$('#mlSw').addEventListener('click', () => setMeanLang(meanLang === 'en' ? 'ko' : 'en'));
+$('#mlSw').addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMeanLang(meanLang === 'en' ? 'ko' : 'en'); } });
+let enBusy = false;
+function renderEnBar(arr) {
+  const el = $('#enBar'); if (!el || enBusy) return;
+  const miss = meanLang === 'en' ? arr.filter(w => !(w.extra && w.extra.meaning_en)) : [];
+  if (!miss.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex'; el.innerHTML = '<span>영어 뜻이 아직 없는 단어 <b>' + miss.length + '개</b> (회색 글씨는 한국어 뜻)</span><button class="btn primary" id="enMake" type="button">사전으로 만들기</button>';
+  el.dataset.n = miss.length;
+}
+async function makeEnglish(list, barSel) {
+  const el = $(barSel || '#enBar'); enBusy = true; let done = 0, fails = 0, lastErr = '';
+  const st = t => { el.style.display = 'flex'; el.innerHTML = '<span><span class="spinner"></span> ' + t + '</span>'; };
+  try {
+    for (let i = 0; i < list.length; i += 15) {
+      const grp = list.slice(i, i + 15); st('영영사전에서 찾는 중… ' + i + '/' + list.length);
+      const defsOf = {}; let q = 0;
+      await Promise.all([0, 1, 2, 3].map(async () => { while (q < grp.length) { const w = grp[q++]; defsOf[w.id] = await dictDefs(w.word, w.pos); } }));
+      st('영어 뜻 정리하는 중… ' + i + '/' + list.length);
+      let j; try { j = await api('defen', { items: grp.map(w => ({ id: w.id, word: w.word, meaning: w.meaning, colloc: '', defs: defsOf[w.id] || [], onlyColloc: false })) }); }
+      catch (e) { if (/unknown action/.test(e.message)) throw e; fails++; lastErr = e.message; continue; }
+      (j.items || []).forEach(o => { const w = words.find(x => x.id === o.id); if (w && o.meaning_en) { w.extra = Object.assign({}, w.extra || {}, { meaning_en: o.meaning_en, meaning_en_src: o.meaning_en_src || 'ai' }); done++; } });
+      saveCache(); if (!barSel && meanLang === 'en') renderList();
+    }
+    toast('✅ 영어 뜻 ' + done + '개 만들었어요' + (fails ? ' (일부 실패, 다시 누르면 이어서)' : ''), 3500);
+  } catch (e) { toast(/unknown action/.test(e.message) ? 'Code.gs 를 최신 버전으로 다시 배포해 주세요' : '❌ ' + e.message, 4500); }
+  enBusy = false; renderList(); if (typeof tmRender === 'function' && $('#tab-tomato') && $('#tab-tomato').classList.contains('active')) tmRender();
+}
+document.addEventListener('click', e => {
+  if (e.target.id === 'enMakeTm' && !enBusy) { const arr = tmDayWords(tm.day).filter(w => !(w.extra && w.extra.meaning_en) && !isLocalId(w.id)); if (arr.length) makeEnglish(arr, '#enBarTm'); return; }
+  if (e.target.id !== 'enMake' || enBusy) return;
+  const q = $('#search').value.trim().toLowerCase();
+  const arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0) && !(w.extra && w.extra.meaning_en) && !isLocalId(w.id));
+  if (!arr.length) return; makeEnglish(arr);
+});
 function renderList() {
   renderRecent(); renderRateBar(); renderFolderBar();
   const q = $('#search').value.trim().toLowerCase();
   renderDateBar();
-  let arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning).toLowerCase().indexOf(q) >= 0));
+  let arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning + ' ' + ((w.extra && w.extra.meaning_en) || '')).toLowerCase().indexOf(q) >= 0));
   arr = arr.slice().sort((a, b) => {
     if (sortMode === 'day') return String(b.added).localeCompare(String(a.added));
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
@@ -1484,6 +1544,7 @@ function renderList() {
     }
     return String(b.added).localeCompare(String(a.added));
   });
+  renderEnBar(arr);
   const box = $('#list');
   $('#tgMean').checked = showMean; $('#btnView .ic').textContent = tblView ? '☰' : '▦'; $('#btnView .lb').textContent = tblView ? '목록으로 보기' : '표로 보기'; $('#btnView').title = $('#btnView').ariaLabel = tblView ? '목록으로 보기' : '표로 보기'; $('#btnView').classList.toggle('on', tblView);
   box.classList.toggle('hidemean', !showMean);
@@ -1498,7 +1559,7 @@ function renderList() {
       (!folderSel.s && w.folder && folderSel.f !== '' ? '<span class="w-folder">' + esc(splitFolder(w)[1] || splitFolder(w)[0]) + '</span>' : '') +
       '<button class="speak" data-act="speak" aria-label="발음">🔊</button>' +
       '<span class="stat">✓<b class="ok">' + (w.right || 0) + '</b> ✗<b class="bad">' + (w.wrong || 0) + '</b></span></div>' +
-      '<div class="w-mean">' + esc(w.meaning) + '</div>' +
+      '<div class="w-mean">' + meanHtml(w) + '</div>' +
       '<div class="w-sched">' + stageLabel(w) + '<span>' + dueLabel(w) + '</span>' + lvChip(w.level) + '</div>' +
       '<div class="w-detail">' +
         (w.example ? '<div class="w-ex">' + esc(w.example) + '</div>' : '') +
@@ -1521,7 +1582,7 @@ function renderTable(arr, box) {
     const hide = !showMean && !tblRevealed.has(w.id);
     h += '<div class="tcell" data-id="' + esc(w.id) + '"><div class="tw"><span>' + esc(w.word) + '</span></div>' +
       '<div class="tp"><span>' + esc(w.pos || '') + '</span><button class="speak" data-act="tspeak" aria-label="발음">🔊</button></div>' +
-      '<div class="tm' + (hide ? ' hid' : '') + '">' + esc(w.meaning) + '</div></div>';
+      '<div class="tm' + (hide ? ' hid' : '') + '">' + meanHtml(w) + '</div></div>';
   }
   h += '</div><div class="tpager"><button class="btn" id="tPrev"' + (tblPage ? '' : ' disabled') + '>◀ 이전</button><span>' + (tblPage + 1) + ' / ' + pages + ' · ' + R + '×' + C + ' · 총 ' + arr.length + '개</span><button class="btn" id="tNext"' + (tblPage < pages - 1 ? '' : ' disabled') + '>다음 ▶</button></div>';
   box.innerHTML = h; fitTable();
@@ -2387,11 +2448,11 @@ async function renderImport() {
 }
 $('#impBuiltin').addEventListener('click', async e => {
   const b = e.target.closest('[data-pk]'); if (!b) return; const p = packList[parseInt(b.dataset.pk, 10)]; if (!p) return;
-  $('#impPreview').textContent = '불러오는 중…'; impPending = null; $('#impGo').disabled = true;
+  $('#impPreview').textContent = '불러오는 중…'; impPending = null; $('#impResult').innerHTML = ''; $('#impStatus').textContent = '';
   try {
     const r = await fetch('packs/' + encodeURIComponent(p.file), { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status);
     const pk = parseWordMd(await r.text()); if (!pk.items.length) throw new Error('단어 표를 찾지 못했어요');
-    setImp(pk);
+    runImport(pk);
   } catch (err) { $('#impPreview').textContent = '❌ 불러오지 못했어요: ' + err.message; }
 });
 /* --- 엑셀/CSV 읽기 (SheetJS 를 필요할 때만 불러온다) --- */
@@ -2464,33 +2525,64 @@ $('#impTpl').addEventListener('click', async () => {
   } catch (e) { toast(e.message, 3500); }
 });
 $('#impFile').addEventListener('change', async e => {
-  const f = e.target.files && e.target.files[0]; if (!f) return;
-  $('#impPreview').textContent = '파일을 읽는 중…'; impPending = null; $('#impGo').disabled = true;
-  try {
-    const isText = /\.(md|txt)$/i.test(f.name);
-    const p = isText ? parseWordMd(await f.text()) : await parseSpreadsheet(f);
-    if (!p.items.length) { $('#impPreview').textContent = isText ? '단어 표를 찾지 못했어요. (# 제목, ## 소제목, | 번호 | 단어 | 뜻 | 예문 | 해석 | 표 형식)' : '단어를 찾지 못했어요. 첫 줄 머리글을 단어 · 뜻 · 예문 · 해석 으로 써 주세요. (“양식 받기”로 예시를 받을 수 있어요)'; return; }
-    setImp(p);
-  } catch (err) { $('#impPreview').textContent = '❌ ' + err.message; }
+  const fs = Array.from(e.target.files || []); if (!fs.length) return;
+  $('#impPreview').textContent = '파일을 읽는 중…'; impPending = null; $('#impResult').innerHTML = ''; $('#impStatus').textContent = '';
+  let items = [], title = '', bad = [];
+  for (const f of fs) {
+    try {
+      const isText = /\.(md|txt)$/i.test(f.name);
+      const p = isText ? parseWordMd(await f.text()) : await parseSpreadsheet(f);
+      if (!p.items.length) bad.push(f.name); else { items = items.concat(p.items); title = title || p.title; }
+    } catch (err) { bad.push(f.name + ' (' + err.message + ')'); }
+  }
+  e.target.value = '';
+  if (!items.length) { $('#impPreview').textContent = '단어를 찾지 못했어요' + (bad.length ? ': ' + bad.join(', ') : '') + '. (md는 # 제목, ## 소제목, | 번호 | 단어 | 뜻 | 예문 | 해석 | 표 / 엑셀은 첫 줄 머리글 단어·뜻·예문·해석)'; return; }
+  if (bad.length) toast('읽지 못한 파일: ' + bad.join(', '), 4000);
+  runImport({ title: title, items: items });
 });
-function setImp(p) { impPending = p; $('#impPreview').innerHTML = impSummary(p); $('#impStatus').textContent = ''; $('#impGo').disabled = false; }
-$('#btnImport').addEventListener('click', () => { impPending = null; $('#impPreview').textContent = ''; $('#impStatus').textContent = ''; $('#impGo').disabled = true; $('#impFile').value = ''; renderImport(); $('#dlgImport').showModal(); });
+function setImp(p) { runImport(p); }
+$('#btnImport').addEventListener('click', () => { impPending = null; $('#impPreview').textContent = ''; $('#impStatus').textContent = ''; $('#impResult').innerHTML = ''; $('#impFile').value = ''; renderImport(); $('#dlgImport').showModal(); });
 $('#impClose').addEventListener('click', () => $('#dlgImport').close());
-$('#impGo').addEventListener('click', async () => {
-  if (!impPending) return;
-  const go = $('#impGo'); go.disabled = true; $('#impStatus').innerHTML = '<span class="spinner"></span> 등록하는 중…';
+let impBusy = false, impLast = null;
+async function runImport(p) {
+  if (impBusy || !p || !p.items.length) return; impBusy = true; impPending = p; impLast = null;
+  $('#impPreview').innerHTML = impSummary(p); $('#impResult').innerHTML = '';
+  const st = t => { $('#impStatus').innerHTML = '<span class="spinner"></span> ' + t; };
+  const mode = $('#impMove').checked ? 'move' : 'skip', n = p.items.length;
+  let added = 0, moved = 0, skipped = 0, ids = [], movedList = [], skippedList = [];
   try {
-    let added = 0, moved = 0, skipped = 0;
-    for (let i = 0; i < impPending.items.length; i += 100) {
-      const j = await api('import', { items: impPending.items.slice(i, i + 100) });
+    for (let i = 0; i < n; i += 100) {
+      st('등록하는 중… ' + Math.min(i, n) + ' / ' + n + '개');
+      const j = await api('import', { items: p.items.slice(i, i + 100), mode: mode });
       added += j.added || 0; moved += j.moved || 0; skipped += j.skipped || 0;
+      ids = ids.concat(j.ids || []); movedList = movedList.concat(j.movedList || []); skippedList = skippedList.concat(j.skippedList || []);
     }
+    st('목록을 새로 불러오는 중…');
     await refreshWords(true);
-    folderSel.f = (impPending.items[0].folder || '').split('/')[0]; folderSel.s = ''; folderSel.ss = null;
-    $('#impStatus').textContent = '✅ 새로 ' + added + '개 등록' + (moved ? ' · 이미 있던 ' + moved + '개는 폴더로 옮김' : '') + (skipped ? ' · ' + skipped + '개는 이미 등록돼 있어 건너뜀' : '');
-    renderList(); renderHome();
-    setTimeout(() => { $('#dlgImport').close(); toast('폴더에 등록했어요'); }, 1400);
-  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action/.test(e.message) ? ' — Code.gs 를 새 버전(v6)으로 다시 배포해 주세요' : ''); go.disabled = false; }
+    const root = (p.items[0].folder || '').split('/')[0];
+    impLast = { ids: ids, moves: movedList, root: root };
+    folderSel.f = root; folderSel.s = ''; folderSel.ss = null; renderList(); renderHome();
+    $('#impStatus').textContent = '';
+    $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b> — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
+      (skippedList.length ? '<div class="isk">건너뛴 단어(이미 있는 폴더): ' + skippedList.map(x => esc(x.word) + (x.folder ? ' → ' + esc(x.folder) : '')).join(' · ') + (skipped > skippedList.length ? ' …' : '') + '</div>' : '') +
+      '<div class="irow"><button class="btn primary" data-ir="list">📒 단어장에서 보기</button><button class="btn primary" data-ir="tomato">🍅 토마토에서 열기</button>' + (ids.length || movedList.length ? '<button class="btn danger" data-ir="undo">↩ 되돌리기</button>' : '') + '</div></div>';
+  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v17)으로 다시 배포해 주세요' : ''); }
+  impBusy = false;
+}
+$('#impResult').addEventListener('click', async e => {
+  const b = e.target.closest('[data-ir]'); if (!b || !impLast) return; const a = b.dataset.ir, root = impLast.root;
+  if (a === 'list') { folderSel.f = root; folderSel.s = ''; folderSel.ss = null; $('#dlgImport').close(); $('nav button[data-tab="list"]').click(); renderList(); }
+  else if (a === 'tomato') { tmSrc = 'f:' + root; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; $('#dlgImport').close(); $('nav button[data-tab="tomato"]').click(); tmRender(); }
+  else if (a === 'undo') {
+    if (!confirm('방금 가져온 것을 되돌릴까요?\n새로 만든 ' + impLast.ids.length + '개는 삭제하고, 옮긴 ' + impLast.moves.length + '개는 원래 폴더로 돌려놓아요.')) return;
+    b.disabled = true; $('#impStatus').innerHTML = '<span class="spinner"></span> 되돌리는 중…';
+    try {
+      let removed = 0, restored = 0; const ids = impLast.ids.slice(), mv = impLast.moves.slice();
+      for (let i = 0; i < Math.max(ids.length, mv.length, 1); i += 150) { const j = await api('undoimport', { ids: ids.slice(i, i + 150), moves: mv.slice(i, i + 150) }); removed += j.removed || 0; restored += j.restored || 0; }
+      await refreshWords(true); folderSel.f = folderSel.s = ''; folderSel.ss = null; renderList(); renderHome();
+      impLast = null; $('#impResult').innerHTML = ''; $('#impStatus').textContent = '↩ 되돌렸어요 — 삭제 ' + removed + '개 · 원래 폴더로 ' + restored + '개';
+    } catch (err) { b.disabled = false; $('#impStatus').textContent = '❌ ' + err.message; }
+  }
 });
 
 /* --- 암기점검: 폴더별 학습 카드 --- */
@@ -2633,14 +2725,16 @@ function tmDay() {
   const M = (m, t) => '<button data-act="mode" data-m="' + m + '" class="' + (tm.mode === m ? 'on' : '') + '">' + t + '</button>';
   h += '<div class="tm-modes">' + M('study', '📖 학습') + M('w2m', '단어→뜻') + M('m2w', '뜻→단어') +
     (tm.mode === 'study' ? '<button data-act="ex" class="' + (tm.ex ? 'on' : '') + '">예문</button>' : '<button data-act="revall">👁 모두 보기/가리기</button>') + '</div>';
+  const missTm = meanLang === 'en' ? arr.filter(w => !(w.extra && w.extra.meaning_en) && !isLocalId(w.id)) : [];
+  if (missTm.length) h += '<div class="enbar" id="enBarTm" style="display:flex"><span>영어 뜻이 없는 단어 <b>' + missTm.length + '개</b> (회색 글씨는 한국어 뜻)</span><button class="btn primary" id="enMakeTm" type="button">사전으로 만들기</button></div>';
   const showEx = tm.mode === 'study' && tm.ex;
-  h += '<div class="tm-wrap"><table class="tm-t' + (showEx ? ' wide' : '') + '"><thead><tr><th class="c-m">표시</th><th>단어</th><th>뜻</th>' + (showEx ? '<th>예문</th><th>예문 뜻</th>' : '') + '</tr></thead><tbody>';
+  h += '<div class="tm-wrap"><table class="tm-t' + (showEx ? ' wide' : '') + '"><thead><tr><th class="c-m">표시</th><th>단어</th><th>' + (meanLang === 'en' ? '뜻 (영어)' : '뜻') + '</th>' + (showEx ? '<th>예문</th><th>예문 뜻</th>' : '') + '</tr></thead><tbody>';
   arr.forEach(w => {
     const m = tmMarks[w.id] || '', rv = tm.rev.has(w.id);
     const wHid = tm.mode === 'm2w' && !rv, mHid = tm.mode === 'w2m' && !rv;
     h += '<tr data-id="' + esc(w.id) + '"><td><button class="tm-mk ' + m + '" data-act="mark" aria-label="표시 바꾸기">' + (TM_GLYPH[m] || '') + '</button></td>' +
       '<td class="w' + (wHid ? ' tm-hid' : '') + '" data-act="' + (tm.mode === 'm2w' ? 'rev' : 'say') + '">' + esc(w.word) + '</td>' +
-      '<td class="' + (mHid ? 'tm-hid' : '') + '" data-act="' + (tm.mode === 'w2m' ? 'rev' : 'say') + '">' + esc(w.meaning) + '</td>' +
+      '<td class="' + (mHid ? 'tm-hid' : '') + '" data-act="' + (tm.mode === 'w2m' ? 'rev' : 'say') + '">' + meanHtml(w) + '</td>' +
       (showEx ? '<td class="ex">' + esc(w.example || '') + '</td><td class="ex">' + esc(w.example_ko || '') + '</td>' : '') + '</tr>';
   });
   h += '</tbody></table></div>';

@@ -92,6 +92,7 @@ function doPost(e) {
       case 'colloc':    return json_(colloc_(req));
       case 'defen':     return json_(defen_(req));
       case 'renamefolder': return json_(renameFolder_(req));
+      case 'undoimport': return json_(undoImport_(req));
       case 'restore':   return json_(restore_(req));
       default:          return json_({ ok: false, error: 'unknown action' });
     }
@@ -101,7 +102,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 16 });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 17 });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -620,9 +621,15 @@ function renameFolder_(req) {
   }
 }
 
+/* ---------- 단어 가져오기 ----------
+   req = { items:[…], mode:'skip'|'move' }
+   - 새 단어: 추가(출처 import)
+   - 이미 있는 단어: 폴더가 비어 있으면 그 폴더로. 폴더가 다르면 mode='move' 일 때만 옮기고, 아니면 건너뜀
+   돌려주는 값: added, moved, skipped, ids(새로 만든 id), movedList([{id,from}]), skippedList([{word,folder}]) */
 function import_(req) {
   const items = (req.items || []).slice(0, 200);
-  if (!items.length) return { ok: true, added: 0, moved: 0, skipped: 0 };
+  const move = req.mode === 'move';
+  if (!items.length) return { ok: true, added: 0, moved: 0, skipped: 0, ids: [], movedList: [], skippedList: [] };
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -632,22 +639,56 @@ function import_(req) {
     for (let i = 1; i < data.length; i++) if (data[i][0]) rowOf[String(data[i][1]).toLowerCase()] = i;
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
     const now = new Date();
-    const rows = [];
+    const rows = [], ids = [], movedList = [], skippedList = [];
     let moved = 0, skipped = 0;
-    items.forEach(function (it, n) {
+    items.forEach(function (it) {
       const w = String(it.word || '').trim().toLowerCase();
       if (!w) return;
       const folder = String(it.folder || '').trim();
       if (w in rowOf) {
         const i = rowOf[w];
-        if (!String(data[i][15] || '') && folder) { sh.getRange(i + 1, 16).setValue(folder); moved++; } else skipped++;
+        if (i < 0) { skipped++; return; }                 // 같은 묶음 안의 중복
+        const cur = String(data[i][15] || '');
+        if (folder && (!cur || (move && cur !== folder))) { sh.getRange(i + 1, 16).setValue(folder); moved++; movedList.push({ id: String(data[i][0]), from: cur }); }
+        else { skipped++; if (skippedList.length < 100) skippedList.push({ word: w, folder: cur }); }
         return;
       }
       rowOf[w] = -1;
-      rows.push([Utilities.getUuid().slice(0, 8), w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', now, 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', folder, 'import']);
+      const id = Utilities.getUuid().slice(0, 8);
+      ids.push(id);
+      rows.push([id, w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', now, 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', folder, 'import']);
     });
     if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
-    return { ok: true, added: rows.length, moved: moved, skipped: skipped };
+    return { ok: true, added: rows.length, moved: moved, skipped: skipped, ids: ids, movedList: movedList, skippedList: skippedList };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- 가져오기 되돌리기: 새로 만든 단어는 삭제(출처 import 만), 옮긴 단어는 원래 폴더로 ---------- */
+function undoImport_(req) {
+  const ids = {}; (req.ids || []).forEach(function (x) { ids[String(x)] = true; });
+  const moves = {}; (req.moves || []).forEach(function (m) { moves[String(m.id)] = String(m.from || ''); });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
+    const data = sh.getDataRange().getValues();
+    const del = []; let restored = 0;
+    for (let i = 1; i < data.length; i++) {
+      const id = String(data[i][0]);
+      if (!id) continue;
+      if (ids[id] && String(data[i][16] || '') === 'import') del.push(i + 1);
+      else if (id in moves) { sh.getRange(i + 1, 16).setValue(moves[id]); restored++; }
+    }
+    // 아래쪽부터, 이어진 줄은 한 번에 지운다
+    let k = del.length - 1;
+    while (k >= 0) {
+      let start = del[k], n = 1;
+      while (k - 1 >= 0 && del[k - 1] === start - 1) { start = del[k - 1]; n++; k--; }
+      sh.deleteRows(start, n); k--;
+    }
+    return { ok: true, removed: del.length, restored: restored };
   } finally {
     lock.releaseLock();
   }
