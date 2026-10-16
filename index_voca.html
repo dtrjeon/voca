@@ -177,6 +177,14 @@ nav button.active{color:var(--accent);font-weight:700}
 #toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#22243a;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center;z-index:50}
 #toast.show{opacity:1}
 dialog{border:0;border-radius:18px;padding:18px;width:min(92vw,460px);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#dlgCv{padding:14px 16px;max-height:96dvh;overflow:hidden}
+#dlgCv h3{font-size:17px;margin:0 0 0!important}
+#dlgCv label.lbl{margin:7px 0 3px;font-size:12px}
+#dlgCv .chip{padding:5px 11px;font-size:13px}
+#dlgCv select,#dlgCv input[type=date]{padding:6px 10px;font-size:14px;min-height:0;width:100%;box-sizing:border-box}
+#dlgCv .row{gap:6px}
+#dlgCv .btn{padding:10px}
+.cv-dg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 dialog::backdrop{background:rgba(20,22,40,.45)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -792,11 +800,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
     <option value="range">날짜로 고르기 (달력)</option>
   </select>
   <div id="cvDates" style="display:none">
-    <label class="lbl">시작일 (이 날부터 등록한 단어)</label>
-    <input type="date" id="cvFrom">
-    <label class="lbl">끝나는 날 (비우면 오늘까지)</label>
-    <input type="date" id="cvTo">
-    <div class="row" style="margin-top:8px"><button class="chip" id="cvFromToday">시작일을 오늘로</button><button class="chip" id="cvFromWeek">최근 7일</button></div>
+    <div class="cv-dg"><div><label class="lbl">시작일</label><input type="date" id="cvFrom"></div><div><label class="lbl">끝나는 날 (비우면 오늘)</label><input type="date" id="cvTo"></div></div>
+    <div class="row" style="margin-top:6px"><button class="chip" id="cvFromToday">시작일을 오늘로</button><button class="chip" id="cvFromWeek">최근 7일</button></div>
   </div>
   <label class="lbl">카드 앞면에 보이는 것</label>
   <div class="row" id="cvFace"><button class="chip" data-v="word">단어</button><button class="chip" data-v="mean">뜻</button><button class="chip" data-v="all">모두</button></div>
@@ -940,7 +945,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.7.4', APP_DATE = '2026-10-16', SERVER_NEED = 17;
+const APP_VERSION = '1.7.5', APP_DATE = '2026-10-16', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
