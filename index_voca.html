@@ -938,7 +938,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.7.2', APP_DATE = '2026-10-16', SERVER_NEED = 17;
+const APP_VERSION = '1.7.3', APP_DATE = '2026-10-16', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1494,7 +1494,7 @@ async function rateAll() {
 }
 
 function syncMlSw() { const on = meanLang === 'en', sw = $('#mlSw'); sw.classList.toggle('on', on); sw.setAttribute('aria-checked', on); $('#mlKo').innerHTML = on ? '영한' : '<b>영한</b>'; $('#mlEn').innerHTML = on ? '<b>영영</b>' : '영영'; }
-function setMeanLang(v) { meanLang = v; lsSet('vn_mlang', v); syncMlSw(); tblRevealed.clear(); renderList(); if (typeof tmRender === 'function') tmRender(); }
+function setMeanLang(v) { meanLang = v; lsSet('vn_mlang', v); syncMlSw(); tblRevealed.clear(); renderList(); if (typeof tmRender === 'function') tmRender(); if ($('#cardView').classList.contains('open')) cvRender(true); }
 $('#mlSw').addEventListener('click', () => setMeanLang(meanLang === 'en' ? 'ko' : 'en'));
 $('#mlSw').addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMeanLang(meanLang === 'en' ? 'ko' : 'en'); } });
 let enBusy = false;
@@ -2057,8 +2057,8 @@ function cvRender(keepIdx) {
     '<button class="cv-bm" data-a="bm" aria-label="북마크">' + (bm.has(w.id) ? '🔖' : '🏷️') + '</button>' +
     '<div class="cv-in"><div class="cv-word">' + esc(w.word) + '</div><div class="cv-ipa" data-ipa="' + esc(w.word) + '"></div>' +
     '<div class="cv-meta">' + esc(w.pos || '') + ' ' + lvChip(w.level) + '</div>' +
-    '<div class="cv-front-mean">' + esc(w.meaning) + '</div>' +
-    '<div class="cv-back"><div class="cv-mean">' + esc(w.meaning) + '</div><div class="cv-secs" data-i="' + i + '">' + cvSecs(w) + '</div></div></div>' +
+    '<div class="cv-front-mean">' + meanHtml(w) + '</div>' +
+    '<div class="cv-back"><div class="cv-mean">' + meanHtml(w) + '</div><div class="cv-secs" data-i="' + i + '">' + cvSecs(w) + '</div></div></div>' +
     '<div class="cv-foot"><div class="cv-hint">탭하면 ' + (cvCfg().face === 'mean' ? '단어가' : '뜻이') + ' 보여요</div>' +
     '<a class="cv-dict" data-a="dict" href="https://en.dict.naver.com/#/search?query=' + encodeURIComponent(w.word) + '" target="_blank" rel="noopener">📖 사전 검색</a></div></div>').join('');
   cvLayout();
