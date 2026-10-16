@@ -195,7 +195,9 @@ select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);bo
 #cardView{position:fixed;inset:0;z-index:40;background:#f0f0f0;display:none;flex-direction:column}
 #cardView.open{display:flex}
 .cv-top{display:flex;align-items:center;gap:6px;padding:calc(10px + env(safe-area-inset-top)) 14px 8px;background:#fff}
-.cv-top .ttl{font-weight:700;font-size:20px;flex:1}
+.cv-top .ttl{font-weight:700;font-size:18px;flex:1;min-width:0;line-height:1.25}
+.cv-top .ttl .tn{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cv-top .ttl .tc{display:block;font-size:13px;font-weight:600;color:var(--muted,#6b7280)}
 .cv-ibtn{border:0;background:none;font-size:15px;color:var(--ink);padding:8px 10px;border-radius:10px;display:flex;align-items:center;gap:4px}
 .cv-ibtn.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .cv-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid var(--line)}
@@ -766,7 +768,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div class="cv-top">
     <button class="cv-ibtn" id="cvClose" aria-label="닫기" style="font-size:24px;padding:4px 10px">‹</button>
     <div class="ttl" id="cvTitle">단어 카드</div>
-    <button class="cv-ibtn" id="cvBm">🔖 북마크만 보기</button>
+    <button class="cv-ibtn" id="cvBm" aria-label="북마크만 보기" title="북마크만 보기">🔖</button>
     <button class="cv-ibtn" id="cvMute" aria-label="소리 끄기">🔊</button>
     <button class="cv-ibtn" id="cvShuf" aria-label="섞기">🔀</button>
   </div>
@@ -938,7 +940,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.7.3', APP_DATE = '2026-10-16', SERVER_NEED = 17;
+const APP_VERSION = '1.7.4', APP_DATE = '2026-10-16', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2107,7 +2109,7 @@ function cvUi() {
   $('#cvRange').value = i + 1; const b = $('#cvBub'); b.textContent = n ? i + 1 : 0;
   const r = $('#cvRange'), pct = n > 1 ? i / (n - 1) : 0; b.style.left = 'calc(' + (pct * 100) + '% + ' + ((0.5 - pct) * 20) + 'px)';
   const cc = cvCfg(), f = lsGet('vn_cv_from', ''), rg = cc.scope === 'range' && f ? ' · ' + f.slice(5).replace('-', '/') + '~' : '';
-  $('#cvTitle').textContent = (cv.override ? cv.otitle : (cvFolderName() || '단어 카드')) + ' ' + (n ? (i + 1) + '/' + n : '') + (cv.override ? '' : rg);
+  $('#cvTitle').innerHTML = '<span class="tn">' + esc(cv.override ? cv.otitle : (cvFolderName() || '단어 카드')) + '</span><span class="tc">' + (n ? (i + 1) + ' / ' + n : '') + (cv.override ? '' : esc(rg)) + '</span>';
   $('#cvBm').classList.toggle('on', cv.bmOnly); $('#cvShuf').classList.toggle('on', cv.shuffled);
   $('#cvPlay').textContent = cv.playing ? '⏸' : '▶';
   $('#cvMute').textContent = isMuted() ? '🔇' : '🔊'; $('#cvMute').classList.toggle('on', isMuted());
