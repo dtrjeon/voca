@@ -1,0 +1,24 @@
+{
+ "packs": [
+  {
+   "file": "essential3.md",
+   "title": "고1~2 영어 필수 20 (3편)",
+   "desc": "60개"
+  },
+  {
+   "file": "verb-synonym-tree.md",
+   "title": "동사 동의어 나무",
+   "desc": "470개 · 동사 72개 가족(기초→중급→고급)"
+  },
+  {
+   "file": "adjective-synonym-tree.md",
+   "title": "형용사 동의어 나무",
+   "desc": "482개 · 형용사 72개 가족(기초→중급→고급)"
+  },
+  {
+   "file": "confusing-words-40.md",
+   "title": "헷갈리는 영단어 40쌍 (고1~2 내신)",
+   "desc": "80개 · 헷갈리는 영단어 40쌍(1~4부)"
+  }
+ ]
+}
