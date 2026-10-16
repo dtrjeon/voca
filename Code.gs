@@ -91,6 +91,7 @@ function doPost(e) {
       case 'import':    return json_(import_(req));
       case 'colloc':    return json_(colloc_(req));
       case 'defen':     return json_(defen_(req));
+      case 'renamefolder': return json_(renameFolder_(req));
       case 'restore':   return json_(restore_(req));
       default:          return json_({ ok: false, error: 'unknown action' });
     }
@@ -100,7 +101,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 15 });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 16 });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -592,6 +593,33 @@ function restore_(req) {
 /* ---------- 단어 묶음 가져오기 (폴더/서브폴더 지정) ----------
    req.items = [{ word, pos, meaning, example, example_ko, folder }]  (한 번에 최대 200개)
    - 이미 있는 단어: 새로 만들지 않고, 폴더가 비어 있으면 그 폴더로만 넣어 준다 */
+/* ---------- 폴더 이름 바꾸기 ----------
+   req = { from:'폴더' | '폴더/서브', to:'새폴더' | '새폴더/새서브', kind:'root' | 'sub' }
+   root: from 과 같거나 from + '/' 로 시작하는 모든 단어의 폴더를 바꾼다.  sub: from 과 정확히 같은 단어만. */
+function renameFolder_(req) {
+  const from = String(req.from || '').trim(), to = String(req.to || '').trim(), kind = req.kind === 'sub' ? 'sub' : 'root';
+  if (!from || !to) return { ok: false, error: '이름이 비어 있어요' };
+  if (from === to) return { ok: true, changed: 0 };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
+    const n = sh.getLastRow() - 1;
+    if (n < 1) return { ok: true, changed: 0 };
+    const rng = sh.getRange(2, 16, n, 1), col = rng.getValues();
+    let changed = 0;
+    for (let i = 0; i < n; i++) {
+      const f = String(col[i][0] || '');
+      if (!f) continue;
+      if (f === from || (kind === 'root' && f.indexOf(from + '/') === 0)) { col[i][0] = to + f.slice(from.length); changed++; }
+    }
+    if (changed) rng.setValues(col);
+    return { ok: true, changed: changed };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function import_(req) {
   const items = (req.items || []).slice(0, 200);
   if (!items.length) return { ok: true, added: 0, moved: 0, skipped: 0 };
