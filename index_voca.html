@@ -866,7 +866,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div class="setgrid"><div><label class="lbl" for="sRows">행 (1~30)</label><div class="step" data-for="sRows"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sRows" min="1" max="30" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div></div>
   <div><label class="lbl" for="sCols">열 (1~6)</label><div class="step" data-for="sCols"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sCols" min="1" max="6" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div></div></div>
   <label class="lbl" for="sTmSrc">🍅 토마토 · 토픽 (어떤 단어로 Day를 만들까요?)</label>
-  <select id="sTmSrc"></select>
+  <button type="button" class="pk-btn" id="sTmSrc" data-pk-open="tomatoset" aria-label="토마토 토픽"><span></span><b>▾</b></button>
   <label class="lbl">🍅 토마토 · Day 하나에 들어갈 단어 수</label>
   <div class="step" data-for="sTmPer"><button type="button" data-d="-1" aria-label="줄이기">−</button><input type="number" id="sTmPer" min="5" max="50" inputmode="numeric"><button type="button" data-d="1" aria-label="늘리기">＋</button></div>
   </div>
@@ -937,7 +937,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.6.0', APP_DATE = '2026-10-15', SERVER_NEED = 17;
+const APP_VERSION = '1.6.1', APP_DATE = '2026-10-15', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1950,7 +1950,7 @@ $('#btnQuit').addEventListener('click', () => { if (confirm('퀴즈를 그만할
 /* ====== 설정 ====== */
 $('#btnSettings').addEventListener('click', () => {
   $('#sGas').value = lsGet('vn_gas', '') || (DEFAULT_GAS_URL.indexOf('PASTE') >= 0 ? '' : DEFAULT_GAS_URL);
-  $('#sTmSrc').innerHTML = tmSrcOptions(); $('#sTmSrc').value = tmSrc; $('#sTmPer').value = tmPer(); $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
+  sTmVal = tmSrc; pkSetBtn(); $('#sTmPer').value = tmPer(); $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
   syncMode(); updateNetUI(); $('#sBkSt').textContent = ''; $('#sTabs [data-p="conn"]').click(); $('#sAdv').open = !$('#sGas').value;
   fillVoices(); syncSrc(lsGet('vn_src', 'human'));
   $('#sRate').value = lsGet('vn_rate', '0.85'); $('#sRateVal').textContent = $('#sRate').value + '배';
@@ -1986,7 +1986,7 @@ $('#sSave').addEventListener('click', () => {
   const n = parseInt($('#sNewPerDay').value, 10); if (!isNaN(n)) lsSet('vn_newperday', String(Math.max(0, Math.min(50, n))));
   const tr = parseInt($('#sRows').value, 10), tc = parseInt($('#sCols').value, 10);
   if (!isNaN(tr)) lsSet('vn_trows', String(Math.max(1, Math.min(30, tr)))); if (!isNaN(tc)) lsSet('vn_tcols', String(Math.max(1, Math.min(6, tc))));
-  if ($('#sTmSrc').value !== tmSrc) { tmSrc = $('#sTmSrc').value; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; }
+  if (sTmVal !== tmSrc) { tmSrc = sTmVal; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; }
   const tp = parseInt($('#sTmPer').value, 10); if (!isNaN(tp)) lsSet('vn_tm_per', String(Math.max(5, Math.min(50, tp))));
   tblPage = 0; renderList(); if ($('#tab-tomato').classList.contains('active')) tmRender();
   $('#dlgSettings').close(); toast('저장했어요'); updateSetupInfo(); refreshWords();
@@ -2259,7 +2259,9 @@ const folderSel = { f: '', s: '', ss: null };
 /* ====== 폴더/토픽 선택창: 최상위는 접기·펼침 + 1개만, 하위는 1개 이상 ====== */
 const PKS = '\u0001';
 let pkOpenMap = {}; try { pkOpenMap = JSON.parse(lsGet('vn_pk_open', '{}')) || {}; } catch (e) { pkOpenMap = {}; }
-let pkMode = '', pkCur = '', pkOrig = '';
+let pkMode = '', pkTarget = '', pkCur = '', pkOrig = '', sTmVal = '';
+function tmLabelOf(v) { const o = tmSrc; tmSrc = v; try { return tmLabel(); } finally { tmSrc = o; } }
+function pkSetBtn() { const b = $('#sTmSrc'); if (b) b.firstElementChild.textContent = pkLabel(sTmVal, folderTree()); }
 function pkParse(v) {
   v = String(v || '');
   if (v.startsWith('f:')) return { r: v.slice(2), s: null };
@@ -2278,7 +2280,7 @@ function pkFolderCur() {
 }
 function pkLabel(v, t) {
   if (!v) return '📁 전체 (' + words.length + ')'; if (v === '__none') return '미분류 (' + words.filter(w => !w.folder).length + ')';
-  const q = pkParse(v); if (!q) return v === 'h:*' ? '✍️ 손쓰기 전체' : (typeof tmLabel === 'function' ? tmLabel() : v);
+  const q = pkParse(v); if (!q) return v === 'h:*' ? '✍️ 손쓰기 전체' : (typeof tmLabel === 'function' ? tmLabelOf(v) : v);
   if (!q.s) return '📁 ' + q.r + (t && t[q.r] ? ' (' + t[q.r].all.length + ')' : '');
   const n = t && t[q.r] ? q.s.reduce((a, k) => a + ((t[q.r].subs[k] || []).length), 0) : 0;
   return '📂 ' + q.r + ' › ' + q.s.join(', ') + (n ? ' (' + n + ')' : '');
@@ -2290,12 +2292,14 @@ function pkApply(mode, v) {
     if (v === '') folderSel.f = ''; else if (v === '__none') folderSel.f = '__none';
     else if (q) { folderSel.f = q.r; if (q.s && q.s.length === 1 && v.startsWith('s:')) folderSel.s = q.s[0]; else if (q.s && q.s.length) folderSel.ss = q.s.slice(); }
     tblPage = 0; renderList();
+  } else if (mode === 'tomatoset') {
+    sTmVal = v; pkSetBtn();
   } else {
     tmSrc = v; lsSet('vn_tm_src', tmSrc); tm.page = 0; tm.view = 'home'; tmRender();
   }
 }
 function pkOpenDlg(mode) {
-  pkMode = mode; pkCur = pkOrig = mode === 'folder' ? pkFolderCur() : tmSrc;
+  pkTarget = mode; pkMode = mode === 'tomatoset' ? 'tomato' : mode; pkCur = pkOrig = mode === 'folder' ? pkFolderCur() : mode === 'tomatoset' ? sTmVal : tmSrc;
   $('#dlgPick .pk-t').textContent = mode === 'folder' ? '폴더 선택' : '토픽(범위) 선택';
   pkRender(); const d = $('#dlgPick'); if (!d.open) d.showModal();
 }
@@ -2350,7 +2354,7 @@ async function pkRename(root, sub) {
   saveCache();
   // 화면 상태 옮기기
   if (folderSel.f === root) { if (!isSub) folderSel.f = name; else { if (folderSel.s === sub) folderSel.s = name; if (folderSel.ss) folderSel.ss = folderSel.ss.map(k => k === sub ? name : k); } }
-  tmSrc = pkRemap(tmSrc, root, isSub ? sub : null, name); lsSet('vn_tm_src', tmSrc);
+  tmSrc = pkRemap(tmSrc, root, isSub ? sub : null, name); lsSet('vn_tm_src', tmSrc); sTmVal = pkRemap(sTmVal, root, isSub ? sub : null, name); pkSetBtn();
   const nd = {}; Object.keys(tmDates).forEach(k => { nd[pkRemap(k, root, isSub ? sub : null, name)] = tmDates[k]; }); tmDates = nd; tmSaveDates();
   pkCur = pkRemap(pkCur, root, isSub ? sub : null, name); pkOrig = pkRemap(pkOrig, root, isSub ? sub : null, name);
   if (!isSub && root in pkOpenMap) { pkOpenMap[name] = pkOpenMap[root]; delete pkOpenMap[root]; lsSet('vn_pk_open', JSON.stringify(pkOpenMap)); }
@@ -2380,7 +2384,7 @@ document.addEventListener('click', e => {
   document.addEventListener('DOMContentLoaded', () => {});
   window.pkClose = () => { const x = d(); if (x.open) x.close(); };
   document.addEventListener('click', e => { if (e.target.id === 'pkDone') pkClose(); });
-  document.addEventListener('close', e => { if (e.target.id === 'dlgPick' && pkCur !== pkOrig) { const m = pkMode, v = pkCur; pkOrig = pkCur; pkApply(m, v); } }, true);
+  document.addEventListener('close', e => { if (e.target.id === 'dlgPick' && pkCur !== pkOrig) { const m = pkTarget || pkMode, v = pkCur; pkOrig = pkCur; pkApply(m, v); } }, true);
 }
 
 function folderTree() {
