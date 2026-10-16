@@ -626,7 +626,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
         <option value="wrong">오답순</option>
         <option value="due">복습순</option>
         <option value="level">난이도순</option>
-        <option value="day">일자별</option>
+        <option value="abc">순차별 (ㄱ-ㅎ · A-Z)</option>
       </select>
     </div>
     <div id="dateBar"></div>
@@ -782,7 +782,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <h3 style="margin:0 0 6px">카드 설정</h3>
   <label class="lbl">범위</label>
   <select id="cvScope">
-    <option value="all">전체 단어</option>
+    <option value="list">단어장과 같게 (폴더·검색·정렬)</option>
+    <option value="all">선택한 폴더 전체</option>
     <option value="due">복습할 단어</option>
     <option value="hard">어려운 단어 (★4~5)</option>
     <option value="today">오늘 등록한 단어</option>
@@ -937,7 +938,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.6.1', APP_DATE = '2026-10-15', SERVER_NEED = 17;
+const APP_VERSION = '1.7.1', APP_DATE = '2026-10-16', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1535,7 +1536,7 @@ function renderList() {
   renderDateBar();
   let arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning + ' ' + ((w.extra && w.extra.meaning_en) || '')).toLowerCase().indexOf(q) >= 0));
   arr = arr.slice().sort((a, b) => {
-    if (sortMode === 'day') return String(b.added).localeCompare(String(a.added));
+    if (sortMode === 'abc') return abcCmp(a, b);
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
     if (sortMode === 'wrong') return (b.wrong || 0) - (a.wrong || 0) || (a.right || 0) - (b.right || 0);
     if (sortMode === 'due') {
@@ -1551,7 +1552,7 @@ function renderList() {
   box.classList.toggle('tblmode', tblView && arr.length > 0);
   if (tblView && arr.length) { renderTable(arr, box); return; }
   if (!arr.length) { box.innerHTML = '<div class="empty">' + (words.length ? (dateFilter ? '그 날 등록한 단어가 없어요' : '검색 결과가 없어요') : '아직 단어가 없어요.<br>“쓰기” 탭에서 첫 단어를 써 보세요!') + '</div>'; return; }
-  const dayCnt = {}; if (sortMode === 'day') arr.forEach(w => { const d = addedYmd(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
+  const dayCnt = {}; if (sortMode === 'abc') arr.forEach(w => { const d = abcGroup(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
   box.innerHTML = arr.map((w, ix) => dayHead(arr, ix, dayCnt) +
     '<div class="w-item" data-id="' + esc(w.id) + '">' +
       '<div class="w-top"><span class="w-word">' + esc(w.word) + '</span>' +
@@ -2000,16 +2001,34 @@ $('#sTestBtn').addEventListener('click', async () => {
 });
 
 /* ====== 단어 카드 보기 ====== */
+try { if (!localStorage.getItem('vn_cv_mig171')) { localStorage.setItem('vn_cv_mig171', '1'); localStorage.setItem('vn_cv_scope', 'list'); } } catch (e) {}
 const cv = { deck: [], idx: 0, shuffled: false, bmOnly: false, playing: false, timers: [], prog: false, st: null };
-const cvCfg = () => ({ scope: lsGet('vn_cv_scope', 'all'), gap: parseInt(lsGet('vn_cv_gap', '5'), 10) || 5, showMean: lsGet('vn_cv_mean', '1') === '1', loop: lsGet('vn_cv_loop', '1') === '1', auto: lsGet('vn_cv_auto', '1') === '1', face: lsGet('vn_cv_face', 'word') });
+const cvCfg = () => ({ scope: lsGet('vn_cv_scope', 'list'), gap: parseInt(lsGet('vn_cv_gap', '5'), 10) || 5, showMean: lsGet('vn_cv_mean', '1') === '1', loop: lsGet('vn_cv_loop', '1') === '1', auto: lsGet('vn_cv_auto', '1') === '1', face: lsGet('vn_cv_face', 'word') });
 const bmSet = () => { try { return new Set(JSON.parse(lsGet('vn_bm', '[]'))); } catch (e) { return new Set(); } };
 function bmSave(set) { lsSet('vn_bm', JSON.stringify(Array.from(set))); }
 
 const addedYmd = w => { const d = new Date(w.added); return isNaN(d) ? String(w.added).slice(0, 10) : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(d); };
+function curListWords() {
+  const q = ($('#search').value || '').trim().toLowerCase();
+  const arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning + ' ' + ((w.extra && w.extra.meaning_en) || '')).toLowerCase().indexOf(q) >= 0));
+  return arr.sort((a, b) => {
+    if (sortMode === 'abc') return abcCmp(a, b);
+    if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
+    if (sortMode === 'wrong') return (b.wrong || 0) - (a.wrong || 0) || (a.right || 0) - (b.right || 0);
+    if (sortMode === 'due') {
+      const ka = isNew(a) ? '9999' : (a.due || '0000'), kb = isNew(b) ? '9999' : (b.due || '0000');
+      return ka.localeCompare(kb) || String(b.added).localeCompare(String(a.added));
+    }
+    return String(b.added).localeCompare(String(a.added));
+  });
+}
 function buildDeck() {
   const c = cvCfg(), bm = bmSet(), td = todayStr();
-  let arr = (cv.override || words).slice().sort((a, b) => cv.override ? 0 : String(b.added).localeCompare(String(a.added)));
-  if (cv.override) { /* 폴더 카드: 범위 설정은 적용하지 않는다 */ }
+  let arr;
+  if (cv.override) arr = cv.override.slice(); /* 폴더 카드: 범위 설정은 적용하지 않는다 */
+  else if (c.scope === 'list') arr = curListWords(); /* 단어장에 보이는 그대로 */
+  else arr = words.filter(inFolder).sort((a, b) => String(b.added).localeCompare(String(a.added)));
+  if (cv.override || c.scope === 'list') { /* 추가 필터 없음 */ }
   else if (c.scope === 'due') arr = arr.filter(isDue);
   else if (c.scope === 'hard') arr = arr.filter(w => (w.level || 0) >= 4);
   else if (c.scope === 'today') arr = arr.filter(w => addedYmd(w) === td);
@@ -2195,11 +2214,11 @@ const cal = { y: 0, m: 0, from: '', to: '' };
 function calInit() {
   const t = todayStr().split('-').map(Number); cal.y = t[0]; cal.m = t[1] - 1;
   cal.from = lsGet('vn_cv_from', ''); cal.to = lsGet('vn_cv_to', '');
-  if (lsGet('vn_cv_scope', 'all') !== 'range') { cal.from = ''; cal.to = ''; }
+  if (lsGet('vn_cv_scope', 'list') !== 'range') { cal.from = ''; cal.to = ''; }
 }
 function calSave() {
   if (cal.from) { lsSet('vn_cv_from', cal.from); lsSet('vn_cv_to', cal.to && cal.to !== cal.from ? cal.to : cal.from); lsSet('vn_cv_scope', 'range'); }
-  else { lsSet('vn_cv_from', ''); lsSet('vn_cv_to', ''); if (lsGet('vn_cv_scope', 'all') === 'range') lsSet('vn_cv_scope', 'all'); }
+  else { lsSet('vn_cv_from', ''); lsSet('vn_cv_to', ''); if (lsGet('vn_cv_scope', 'list') === 'range') lsSet('vn_cv_scope', 'list'); }
 }
 const pad2 = n => String(n).padStart(2, '0');
 const calKey = (y, m, d) => y + '-' + pad2(m + 1) + '-' + pad2(d);
@@ -2637,11 +2656,25 @@ function renderWDate() {
 function wDateAfterSave() { const n = words.filter(w => addedYmd(w) === regDate()).length; $('#wDateNote').textContent = $('#wDate').value.slice(5).replace('-', '/') + ' 일자 단어 ' + n + '개'; }
 $('#wDate').addEventListener('change', e => { const v = e.target.value; lsSet('vn_wdate', !v || v === todayStr() ? '' : v); renderWDate(); });
 $('#wToday').addEventListener('click', () => { lsSet('vn_wdate', ''); renderWDate(); toast('오늘 일자로 등록해요', 1400); });
+/* 순차별 정렬: 한글(ㄱ-ㅎ) 먼저, 그다음 A-Z. 같은 글자면 최신 등록이 위 */
+const CHO = ['ㄱ', 'ㄱ', 'ㄴ', 'ㄷ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅂ', 'ㅅ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const isKoCh = c => /[가-힣ㄱ-ㅎ]/.test(c);
+function abcGroup(w) {
+  const c = String(w.word || '').trim().charAt(0); if (!c) return '#';
+  if (/[가-힣]/.test(c)) return CHO[Math.floor((c.charCodeAt(0) - 0xAC00) / 588)];
+  if (/[ㄱ-ㅎ]/.test(c)) return c;
+  return /[A-Za-z]/.test(c) ? c.toUpperCase() : '#';
+}
+function abcCmp(a, b) {
+  const ka = abcGroup(a), kb = abcGroup(b), ra = isKoCh(ka) ? 0 : (ka === '#' ? 2 : 1), rb = isKoCh(kb) ? 0 : (kb === '#' ? 2 : 1);
+  if (ra !== rb) return ra - rb;
+  const wa = String(a.word || '').trim().toLowerCase(), wb = String(b.word || '').trim().toLowerCase();
+  return wa.localeCompare(wb, ra === 0 ? 'ko' : 'en', { sensitivity: 'base' }) || String(b.added).localeCompare(String(a.added));
+}
 function dayHead(arr, ix, cnt) {
-  if (sortMode !== 'day') return '';
-  const d = addedYmd(arr[ix]); if (ix && addedYmd(arr[ix - 1]) === d) return '';
-  const wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(d + 'T12:00:00+09:00').getDay()];
-  return '<div class="day-h"><span>📅 ' + d.slice(5).replace('-', '/') + ' (' + wd + ')</span><small>' + cnt[d] + '개</small></div>';
+  if (sortMode !== 'abc') return '';
+  const g = abcGroup(arr[ix]); if (ix && abcGroup(arr[ix - 1]) === g) return '';
+  return '<div class="day-h"><span>' + esc(g) + '</span><small>' + cnt[g] + '개</small></div>';
 }
 renderWDate();
 
