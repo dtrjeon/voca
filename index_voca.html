@@ -983,7 +983,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.8.6', APP_DATE = '2026-10-17', SERVER_NEED = 18;
+const APP_VERSION = '1.8.7', APP_DATE = '2026-10-17', SERVER_NEED = 18;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2827,7 +2827,7 @@ function tmPlanCard(all, nd) {
   return h + '<div style="margin-top:8px">' + startIn + '</div></div>';
 }
 
-const tmGoalName = () => lsGet('vn_tm_goal', '');
+const tmGoalName = () => lsGet('vn_tm_goal', '성균관대학교');   // 처음엔 성균관대학교, 직접 지우면 비워 둠
 const tmGoalImg = () => { const v = lsGet('vn_tm_goal_img', ''); return /^data:image\/(png|jpeg);base64,/.test(v) ? v : ''; };
 function tmGoalImage(file) {
   if (!file || !/^image\//.test(file.type)) { toast('이미지 파일을 골라 주세요'); return; }
