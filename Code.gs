@@ -6,6 +6,7 @@
  * 2) 프로젝트 설정 > 스크립트 속성에 추가
  *      ANTHROPIC_API_KEY = (Anthropic API 키)
  *    (선택) MODEL = claude-haiku-5-5   (기본값)
+ *    (선택) TEACHER_CODE = (선생님 코드)  ← 넣으면 AI 기능(손글씨 인식·뜻/예문·상세·연어·영영)이 코드를 아는 앱에서만 동작해요. 코드는 이 파일에 쓰지 마세요.
  * 3) 배포 > 새 배포 > 웹 앱 (실행: 나, 액세스: 모든 사용자) > URL 복사
  *    -> index_voca.html 의 DEFAULT_GAS_URL 에 붙여넣기 (또는 앱 ⚙️ 설정에 입력)
  *
@@ -64,6 +65,11 @@ function dstr_(v) {
 function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
+    // 비용이 드는 기능(AI 호출)은 선생님 코드를 맞춰야 쓸 수 있다. 스크립트 속성 TEACHER_CODE 가 비어 있으면 잠그지 않는다.
+    if (LOCKED_ACTIONS_[req.action]) {
+      const need = PropertiesService.getScriptProperties().getProperty('TEACHER_CODE');
+      if (need && String(req.code || '') !== String(need)) return json_({ ok: false, locked: true, error: '선생님 코드가 필요해요 (앱 설정 › 고급 › 선생님 코드)' });
+    }
     switch (req.action) {
       case 'recognize': {
         const t0 = Date.now();
@@ -101,8 +107,10 @@ function doPost(e) {
   }
 }
 
+const LOCKED_ACTIONS_ = { recognize: 1, enrich: 1, detail: 1, colloc: 1, defen: 1 };
+
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 18 });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 19, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */

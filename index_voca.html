@@ -897,6 +897,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <details id="sAdv" style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--sub);padding:6px 0">⚙️ 고급 · 서버 주소 (보통은 건드리지 않아도 돼요)</summary>
   <label class="lbl">Apps Script 웹 앱 URL</label>
   <input type="text" id="sGas" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="none" autocomplete="off" spellcheck="false">
+  <label class="lbl">선생님 코드 (서버를 잠갔을 때만 필요해요)</label>
+  <input type="password" id="sCode" placeholder="비워 두면 코드 없이 보내요" autocapitalize="none" autocomplete="off" spellcheck="false">
   <div id="sTest" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
   <div class="row" style="margin-top:8px"><button class="btn" id="sTestBtn" type="button">연결 테스트</button></div>
   </details>
@@ -995,7 +997,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.9.4', APP_DATE = '2026-10-17', SERVER_NEED = 18;
+const APP_VERSION = '1.10.0', APP_DATE = '2026-10-17', SERVER_NEED = 19;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1013,6 +1015,7 @@ const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { c
 function lsGet(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
+const teacherCode = () => lsGet('vn_teacher_code', '').trim();
 function gasUrl() { return (lsGet('vn_gas', '') || DEFAULT_GAS_URL).trim(); }
 
 let toastTimer;
@@ -1051,7 +1054,7 @@ function warmGas() {
 async function rawApi(action, data) {
   gasTs = Date.now();
   const url = gasUrl();
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {})) });
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {}, teacherCode() ? { code: teacherCode() } : {})) });
   const j = await res.json();
   if (!j.ok) { const err = new Error(j.error || '요청 실패'); err.data = j; throw err; }
   return j;
@@ -2010,6 +2013,7 @@ $('#btnQuit').addEventListener('click', () => { if (confirm('퀴즈를 그만할
 
 /* ====== 설정 ====== */
 $('#btnSettings').addEventListener('click', () => {
+  $('#sCode').value = lsGet('vn_teacher_code', '');
   $('#sGas').value = lsGet('vn_gas', '') || (DEFAULT_GAS_URL.indexOf('PASTE') >= 0 ? '' : DEFAULT_GAS_URL);
   sTmVal = tmSrc; pkSetBtn(); $('#sTmPer').value = tmPer(); $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
   syncMode(); updateNetUI(); $('#sBkSt').textContent = ''; $('#sTabs [data-p="conn"]').click(); $('#sAdv').open = !$('#sGas').value;
@@ -2041,7 +2045,7 @@ $$('.step').forEach(st => st.addEventListener('click', e => {
 }));
 $('#sCancel').addEventListener('click', () => $('#dlgSettings').close());
 $('#sSave').addEventListener('click', () => {
-  lsSet('vn_gas', $('#sGas').value.trim());
+  lsSet('vn_gas', $('#sGas').value.trim()); lsSet('vn_teacher_code', $('#sCode').value.trim());
   lsSet('vn_src', srcSel); lsSet('vn_voice', $('#sVoice').value); lsSet('vn_rate', $('#sRate').value); pickVoice();
   if (srcSel === 'human') prefetchAudio();
   const n = parseInt($('#sNewPerDay').value, 10); if (!isNaN(n)) lsSet('vn_newperday', String(Math.max(0, Math.min(50, n))));
@@ -2056,7 +2060,7 @@ $('#sTestBtn').addEventListener('click', async () => {
   const u = $('#sGas').value.trim(); const out = $('#sTest');
   if (!u) { out.textContent = 'URL을 입력해 주세요.'; return; }
   out.textContent = '확인 중…';
-  try { const r = await fetch(u); const j = await r.json(); out.textContent = j.ok ? ('✅ 연결됐어요 · 서버 v' + (j.version || '?') + (Number(j.version) < SERVER_NEED ? ' ⚠️ 최신(v' + SERVER_NEED + ')이 아니에요. Code.gs 교체 후 새 버전으로 다시 배포하세요' : ' (최신)')) : '응답이 이상해요'; }
+  try { const r = await fetch(u); const j = await r.json(); out.textContent = j.ok ? ('✅ 연결됐어요 · 서버 v' + (j.version || '?') + (Number(j.version) < SERVER_NEED ? ' ⚠️ 최신(v' + SERVER_NEED + ')이 아니에요. Code.gs 교체 후 새 버전으로 다시 배포하세요' : ' (최신)') + (j.locked ? ' · 🔒 AI 기능 잠김(코드 필요)' : ' · 🔓 잠금 없음')) : '응답이 이상해요'; }
   catch (e) { out.textContent = '❌ 연결 실패: 배포 설정(액세스: 모든 사용자)과 URL을 확인해 주세요.'; }
 });
 
@@ -2659,7 +2663,7 @@ async function runImport(p) {
     $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b>' + (auto === 'skip' ? ' (모의고사 묶음: 이미 있는 단어는 건너뛰고 새 단어만 추가)' : '') + ' — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
       (skippedList.length ? '<div class="isk">건너뛴 단어(이미 있는 폴더): ' + skippedList.map(x => esc(x.word) + (x.folder ? ' → ' + esc(x.folder) : '')).join(' · ') + (skipped > skippedList.length ? ' …' : '') + '</div>' : '') +
       '<div class="irow"><button class="btn primary" data-ir="list">📒 단어장에서 보기</button><button class="btn primary" data-ir="tomato">🍅 토마토에서 열기</button>' + (ids.length || movedList.length ? '<button class="btn danger" data-ir="undo">↩ 되돌리기</button>' : '') + '</div></div>';
-  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v18)으로 다시 배포해 주세요' : ''); }
+  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v19)으로 다시 배포해 주세요' : ''); }
   impBusy = false;
 }
 $('#impResult').addEventListener('click', async e => {
