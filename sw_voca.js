@@ -1,5 +1,5 @@
-const CACHE = 'voca-shell-v40';
-const SHELL = ['./index_voca.html', './manifest_voca.json', './icon_voca.svg', './img/tm_hero.jpg'];
+const CACHE = 'voca-shell-v41';
+const SHELL = ['./index_voca.html', './manifest_voca.json', './icon_voca.svg', './img/tm_hero.jpg', './img/univ/chonnam.png', './img/univ/cnu.png', './img/univ/ewha.png', './img/univ/gachon.png', './img/univ/gnu.png', './img/univ/hallym.png', './img/univ/jeju.png', './img/univ/jeonju.png', './img/univ/kangwon.png', './img/univ/keimyung.png', './img/univ/konkuk.png', './img/univ/kyonggi.png', './img/univ/kyunghee.png', './img/univ/kyungpook.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

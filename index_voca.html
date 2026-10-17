@@ -443,6 +443,12 @@ header .count{white-space:nowrap}
 .tm-in-hero.bg .tm-in-msg{position:static;padding:12px 84px 4px 14px}
 .tm-in-hero.bg .tm-in-bgimg{display:block;width:100%;height:auto}
 .tm-in-hero.bg .tm-in-goal{left:auto;right:8px;bottom:8px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.tm-in-logo{padding:2px 14px 8px;background:#fdfdfd}
+.tm-in-logo img{display:block;height:34px;width:auto;max-width:70%}
+.tm-univ-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tm-univ{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:6px;height:46px;display:flex;align-items:center;justify-content:center}
+.tm-univ img{max-width:100%;max-height:100%;object-fit:contain}
+.tm-univ.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .tm-in-form{padding:10px 14px;border-top:1px solid var(--line);background:#f7faff;display:flex;flex-direction:column;gap:8px}
 .tm-in-form label{font-size:13px;color:var(--sub)}
 .tm-in-form input[type=text]{width:100%;box-sizing:border-box}
@@ -988,7 +994,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.8.10', APP_DATE = '2026-10-17', SERVER_NEED = 18;
+const APP_VERSION = '1.9.0', APP_DATE = '2026-10-17', SERVER_NEED = 18;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2846,6 +2852,8 @@ function tmPlanCard(all, nd) {
 }
 
 const tmGoalName = () => lsGet('vn_tm_goal', '성균관대학교');   // 처음엔 성균관대학교, 직접 지우면 비워 둠
+const UNIV_LOGO = { '가천대학교': 'gachon', '강원대학교': 'kangwon', '건국대학교': 'konkuk', '경기대학교': 'kyonggi', '경북대학교': 'kyungpook', '경상국립대학교': 'gnu', '경희대학교': 'kyunghee', '계명대학교': 'keimyung', '이화여자대학교': 'ewha', '전남대학교': 'chonnam', '전주대학교': 'jeonju', '제주대학교': 'jeju', '충남대학교': 'cnu', '한림대학교': 'hallym' };   // img/univ/*.png (이름이 같으면 배너에 로고가 나온다)
+const univLogo = n => UNIV_LOGO[String(n || '').trim()] ? 'img/univ/' + UNIV_LOGO[String(n).trim()] + '.png' : '';
 const tmGoalImg = () => { const v = lsGet('vn_tm_goal_img', ''); return /^data:image\/(png|jpeg);base64,/.test(v) ? v : ''; };
 function tmGoalImage(file) {
   if (!file || !/^image\//.test(file.type)) { toast('이미지 파일을 골라 주세요'); return; }
@@ -2878,9 +2886,10 @@ function tmIntro(nd, per) {
     '<line x1="206" y1="38" x2="206" y2="20" stroke="#17365d" stroke-width="2"/><path d="M206 20 L226 26 L206 32Z" fill="#ef5350"/></svg>';
   const sub = goal ? esc(root) + ' ' + nd + '일 · 하루 ' + per + '단어. 오늘 한 칸만 올라가면 돼요.' : '하루 ' + per + '단어, ' + nd + '일 뒤의 나를 만나요. 오늘 한 칸만 올라가면 돼요.';
   let h = '<div class="tm-intro"><div class="tm-in-hero' + (img ? ' has-mark' : ' bg') + '"><div class="tm-in-msg"><b>' + title + '</b><span>' + sub + '</span></div>' +
-    (img ? '<img class="tm-in-mark" src="' + img + '" alt="목표 대학 마크">' : '<img class="tm-in-bgimg" src="img/tm_hero.jpg" alt="계단을 한 칸씩 오르는 학생">') +
+    (img ? '<img class="tm-in-mark" src="' + img + '" alt="목표 대학 마크">' : (univLogo(goal) ? '<div class="tm-in-logo"><img src="' + univLogo(goal) + '" alt="' + esc(goal) + ' 로고"></div>' : '') + '<img class="tm-in-bgimg" src="img/tm_hero.jpg" alt="계단을 한 칸씩 오르는 학생">') +
     '<button class="tm-in-x" data-act="intro" type="button">접기 ▴</button><button class="tm-in-goal" data-act="goal" type="button">🎓 목표 대학</button></div>';
-  if (tm.goalEdit) h += '<div class="tm-in-form"><label>목표 대학 이름</label><input type="text" data-goal="name" value="' + esc(goal) + '" placeholder="목록에서 고르거나 직접 입력" autocomplete="off" maxlength="20" list="tmUniv"><datalist id="tmUniv">' + ['서울대학교','연세대학교','고려대학교','성균관대학교','서강대학교','한양대학교','중앙대학교','경희대학교','한국외국어대학교','서울시립대학교','이화여자대학교','건국대학교','동국대학교','홍익대학교','숙명여자대학교','KAIST','POSTECH','아주대학교','인하대학교','단국대학교'].map(u => '<option value="' + u + '">').join('') + '</datalist>' +
+  if (tm.goalEdit) h += '<div class="tm-in-form"><label>목표 대학 이름</label><input type="text" data-goal="name" value="' + esc(goal) + '" placeholder="목록에서 고르거나 직접 입력" autocomplete="off" maxlength="20" list="tmUniv"><datalist id="tmUniv">' + ['서울대학교','연세대학교','고려대학교','성균관대학교','서강대학교','한양대학교','중앙대학교','한국외국어대학교','서울시립대학교','동국대학교','홍익대학교','숙명여자대학교','KAIST','POSTECH','아주대학교','인하대학교','단국대학교'].concat(Object.keys(UNIV_LOGO)).map(u => '<option value="' + u + '">').join('') + '</datalist>' +
+    '<label>로고가 있는 대학 (눌러서 선택)</label><div class="tm-univ-grid">' + Object.keys(UNIV_LOGO).map(u => '<button type="button" class="tm-univ' + (u === goal ? ' on' : '') + '" data-act="univ" data-u="' + u + '" title="' + u + '"><img src="img/univ/' + UNIV_LOGO[u] + '.png" alt="' + u + '"></button>').join('') + '</div>' +
     '<label>마크 이미지 (폰 사진첩에서 고르기)</label><input type="file" accept="image/*" data-goal="img">' +
     '<div class="hint">이미지는 이 폰 안에만 저장돼요. 정사각형에 가깝게 잘라서 쓰면 예뻐요.</div>' +
     '<div class="row"><button class="btn primary" data-act="goalsave" type="button">저장</button><button class="btn" data-act="goalclr" type="button">이미지·이름 지우기</button><button class="btn" data-act="goal" type="button">닫기</button></div></div>';
@@ -2964,6 +2973,7 @@ $('#tmBody').addEventListener('click', e => {
   else if (act === 'pdone') tmTogglePlanDone(+el.dataset.d);
   else if (act === 'intro') lsSet('vn_tm_intro', lsGet('vn_tm_intro', '1') === '0' ? '1' : '0');
   else if (act === 'goal') tm.goalEdit = !tm.goalEdit;
+  else if (act === 'univ') { lsSet('vn_tm_goal', el.dataset.u); lsSet('vn_tm_goal_img', ''); toast(el.dataset.u + '로 바꿨어요', 1400); }
   else if (act === 'goalsave') { const inp = $('#tmBody input[data-goal="name"]'); lsSet('vn_tm_goal', inp ? inp.value.trim().slice(0, 20) : ''); tm.goalEdit = false; toast('목표 대학을 저장했어요'); }
   else if (act === 'goalclr') { lsSet('vn_tm_goal', ''); lsSet('vn_tm_goal_img', ''); tm.goalEdit = false; toast('지웠어요'); }
   else if (act === 'wtest') {
