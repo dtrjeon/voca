@@ -997,7 +997,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.11.1', APP_DATE = '2026-10-17', SERVER_NEED = 20;
+const APP_VERSION = '1.11.2', APP_DATE = '2026-10-17', SERVER_NEED = 20;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1617,7 +1617,7 @@ function renderList() {
   if (tblView && arr.length) { renderTable(arr, box); return; }
   if (!arr.length) { box.innerHTML = '<div class="empty">' + (words.length ? (dateFilter ? '그 날 등록한 단어가 없어요' : '검색 결과가 없어요') : '아직 단어가 없어요.<br>“쓰기” 탭에서 첫 단어를 써 보세요!') + '</div>'; return; }
   const dayCnt = {}; if (sortMode === 'abc' || sortMode === 'day') arr.forEach(w => { const d = listGroup(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
-  box.innerHTML = arr.map((w, ix) => dayHead(arr, ix, dayCnt) +
+  const itemHtml = (w, ix) => dayHead(arr, ix, dayCnt) +
     '<div class="w-item" data-id="' + esc(w.id) + '">' +
       '<div class="w-top"><span class="w-word">' + esc(w.word) + '</span>' +
       (w.pos ? '<span class="w-pos">' + esc(w.pos) + '</span>' : '') +
@@ -1633,7 +1633,19 @@ function renderList() {
         '<div class="row" style="margin-top:10px">' + (SR ? '<button class="btn" data-act="say">🎤 발음 말해보기</button>' : '') +
         '<button class="btn" data-act="edit">수정</button><button class="btn danger" data-act="del">삭제</button></div>' +
         '<div class="say-out"></div>' +
-      '</div></div>').join('');
+      '</div></div>';
+  const STEP = 120; let shown = Math.min(STEP, arr.length);
+  const moreHtml = () => shown < arr.length ? '<div id="listMore" class="empty" style="padding:16px"><button class="btn" id="btnMore" type="button">더 보기 (' + shown + ' / ' + arr.length + ')</button></div>' : '';
+  let h = ''; for (let i = 0; i < shown; i++) h += itemHtml(arr[i], i);
+  box.innerHTML = h + moreHtml();
+  const loadMore = () => {   // 한꺼번에 다 그리면 태블릿이 멈추므로 120개씩 나눠서 그린다
+    const m = $('#listMore'); if (!m) return; const from = shown; shown = Math.min(arr.length, shown + STEP);
+    let t = ''; for (let i = from; i < shown; i++) t += itemHtml(arr[i], i);
+    m.remove(); box.insertAdjacentHTML('beforeend', t + moreHtml()); watchMore();
+  };
+  let io = null;
+  const watchMore = () => { const m = $('#listMore'); if (!m) return; $('#btnMore').onclick = loadMore; if ('IntersectionObserver' in window) { if (io) io.disconnect(); io = new IntersectionObserver(es => { if (es[0].isIntersecting) loadMore(); }, { rootMargin: '600px' }); io.observe(m); } };
+  watchMore();
 }
 function renderTable(arr, box) {
   const R = tblRows(), C = tblCols(), per = R * C, pages = Math.max(1, Math.ceil(arr.length / per));
