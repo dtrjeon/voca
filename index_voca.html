@@ -30,6 +30,7 @@ header .hdr-r{display:flex;align-items:center;gap:10px;flex:none}
 .hsw.on .sw::after{left:19px}
 .impmv{display:flex;align-items:center;gap:8px;font-size:14px;margin:8px 0 0}
 .impmv input{width:20px;height:20px;flex:none}
+.impmv small{display:block;font-size:12px;color:var(--sub);margin-top:2px}
 #impResult{margin-top:8px}
 #impResult .ires{border:1px solid var(--line,#dfe3f1);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6;background:#f6fbf7}
 #impResult .isk{max-height:150px;overflow-y:auto;font-size:12.5px;color:var(--sub);margin-top:4px}
@@ -857,9 +858,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <dialog id="dlgImport">
   <h3 style="margin:0 0 6px">단어 가져오기</h3>
-  <div style="font-size:14px;color:var(--sub)"><b>고르면 바로 등록</b>돼요 (읽기 → 폴더 만들기 → 등록 → 완료). 같은 폴더 안에서는 한 번만 등록하고, 아래 선택에 따라 다른 폴더의 같은 단어를 따로 두거나 건너뛰어요.</div>
-  <label class="impmv"><input type="checkbox" id="impDup" checked> 같은 단어가 <b>다른 폴더</b>에 있어도 이 폴더에 <b>따로 등록</b> (중복 허용 · Day 구성이 책과 같아져요)</label>
-  <label class="impmv"><input type="checkbox" id="impMove"> 이미 <b>다른 폴더</b>에 있는 단어를 이 폴더로 <b>옮기기</b> (중복 허용을 끌 때만)</label>
+  <div style="font-size:14px;color:var(--sub)"><b>고르면 바로 등록</b>돼요 (읽기 → 폴더 만들기 → 등록 → 완료).</div>
+  <label class="impmv"><input type="checkbox" id="impDup" checked><span>같은 단어도 폴더마다 따로 등록<small>끄면 이미 있는 단어는 건너뛰어요</small></span></label>
   <label class="lbl">기본 제공</label>
   <div id="impBuiltin"></div>
   <label class="lbl">내 파일로 가져오기 (엑셀 .xls .xlsx · .csv · .md)</label>
@@ -983,7 +983,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.8.4', APP_DATE = '2026-10-17', SERVER_NEED = 18;
+const APP_VERSION = '1.8.5', APP_DATE = '2026-10-17', SERVER_NEED = 18;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2624,7 +2624,7 @@ async function runImport(p) {
   $('#impPreview').innerHTML = impSummary(p); $('#impResult').innerHTML = '';
   const st = t => { $('#impStatus').innerHTML = '<span class="spinner"></span> ' + t; };
   const auto = p.mode || (/^\s*모의고사/.test((p.items[0].folder || '').split('/')[0] || p.title || '') ? 'skip' : '');   // 모의고사 묶음은 기존에 없는 단어만 추가
-  const mode = auto || ($('#impDup').checked ? 'dup' : ($('#impMove').checked ? 'move' : 'skip')), n = p.items.length;
+  const mode = auto || ($('#impDup').checked ? 'dup' : 'skip'), n = p.items.length;
   let added = 0, moved = 0, skipped = 0, ids = [], movedList = [], skippedList = [];
   try {
     for (let i = 0; i < n; i += 100) {
