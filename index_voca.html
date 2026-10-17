@@ -857,8 +857,9 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <dialog id="dlgImport">
   <h3 style="margin:0 0 6px">단어 가져오기</h3>
-  <div style="font-size:14px;color:var(--sub)"><b>고르면 바로 등록</b>돼요 (읽기 → 폴더 만들기 → 등록 → 완료). 이미 있는 단어는 새로 만들지 않고, 폴더가 비어 있으면 그 폴더로 넣어요.</div>
-  <label class="impmv"><input type="checkbox" id="impMove"> 이미 <b>다른 폴더</b>에 있는 단어도 이 폴더로 옮기기</label>
+  <div style="font-size:14px;color:var(--sub)"><b>고르면 바로 등록</b>돼요 (읽기 → 폴더 만들기 → 등록 → 완료). 같은 폴더 안에서는 한 번만 등록하고, 아래 선택에 따라 다른 폴더의 같은 단어를 따로 두거나 건너뛰어요.</div>
+  <label class="impmv"><input type="checkbox" id="impDup" checked> 같은 단어가 <b>다른 폴더</b>에 있어도 이 폴더에 <b>따로 등록</b> (중복 허용 · Day 구성이 책과 같아져요)</label>
+  <label class="impmv"><input type="checkbox" id="impMove"> 이미 <b>다른 폴더</b>에 있는 단어를 이 폴더로 <b>옮기기</b> (중복 허용을 끌 때만)</label>
   <label class="lbl">기본 제공</label>
   <div id="impBuiltin"></div>
   <label class="lbl">내 파일로 가져오기 (엑셀 .xls .xlsx · .csv · .md)</label>
@@ -982,7 +983,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.8.2', APP_DATE = '2026-10-17', SERVER_NEED = 17;
+const APP_VERSION = '1.8.3', APP_DATE = '2026-10-17', SERVER_NEED = 18;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2621,7 +2622,7 @@ async function runImport(p) {
   if (impBusy || !p || !p.items.length) return; impBusy = true; impPending = p; impLast = null;
   $('#impPreview').innerHTML = impSummary(p); $('#impResult').innerHTML = '';
   const st = t => { $('#impStatus').innerHTML = '<span class="spinner"></span> ' + t; };
-  const mode = $('#impMove').checked ? 'move' : 'skip', n = p.items.length;
+  const mode = $('#impDup').checked ? 'dup' : ($('#impMove').checked ? 'move' : 'skip'), n = p.items.length;
   let added = 0, moved = 0, skipped = 0, ids = [], movedList = [], skippedList = [];
   try {
     for (let i = 0; i < n; i += 100) {
@@ -2639,7 +2640,7 @@ async function runImport(p) {
     $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b> — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
       (skippedList.length ? '<div class="isk">건너뛴 단어(이미 있는 폴더): ' + skippedList.map(x => esc(x.word) + (x.folder ? ' → ' + esc(x.folder) : '')).join(' · ') + (skipped > skippedList.length ? ' …' : '') + '</div>' : '') +
       '<div class="irow"><button class="btn primary" data-ir="list">📒 단어장에서 보기</button><button class="btn primary" data-ir="tomato">🍅 토마토에서 열기</button>' + (ids.length || movedList.length ? '<button class="btn danger" data-ir="undo">↩ 되돌리기</button>' : '') + '</div></div>';
-  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v17)으로 다시 배포해 주세요' : ''); }
+  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v18)으로 다시 배포해 주세요' : ''); }
   impBusy = false;
 }
 $('#impResult').addEventListener('click', async e => {
@@ -2992,7 +2993,7 @@ let dupGroups = [];
 function dupScore(w) { return (w.folder ? 1000 : 0) + ((w.right || 0) + (w.wrong || 0)) * 5 + (w.example ? 2 : 0) + (w.meaning ? 1 : 0); }
 function findDups() {
   const loose = $('#dupLoose').checked, m = {};
-  words.forEach(w => { const k = dupKey(w, loose); if (k) (m[k] = m[k] || []).push(w); });
+  words.forEach(w => { if (srcOf(w) !== 'hand') return; const k = dupKey(w, loose); if (k) (m[k] = m[k] || []).push(w); });   // 손쓰기 단어만 (가져온 단어는 폴더마다 따로 두는 게 정상)
   dupGroups = Object.keys(m).filter(k => m[k].length > 1).map(k => {
     const list = m[k].slice().sort((a, b) => dupScore(b) - dupScore(a));
     return { key: k, list: list, keep: list[0].id };
@@ -3001,7 +3002,7 @@ function findDups() {
 }
 function renderDups() {
   const n = dupGroups.reduce((s, g) => s + g.list.length - 1, 0);
-  $('#dupSum').innerHTML = dupGroups.length ? '중복 <b>' + dupGroups.length + '</b>묶음 · 지울 수 있는 단어 <b>' + n + '</b>개<div style="font-size:12px;color:var(--sub)">초록 테두리가 남길 단어예요. 다른 것을 누르면 바뀝니다.</div>' : '✅ 중복된 단어가 없어요 (전체 ' + words.length + '개)';
+  $('#dupSum').innerHTML = dupGroups.length ? '중복 <b>' + dupGroups.length + '</b>묶음 · 지울 수 있는 단어 <b>' + n + '</b>개<div style="font-size:12px;color:var(--sub)">초록 테두리가 남길 단어예요. 다른 것을 누르면 바뀝니다.</div>' : '✅ 손쓰기 단어 중 중복이 없어요 (가져온 단어는 폴더마다 따로 두므로 검사하지 않아요)';
   $('#dupAll').disabled = !dupGroups.length;
   $('#dupList').innerHTML = dupGroups.map((g, gi) => '<div class="dg"><h4>' + esc(g.key) + ' <span style="color:var(--sub);font-weight:400">· ' + g.list.length + '개</span></h4>' + g.list.map(w => '<div class="de' + (w.id === g.keep ? ' keep' : '') + '" data-g="' + gi + '" data-id="' + esc(w.id) + '"><span class="dk">' + (w.id === g.keep ? '✔ 남김' : '삭제') + '</span><div class="dm"><b>' + esc(w.word) + '</b> ' + (w.pos ? '<span class="w-pos">' + esc(w.pos) + '</span> ' : '') + esc(w.meaning || '') + '<div class="ds">📁 ' + esc(w.folder || '폴더 없음') + ' · ' + esc(addedYmd(w) || '') + ' · 맞 ' + (w.right || 0) + ' / 틀 ' + (w.wrong || 0) + '</div></div></div>').join('') + '<div class="row"><button class="btn" data-dgo="' + gi + '" type="button">이 묶음 정리</button></div></div>').join('');
 }

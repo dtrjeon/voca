@@ -102,7 +102,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 17 });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 18 });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -629,6 +629,7 @@ function renameFolder_(req) {
 function import_(req) {
   const items = (req.items || []).slice(0, 200);
   const move = req.mode === 'move';
+  const dup = req.mode === 'dup';   // 같은 단어가 다른 폴더에 있어도 이 폴더에 따로 등록 (같은 폴더 안에서만 중복 제외)
   if (!items.length) return { ok: true, added: 0, moved: 0, skipped: 0, ids: [], movedList: [], skippedList: [] };
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -636,7 +637,10 @@ function import_(req) {
     const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
     const data = sh.getDataRange().getValues();
     const rowOf = {};
-    for (let i = 1; i < data.length; i++) if (data[i][0]) rowOf[String(data[i][1]).toLowerCase()] = i;
+    for (let i = 1; i < data.length; i++) if (data[i][0]) {
+      const k = String(data[i][1]).toLowerCase();
+      if (dup) rowOf[k + '\u0001' + String(data[i][15] || '')] = i; else rowOf[k] = i;
+    }
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
     const now = new Date();
     const rows = [], ids = [], movedList = [], skippedList = [];
@@ -645,15 +649,16 @@ function import_(req) {
       const w = String(it.word || '').trim().toLowerCase();
       if (!w) return;
       const folder = String(it.folder || '').trim();
-      if (w in rowOf) {
-        const i = rowOf[w];
+      const rk = dup ? w + '\u0001' + folder : w;
+      if (rk in rowOf) {
+        const i = rowOf[rk];
         if (i < 0) { skipped++; return; }                 // 같은 묶음 안의 중복
         const cur = String(data[i][15] || '');
         if (folder && (!cur || (move && cur !== folder))) { sh.getRange(i + 1, 16).setValue(folder); moved++; movedList.push({ id: String(data[i][0]), from: cur }); }
         else { skipped++; if (skippedList.length < 100) skippedList.push({ word: w, folder: cur }); }
         return;
       }
-      rowOf[w] = -1;
+      rowOf[rk] = -1;
       const id = Utilities.getUuid().slice(0, 8);
       ids.push(id);
       rows.push([id, w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', now, 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', folder, 'import']);
