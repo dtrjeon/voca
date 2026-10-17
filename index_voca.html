@@ -997,7 +997,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.10.0', APP_DATE = '2026-10-17', SERVER_NEED = 19;
+const APP_VERSION = '1.11.0', APP_DATE = '2026-10-17', SERVER_NEED = 20;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2144,6 +2144,7 @@ function cvSecs(w) {
   if (exs.length) h += '<div class="cv-sec"><h4>예문</h4><div class="bx cv-ex">' + exs.map(e => '<div><div class="e">' + esc(e.en) + '</div>' + (e.ko ? '<div class="k">' + esc(e.ko) + '</div>' : '') + '</div>').join('') + '</div></div>';
   if (x && x.forms) h += '<div class="cv-sec"><h4>형태 변화</h4><div class="bx">' + esc(x.forms) + '</div></div>';
   if (x && x.derivs && x.derivs.length) h += '<div class="cv-sec"><h4>파생어</h4><div class="bx">' + x.derivs.map(d => '<div>' + esc(d) + '</div>').join('') + '</div></div>';
+  const cps = collPairs(w); if (cps.length) h += '<div class="cv-sec"><h4>연어</h4><div class="bx cv-ex">' + cps.map(x => '<div><div class="e">' + esc(x.c) + '</div>' + (x.k ? '<div class="k">' + esc(x.k) + '</div>' : '') + '</div>').join('') + '</div></div>';
   if (w.tip) h += '<div class="cv-sec"><h4>암기 팁</h4><div class="bx">💡 ' + esc(w.tip) + '</div></div>';
   if (!x && pending[w.id]) h += '<div class="cv-loading">상세 정보를 불러오는 중…</div>';
   return h;
@@ -2507,7 +2508,7 @@ function fillFolderList() {
 /* --- 마크다운 표 → 단어 목록 (# 제목 = 폴더, ## 소제목 = 서브폴더) --- */
 function parseWordMd(text) {
   let title = '', sub = '', map = null; const items = [];
-  const H = { word: /^(단어|영단어|word)$/i, meaning: /^(뜻|의미|meaning)$/i, example: /^(예문|example)$/i, example_ko: /^(해석|번역|예문\s*(뜻|해석))$/i, pos: /^(품사|pos)$/i, level: /^(난이도|level)$/i, tip: /^(팁|tip)$/i };
+  const H = { word: /^(단어|영단어|word)$/i, meaning: /^(뜻|의미|meaning)$/i, example: /^(예문|example)$/i, example_ko: /^(해석|번역|예문\s*(뜻|해석))$/i, pos: /^(품사|pos)$/i, level: /^(난이도|level)$/i, tip: /^(팁|tip)$/i, colloc: /^(연어|collocation|colloc)$/i, colloc_ko: /^(연어\s*(뜻|해석)|collocation_?ko|colloc_?ko)$/i };
   String(text).split(/\r?\n/).forEach(ln => {
     if (/^#\s/.test(ln)) title = ln.replace(/^#\s+/, '').trim();
     else if (/^##\s/.test(ln)) { sub = ln.replace(/^##\s+/, '').trim(); map = null; }
@@ -2520,7 +2521,7 @@ function parseWordMd(text) {
       if (map) {
         const w = g('word'); if (!/^[A-Za-z][A-Za-z' .-]*$/.test(w)) return;
         const lv = parseInt(g('level'), 10);
-        items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: (title || '가져온 단어') + (sub ? '/' + sub : '') });
+        items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), colloc: g('colloc'), colloc_ko: g('colloc_ko'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: (title || '가져온 단어') + (sub ? '/' + sub : '') });
       } else if (c.length >= 5 && /^\d+$/.test(c[0]) && /^[A-Za-z][A-Za-z' -]*$/.test(c[1]))
         items.push({ word: c[1], meaning: c[2], example: c[3], example_ko: c[4], folder: (title || '가져온 단어') + (sub ? '/' + sub : '') });
     }
@@ -2573,7 +2574,9 @@ const HDR = {
   folder: /^(폴더|folder|교재|책)$/i,
   sub: /^(서브\s*폴더|하위\s*폴더|subfolder|분류|단원|day|unit|유닛|그룹|group)$/i,
   level: /^(난이도|level)$/i,
-  tip: /^(팁|tip|어근|어근팁|암기\s*팁)$/i
+  tip: /^(팁|tip|어근|어근팁|암기\s*팁)$/i,
+  colloc: /^(연어|collocation|colloc)$/i,
+  colloc_ko: /^(연어\s*(뜻|해석)|collocation_?ko|colloc_?ko)$/i
 };
 function parseSheetRows(rows, base, sheetName, singleSheet) {
   const norm = v => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
@@ -2596,7 +2599,7 @@ function parseSheetRows(rows, base, sheetName, singleSheet) {
     const root = g('folder') || base || '가져온 단어';
     const sub = g('sub') || (singleSheet && dflt ? '' : (dflt ? '' : sheetName));
     const lv = parseInt(g('level'), 10);
-    items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: root + (sub ? '/' + sub : '') });
+    items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), colloc: g('colloc'), colloc_ko: g('colloc_ko'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: root + (sub ? '/' + sub : '') });
   }
   return items;
 }
@@ -2646,12 +2649,12 @@ async function runImport(p) {
   const st = t => { $('#impStatus').innerHTML = '<span class="spinner"></span> ' + t; };
   const auto = p.mode || (/^\s*모의고사/.test((p.items[0].folder || '').split('/')[0] || p.title || '') ? 'skip' : '');   // 모의고사 묶음은 기존에 없는 단어만 추가
   const mode = auto || (lsGet('vn_imp_dup', '1') === '1' ? 'dup' : 'skip'), n = p.items.length;
-  let added = 0, moved = 0, skipped = 0, ids = [], movedList = [], skippedList = [];
+  let added = 0, moved = 0, skipped = 0, filled = 0, ids = [], movedList = [], skippedList = [];
   try {
     for (let i = 0; i < n; i += 100) {
       st('등록하는 중… ' + Math.min(i, n) + ' / ' + n + '개');
       const j = await api('import', { items: p.items.slice(i, i + 100), mode: mode });
-      added += j.added || 0; moved += j.moved || 0; skipped += j.skipped || 0;
+      added += j.added || 0; moved += j.moved || 0; skipped += j.skipped || 0; filled += j.filled || 0;
       ids = ids.concat(j.ids || []); movedList = movedList.concat(j.movedList || []); skippedList = skippedList.concat(j.skippedList || []);
     }
     st('목록을 새로 불러오는 중…');
@@ -2660,10 +2663,10 @@ async function runImport(p) {
     impLast = { ids: ids, moves: movedList, root: root };
     folderSel.f = root; folderSel.s = ''; folderSel.ss = null; renderList(); renderHome();
     $('#impStatus').textContent = '';
-    $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b>' + (auto === 'skip' ? ' (모의고사 묶음: 이미 있는 단어는 건너뛰고 새 단어만 추가)' : '') + ' — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
+    $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b>' + (auto === 'skip' ? ' (모의고사 묶음: 이미 있는 단어는 건너뛰고 새 단어만 추가)' : '') + ' — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (filled ? ' · 연어 채움 ' + filled + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
       (skippedList.length ? '<div class="isk">건너뛴 단어(이미 있는 폴더): ' + skippedList.map(x => esc(x.word) + (x.folder ? ' → ' + esc(x.folder) : '')).join(' · ') + (skipped > skippedList.length ? ' …' : '') + '</div>' : '') +
       '<div class="irow"><button class="btn primary" data-ir="list">📒 단어장에서 보기</button><button class="btn primary" data-ir="tomato">🍅 토마토에서 열기</button>' + (ids.length || movedList.length ? '<button class="btn danger" data-ir="undo">↩ 되돌리기</button>' : '') + '</div></div>';
-  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v19)으로 다시 배포해 주세요' : ''); }
+  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v20)으로 다시 배포해 주세요' : ''); }
   impBusy = false;
 }
 $('#impResult').addEventListener('click', async e => {
@@ -2942,18 +2945,18 @@ function tmDay() {
     [0, 1, 2].map(i => '<label class="tm-dt' + (dts[i] ? ' set' : '') + '" title="' + (i + 1) + '회독 날짜"><span>' + tmFmt(dts[i]) + '</span><input type="date" data-i="' + i + '" value="' + esc(dts[i]) + '"></label>').join('') + '</span></div>';
   const M = (m, t) => '<button data-act="mode" data-m="' + m + '" class="' + (tm.mode === m ? 'on' : '') + '">' + t + '</button>';
   h += '<div class="tm-modes">' + M('study', '📖 학습') + M('w2m', '단어→뜻') + M('m2w', '뜻→단어') +
-    (tm.mode === 'study' ? '<button data-act="ex" class="' + (tm.ex ? 'on' : '') + '">예문</button>' : '<button data-act="revall">👁 모두 보기/가리기</button>') + '</div>';
+    (tm.mode === 'study' ? '<button data-act="ex" class="' + (tm.ex ? 'on' : '') + '">예문·연어</button>' : '<button data-act="revall">👁 모두 보기/가리기</button>') + '</div>';
   const missTm = meanLang === 'en' ? arr.filter(w => !(w.extra && w.extra.meaning_en) && !isLocalId(w.id)) : [];
   if (missTm.length) h += '<div class="enbar" id="enBarTm" style="display:flex"><span>영어 뜻이 없는 단어 <b>' + missTm.length + '개</b> (회색 글씨는 한국어 뜻)</span><button class="btn primary" id="enMakeTm" type="button">사전으로 만들기</button></div>';
-  const showEx = tm.mode === 'study' && tm.ex;
-  h += '<div class="tm-wrap"><table class="tm-t' + (showEx ? ' wide' : '') + '"><thead><tr><th class="c-m">표시</th><th>단어</th><th>' + (meanLang === 'en' ? '뜻 (영어)' : '뜻') + '</th>' + (showEx ? '<th>예문</th><th>예문 뜻</th>' : '') + '</tr></thead><tbody>';
+  const showEx = tm.mode === 'study' && tm.ex, hasEx = arr.some(w => w.example), hasCo = arr.some(w => collOf(w));
+  h += '<div class="tm-wrap"><table class="tm-t' + (showEx ? ' wide' : '') + '"><thead><tr><th class="c-m">표시</th><th>단어</th><th>' + (meanLang === 'en' ? '뜻 (영어)' : '뜻') + '</th>' + (showEx ? (hasEx ? '<th>예문</th><th>예문 뜻</th>' : '') + (hasCo ? '<th>연어</th><th>연어 뜻</th>' : '') : '') + '</tr></thead><tbody>';
   arr.forEach(w => {
     const m = tmMarks[w.id] || '', rv = tm.rev.has(w.id);
     const wHid = tm.mode === 'm2w' && !rv, mHid = tm.mode === 'w2m' && !rv;
     h += '<tr data-id="' + esc(w.id) + '"><td><button class="tm-mk ' + m + '" data-act="mark" aria-label="표시 바꾸기">' + (TM_GLYPH[m] || '') + '</button></td>' +
       '<td class="w' + (wHid ? ' tm-hid' : '') + '" data-act="' + (tm.mode === 'm2w' ? 'rev' : 'say') + '">' + esc(w.word) + '</td>' +
       '<td class="' + (mHid ? 'tm-hid' : '') + '" data-act="' + (tm.mode === 'w2m' ? 'rev' : 'say') + '">' + meanHtml(w) + '</td>' +
-      (showEx ? '<td class="ex">' + esc(w.example || '') + '</td><td class="ex">' + esc(w.example_ko || '') + '</td>' : '') + '</tr>';
+      (showEx ? (hasEx ? '<td class="ex">' + esc(w.example || '') + '</td><td class="ex">' + esc(w.example_ko || '') + '</td>' : '') + (hasCo ? (cp => '<td class="ex">' + cp.map(x => '<div>' + esc(x.c) + '</div>').join('') + '</td><td class="ex">' + cp.map(x => '<div>' + esc(x.k) + '</div>').join('') + '</td>')(collPairs(w)) : '') : '') + '</tr>';
   });
   h += '</tbody></table></div>';
   h += '<div class="tm-foot"><div class="tm-stat">◎ <b>' + st.o + '</b> · ✕ <b>' + st.x + '</b> · △ <b>' + st.t + '</b> · 미표시 <b>' + st.n + '</b></div><div class="tm-acts">' +
@@ -3069,6 +3072,7 @@ $('#dupList').addEventListener('click', e => {
 let gnMode = 'blank', gnType = 'study', gnFs = 1.3, gnLang = 'ko';
 let gnBlob = null, gnName = 'goodnotes.pdf';
 function gnStale() { gnPreview(); const had = !!gnBlob; gnBlob = null; $('#gnOut').innerHTML = had ? '<span style="color:var(--sub)">설정이 바뀌어 이전 파일을 지웠어요. 위의 “PDF 만들기”를 다시 눌러 주세요.</span>' : ''; }
+const collPairs = w => { const c = collOf(w); if (!c) return []; const a = String(c.c).split(/\s*;\s*/), k = String(c.k).split(/\s*;\s*/); return a.map((x, i) => ({ c: x, k: k[i] || '' })).filter(x => x.c); };
 const collOf = w => (w.extra && w.extra.colloc) ? { c: w.extra.colloc, k: w.extra.colloc_ko || '' } : null;
 function gnRange() { const nd = Math.ceil(tmWords().length / tmPer()); let a = Math.max(1, parseInt($('#gnFrom').value, 10) || 1), b = Math.min(nd, parseInt($('#gnTo').value, 10) || nd); if (a > b) { const t = a; a = b; b = t; } return [a, b]; }
 function gnTargets() { const [a, b] = gnRange(), all = tmWords(), per = tmPer(); return all.slice((a - 1) * per, b * per); }
