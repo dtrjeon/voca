@@ -110,7 +110,7 @@ function doPost(e) {
 const LOCKED_ACTIONS_ = { recognize: 1, enrich: 1, detail: 1, colloc: 1, defen: 1 };
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 20, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 21, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -665,7 +665,10 @@ function import_(req) {
         const cur = String(data[i][15] || '');
         if (it.colloc && (dup || cur === folder)) {              // 이미 있는 단어에 연어가 비어 있으면 채운다
           let ex = {}; try { ex = data[i][14] ? JSON.parse(data[i][14]) : {}; } catch (e) { ex = {}; }
-          if (!ex.colloc) { ex.colloc = String(it.colloc); ex.colloc_ko = String(it.colloc_ko || ''); xcol[i] = ex; filled++; }
+          let ch = false;
+          if (!ex.colloc) { ex.colloc = String(it.colloc); ex.colloc_ko = String(it.colloc_ko || ''); ch = true; }
+          if (it.colloc_en && !ex.colloc_en) { ex.colloc_en = String(it.colloc_en); ch = true; }
+          if (ch) { xcol[i] = ex; filled++; }
         }
         if (folder && (!cur || (move && cur !== folder))) { sh.getRange(i + 1, 16).setValue(folder); moved++; movedList.push({ id: String(data[i][0]), from: cur }); }
         else { skipped++; if (skippedList.length < 100) skippedList.push({ word: w, folder: cur }); }
@@ -674,7 +677,7 @@ function import_(req) {
       rowOf[rk] = -1;
       const id = Utilities.getUuid().slice(0, 8);
       ids.push(id);
-      rows.push([id, w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', now, 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', it.colloc ? JSON.stringify({ colloc: String(it.colloc), colloc_ko: String(it.colloc_ko || '') }) : '', folder, 'import']);
+      rows.push([id, w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', now, 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', it.colloc ? JSON.stringify({ colloc: String(it.colloc), colloc_ko: String(it.colloc_ko || ''), colloc_en: String(it.colloc_en || '') }) : '', folder, 'import']);
     });
     Object.keys(xcol).forEach(function (i) { sh.getRange(Number(i) + 1, 15).setValue(JSON.stringify(xcol[i])); });
     if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);

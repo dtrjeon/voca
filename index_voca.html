@@ -997,7 +997,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.11.2', APP_DATE = '2026-10-17', SERVER_NEED = 20;
+const APP_VERSION = '1.12.0', APP_DATE = '2026-10-18', SERVER_NEED = 21;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2521,7 +2521,7 @@ function fillFolderList() {
 /* --- 마크다운 표 → 단어 목록 (# 제목 = 폴더, ## 소제목 = 서브폴더) --- */
 function parseWordMd(text) {
   let title = '', sub = '', map = null; const items = [];
-  const H = { word: /^(단어|영단어|word)$/i, meaning: /^(뜻|의미|meaning)$/i, example: /^(예문|example)$/i, example_ko: /^(해석|번역|예문\s*(뜻|해석))$/i, pos: /^(품사|pos)$/i, level: /^(난이도|level)$/i, tip: /^(팁|tip)$/i, colloc: /^(연어|collocation|colloc)$/i, colloc_ko: /^(연어\s*(뜻|해석)|collocation_?ko|colloc_?ko)$/i };
+  const H = { word: /^(단어|영단어|word)$/i, meaning: /^(뜻|의미|meaning)$/i, example: /^(예문|example)$/i, example_ko: /^(해석|번역|예문\s*(뜻|해석))$/i, pos: /^(품사|pos)$/i, level: /^(난이도|level)$/i, tip: /^(팁|tip)$/i, colloc: /^(연어|collocation|colloc)$/i, colloc_ko: /^(연어\s*(뜻|해석)|collocation_?ko|colloc_?ko)$/i, colloc_en: /^(연어\s*(영영|영어)|collocation_?en|colloc_?en)$/i };
   String(text).split(/\r?\n/).forEach(ln => {
     if (/^#\s/.test(ln)) title = ln.replace(/^#\s+/, '').trim();
     else if (/^##\s/.test(ln)) { sub = ln.replace(/^##\s+/, '').trim(); map = null; }
@@ -2534,7 +2534,7 @@ function parseWordMd(text) {
       if (map) {
         const w = g('word'); if (!/^[A-Za-z][A-Za-z' .-]*$/.test(w)) return;
         const lv = parseInt(g('level'), 10);
-        items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), colloc: g('colloc'), colloc_ko: g('colloc_ko'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: (title || '가져온 단어') + (sub ? '/' + sub : '') });
+        items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), colloc: g('colloc'), colloc_ko: g('colloc_ko'), colloc_en: g('colloc_en'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: (title || '가져온 단어') + (sub ? '/' + sub : '') });
       } else if (c.length >= 5 && /^\d+$/.test(c[0]) && /^[A-Za-z][A-Za-z' -]*$/.test(c[1]))
         items.push({ word: c[1], meaning: c[2], example: c[3], example_ko: c[4], folder: (title || '가져온 단어') + (sub ? '/' + sub : '') });
     }
@@ -2589,7 +2589,8 @@ const HDR = {
   level: /^(난이도|level)$/i,
   tip: /^(팁|tip|어근|어근팁|암기\s*팁)$/i,
   colloc: /^(연어|collocation|colloc)$/i,
-  colloc_ko: /^(연어\s*(뜻|해석)|collocation_?ko|colloc_?ko)$/i
+  colloc_ko: /^(연어\s*(뜻|해석)|collocation_?ko|colloc_?ko)$/i,
+  colloc_en: /^(연어\s*(영영|영어)|collocation_?en|colloc_?en)$/i
 };
 function parseSheetRows(rows, base, sheetName, singleSheet) {
   const norm = v => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
@@ -2612,7 +2613,7 @@ function parseSheetRows(rows, base, sheetName, singleSheet) {
     const root = g('folder') || base || '가져온 단어';
     const sub = g('sub') || (singleSheet && dflt ? '' : (dflt ? '' : sheetName));
     const lv = parseInt(g('level'), 10);
-    items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), colloc: g('colloc'), colloc_ko: g('colloc_ko'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: root + (sub ? '/' + sub : '') });
+    items.push({ word: w, pos: g('pos'), meaning: g('meaning'), example: g('example'), example_ko: g('example_ko'), tip: g('tip'), colloc: g('colloc'), colloc_ko: g('colloc_ko'), colloc_en: g('colloc_en'), level: lv >= 1 && lv <= 5 ? lv : 0, folder: root + (sub ? '/' + sub : '') });
   }
   return items;
 }
@@ -2679,7 +2680,7 @@ async function runImport(p) {
     $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b>' + (auto === 'skip' ? ' (모의고사 묶음: 이미 있는 단어는 건너뛰고 새 단어만 추가)' : '') + ' — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (filled ? ' · 연어 채움 ' + filled + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
       (skippedList.length ? '<div class="isk">건너뛴 단어(이미 있는 폴더): ' + skippedList.map(x => esc(x.word) + (x.folder ? ' → ' + esc(x.folder) : '')).join(' · ') + (skipped > skippedList.length ? ' …' : '') + '</div>' : '') +
       '<div class="irow"><button class="btn primary" data-ir="list">📒 단어장에서 보기</button><button class="btn primary" data-ir="tomato">🍅 토마토에서 열기</button>' + (ids.length || movedList.length ? '<button class="btn danger" data-ir="undo">↩ 되돌리기</button>' : '') + '</div></div>';
-  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v20)으로 다시 배포해 주세요' : ''); }
+  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v21)으로 다시 배포해 주세요' : ''); }
   impBusy = false;
 }
 $('#impResult').addEventListener('click', async e => {
@@ -2962,7 +2963,7 @@ function tmDay() {
   const missTm = meanLang === 'en' ? arr.filter(w => !(w.extra && w.extra.meaning_en) && !isLocalId(w.id)) : [];
   if (missTm.length) h += '<div class="enbar" id="enBarTm" style="display:flex"><span>영어 뜻이 없는 단어 <b>' + missTm.length + '개</b> (회색 글씨는 한국어 뜻)</span><button class="btn primary" id="enMakeTm" type="button">사전으로 만들기</button></div>';
   const showEx = tm.mode === 'study' && tm.ex, hasEx = arr.some(w => w.example), hasCo = arr.some(w => collOf(w));
-  h += '<div class="tm-wrap"><table class="tm-t' + (showEx ? ' wide' : '') + '"><thead><tr><th class="c-m">표시</th><th>단어</th><th>' + (meanLang === 'en' ? '뜻 (영어)' : '뜻') + '</th>' + (showEx ? (hasEx ? '<th>예문</th><th>예문 뜻</th>' : '') + (hasCo ? '<th>연어</th><th>연어 뜻</th>' : '') : '') + '</tr></thead><tbody>';
+  h += '<div class="tm-wrap"><table class="tm-t' + (showEx ? ' wide' : '') + '"><thead><tr><th class="c-m">표시</th><th>단어</th><th>' + (meanLang === 'en' ? '뜻 (영어)' : '뜻') + '</th>' + (showEx ? (hasEx ? '<th>예문</th><th>예문 뜻</th>' : '') + (hasCo ? '<th>연어</th><th>' + (meanLang === 'en' ? '연어 뜻 (영어)' : '연어 뜻') + '</th>' : '') : '') + '</tr></thead><tbody>';
   arr.forEach(w => {
     const m = tmMarks[w.id] || '', rv = tm.rev.has(w.id);
     const wHid = tm.mode === 'm2w' && !rv, mHid = tm.mode === 'w2m' && !rv;
@@ -3085,7 +3086,7 @@ $('#dupList').addEventListener('click', e => {
 let gnMode = 'blank', gnType = 'study', gnFs = 1.3, gnLang = 'ko';
 let gnBlob = null, gnName = 'goodnotes.pdf';
 function gnStale() { gnPreview(); const had = !!gnBlob; gnBlob = null; $('#gnOut').innerHTML = had ? '<span style="color:var(--sub)">설정이 바뀌어 이전 파일을 지웠어요. 위의 “PDF 만들기”를 다시 눌러 주세요.</span>' : ''; }
-const collPairs = w => { const c = collOf(w); if (!c) return []; const a = String(c.c).split(/\s*;\s*/), k = String(c.k).split(/\s*;\s*/); return a.map((x, i) => ({ c: x, k: k[i] || '' })).filter(x => x.c); };
+const collPairs = w => { const c = collOf(w); if (!c) return []; const en = meanLang === 'en' && w.extra && w.extra.colloc_en ? String(w.extra.colloc_en) : '', a = String(c.c).split(/\s*;\s*/), k = (en || String(c.k)).split(/\s*;\s*/); return a.map((x, i) => ({ c: x, k: k[i] || '' })).filter(x => x.c); };
 const collOf = w => (w.extra && w.extra.colloc) ? { c: w.extra.colloc, k: w.extra.colloc_ko || '' } : null;
 function gnRange() { const nd = Math.ceil(tmWords().length / tmPer()); let a = Math.max(1, parseInt($('#gnFrom').value, 10) || 1), b = Math.min(nd, parseInt($('#gnTo').value, 10) || nd); if (a > b) { const t = a; a = b; b = t; } return [a, b]; }
 function gnTargets() { const [a, b] = gnRange(), all = tmWords(), per = tmPer(); return all.slice((a - 1) * per, b * per); }
