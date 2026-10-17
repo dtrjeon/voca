@@ -422,6 +422,21 @@ header .count{white-space:nowrap}
 .tm-f.done::before{background:#45c283}
 .tm-f.done b::after{content:" ◎"}
 .tm-f:active{transform:scale(.96)}
+.tm-f.today{box-shadow:0 0 0 3px #ffb020}
+.tm-f.rv{box-shadow:0 0 0 3px #b79cf2}
+.tm-plan{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.tm-pl-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+.tm-pl-h b{font-size:15px}
+.tm-pl-s{font-size:13px;color:var(--sub);margin:4px 0 8px}
+.tm-pl-r{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+.tm-pl-k{width:28px;height:28px;border-radius:8px;border:2px solid #9aa0b4;background:#fff;color:#fff;font-weight:800;padding:0;flex:none;font-size:16px;line-height:1}
+.tm-pl-r.done .tm-pl-k{background:#3dba7c;border-color:#3dba7c}
+.tm-pl-t{flex:1;min-width:0;font-weight:600;font-size:14px}
+.tm-pl-r.done .tm-pl-t{color:var(--sub);text-decoration:line-through}
+.tm-pl-r small{color:var(--sub);font-size:12px;white-space:nowrap}
+.tm-pl-r .btn{padding:7px 12px;font-size:14px}
+.tm-pl-d{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--sub)}
+.tm-pl-d input[type=date]{width:auto;flex:none;padding:5px 8px;font-size:14px}
 .tm-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px}
 .tm-nav{width:40px;height:40px;border:1px solid var(--line);background:#fff;border-radius:50%;font-size:22px;line-height:1;color:var(--accent);padding:0}
 .tm-pill{border:2px solid transparent;background:#d9dbe4;color:#6b6f85;border-radius:999px;padding:9px 26px;font-size:17px;font-weight:700;min-width:120px}
@@ -945,7 +960,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.7.5', APP_DATE = '2026-10-16', SERVER_NEED = 17;
+const APP_VERSION = '1.8.0', APP_DATE = '2026-10-17', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2743,8 +2758,53 @@ function tmSrcSelect() {
   return '<button type="button" class="pk-btn" id="tmSrc" data-pk-open="tomato" aria-label="토픽(범위)"><span>' + esc(tmLabel()) + '</span><b>▾</b></button>';
 }
 
+/* --- 오늘 루틴: 매일 새 Day 1개 + 1일·3일·7일 전 복습 (간격 복습) --- */
+const TM_REV = [1, 3, 7];
+let tmPlan = {}; try { tmPlan = JSON.parse(lsGet('vn_tm_plan', '{}')) || {}; } catch (e) { tmPlan = {}; }
+const tmSavePlan = () => lsSet('vn_tm_plan', JSON.stringify(tmPlan));
+const tmPlanOn = () => /^[fsm]:/.test(tmSrc);
+const ymdLocal = d => { const z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); };
+const ymdNum = v => { const a = v.split('-').map(Number); return Date.UTC(a[0], a[1] - 1, a[2]) / 86400000; };
+function tmTodayNo() { const p = tmPlan[tmSrc]; if (!p || !p.start) return 0; return Math.floor(ymdNum(ymdLocal(new Date())) - ymdNum(p.start)) + 1; }
+function tmPlanItems(nd) {
+  const n = tmTodayNo(), it = []; if (n < 1) return it;
+  if (n <= nd) it.push({ d: n, k: 'new' });
+  TM_REV.forEach(g => { const d = n - g; if (d >= 1 && d <= nd) it.push({ d: d, k: 'rev', g: g }); });
+  return it;
+}
+function tmTogglePlanDone(d) {
+  const p = tmPlan[tmSrc]; if (!p) return; const t = ymdLocal(new Date());
+  p.done = p.done || {}; const a = p.done[t] || (p.done[t] = []), i = a.indexOf(d), k = tmDateKey(d), ds = (tmDates[k] || ['', '', '']).slice();
+  if (i < 0) { a.push(d); if (ds.indexOf(t) < 0) { const s = ds.indexOf(''); if (s >= 0) ds[s] = t; } }
+  else { a.splice(i, 1); const s = ds.indexOf(t); if (s >= 0) ds[s] = ''; }
+  if (ds.every(x => !x)) delete tmDates[k]; else tmDates[k] = ds;
+  tmSaveDates(); tmSavePlan();
+}
+function tmPlanCard(all, nd) {
+  const p = tmPlan[tmSrc], today = ymdLocal(new Date());
+  const startIn = '<label class="tm-pl-d">시작일 <input type="date" data-plan="start" value="' + esc(p && p.start || today) + '"></label>';
+  if (!p || !p.start) return '<div class="tm-plan"><div class="tm-pl-h"><b>🗓 오늘 루틴</b></div><div class="tm-pl-s">매일 새 Day 1개를 외우고, 1일·3일·7일 전 Day를 복습하도록 알려 드려요. 시작일을 정하고 눌러 주세요.</div><div class="row">' + startIn + '<button class="btn primary" data-act="pstart" type="button">시작하기</button></div></div>';
+  const n = tmTodayNo(), per = tmPer();
+  if (n < 1) return '<div class="tm-plan"><div class="tm-pl-h"><b>🗓 오늘 루틴</b></div><div class="tm-pl-s">시작일(' + esc(p.start) + ')이 아직 안 됐어요. 그날부터 Day 1이 시작돼요.</div>' + startIn + '</div>';
+  const items = tmPlanItems(nd), done = (p.done && p.done[today]) || [], dn = items.filter(x => done.indexOf(x.d) >= 0).length;
+  let h = '<div class="tm-plan"><div class="tm-pl-h"><b>🗓 오늘 루틴 · Day ' + Math.min(n, nd) + (n > nd ? ' 이후' : '') + '</b><small style="color:var(--sub)">' + today.slice(5).replace('-', '/') + ' · ' + dn + '/' + items.length + ' 완료</small></div>';
+  if (!items.length) h += '<div class="tm-pl-s">오늘 할 일이 없어요. 모두 끝났어요 🎉</div>';
+  items.forEach(x => {
+    const arr = tmDayWords(x.d, all), st = tmStat(arr), ok = done.indexOf(x.d) >= 0;
+    h += '<div class="tm-pl-r' + (ok ? ' done' : '') + '"><button class="tm-pl-k" data-act="pdone" data-d="' + x.d + '" aria-label="완료 표시">' + (ok ? '✓' : '') + '</button>' +
+      '<span class="tm-pl-t">' + (x.k === 'new' ? '🆕 새 단어' : '🔁 ' + x.g + '일 전 복습') + ' · Day ' + x.d + '</span><small>◎ ' + st.o + '/' + arr.length + '</small>' +
+      '<button class="btn" data-act="open" data-d="' + x.d + '" type="button">열기</button></div>';
+  });
+  const a = Math.max(1, Math.min(n, nd) - 6), b = Math.min(nd, n);
+  h += '<div class="tm-pl-r" style="flex-direction:column;align-items:stretch;gap:6px"><div class="tm-pl-s" style="margin:0">' + (n % 7 === 0 ? '📝 오늘은 주간 테스트 날이에요! ' : '') + '최근 7일(Day ' + a + '~' + b + ') 단어를 섞어서 풀어요. 90% 이상이면 통과예요.</div>' +
+    '<button class="btn" data-act="wtest" data-a="' + a + '" data-b="' + b + '" type="button">📝 주간 테스트 (Day ' + a + '~' + b + ')</button></div>';
+  return h + '<div style="margin-top:8px">' + startIn + '</div></div>';
+}
+
 function tmHome() {
   const all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), pages = Math.max(1, Math.ceil(nd / 30));
+  const pOn = tmPlanOn() && nd > 0, pIt = pOn ? tmPlanItems(nd) : [];
+  if (pOn && !tm.planInit && tmTodayNo() >= 1) { tm.page = Math.floor((Math.min(tmTodayNo(), nd) - 1) / 30); tm.planInit = true; }
   if (tm.page >= pages) tm.page = pages - 1;
   let h = '<div class="tm-top"><h2>🍅 토마토</h2>' + tmSrcSelect() + '</div>';
   if (pages > 1) {
@@ -2753,11 +2813,13 @@ function tmHome() {
     h += '</div>';
   }
   if (!nd) return h + '<div class="tm-empty">이 범위에 단어가 없어요.<br>단어장에 단어를 등록하거나 위에서 범위를 바꿔 보세요.</div>';
+  if (pOn) h += tmPlanCard(all, nd);
   h += '<div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="gn" type="button">📄 굿노트용 PDF 만들기</button></div>';
   h += '<div class="tm-grid">';
   for (let d = tm.page * 30 + 1; d <= Math.min(nd, (tm.page + 1) * 30); d++) {
     const arr = tmDayWords(d, all), st = tmStat(arr), done = arr.length && st.o === arr.length;
-    h += '<button class="tm-f' + (done ? ' done' : '') + '" data-act="open" data-d="' + d + '" aria-label="Day ' + d + '"><b>Day ' + d + '</b><small>' + st.o + '/' + arr.length + '</small></button>';
+    const pi = pIt.find(x => x.d === d);
+    h += '<button class="tm-f' + (done ? ' done' : '') + (pi ? (pi.k === 'new' ? ' today' : ' rv') : '') + '" data-act="open" data-d="' + d + '" aria-label="Day ' + d + '"><b>Day ' + d + '</b><small>' + st.o + '/' + arr.length + '</small></button>';
   }
   return h + '</div>';
 }
@@ -2806,6 +2868,12 @@ $('#tmBody').addEventListener('click', e => {
   else if (act === 'next') { tm.day++; tm.rev.clear(); }
   else if (act === 'mode') { tm.mode = el.dataset.m; tm.rev.clear(); }
   else if (act === 'gn') { gnOpen(); return; }
+  else if (act === 'pstart') { const inp = $('#tmBody input[data-plan="start"]'), v = inp && inp.value; if (!v) return; tmPlan[tmSrc] = { start: v, done: {} }; tmSavePlan(); tm.planInit = false; toast('오늘 루틴을 시작했어요'); }
+  else if (act === 'pdone') tmTogglePlanDone(+el.dataset.d);
+  else if (act === 'wtest') {
+    const a = +el.dataset.a, b = +el.dataset.b, per = tmPer(), arr = tmWords().slice((a - 1) * per, b * per);
+    if (!arr.length) return; $('nav button[data-tab="quiz"]').click(); startQuiz(arr, 'mix'); return;
+  }
   else if (act === 'ex') tm.ex = !tm.ex;
   else if (act === 'revall') { const ids = tmDayWords(tm.day).map(x => x.id); if (ids.every(i => tm.rev.has(i))) tm.rev.clear(); else ids.forEach(i => tm.rev.add(i)); }
   else if (act === 'mark' && w) { const n = TM_NEXT[tmMarks[id] || '']; if (n) tmMarks[id] = n; else delete tmMarks[id]; tmSaveMarks(); }
@@ -2820,6 +2888,7 @@ $('#tmBody').addEventListener('click', e => {
   tmRender(); if (['open', 'home', 'prev', 'next', 'page'].includes(act)) window.scrollTo(0, 0);
 });
 $('#tmBody').addEventListener('change', e => {
+  if (e.target.dataset.plan === 'start') { const p = tmPlan[tmSrc]; if (p && e.target.value) { p.start = e.target.value; tmSavePlan(); tmRender(); } return; }
   if (e.target.dataset.i != null && e.target.type === 'date') {
     const k = tmDateKey(tm.day), a = (tmDates[k] || ['', '', '']).slice(); a[+e.target.dataset.i] = e.target.value || '';
     if (a.every(x => !x)) delete tmDates[k]; else tmDates[k] = a; tmSaveDates(); tmRender();
@@ -3194,7 +3263,7 @@ function dlFile(name, mime, data) {
   a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
 }
 const bkStamp = () => todayStr().replace(/-/g, '');
-const BK_KEYS = ['vn_tm_src', 'vn_tm_per', 'vn_tm_marks', 'vn_tm_dates', 'vn_trows', 'vn_tcols'];   // 백업에 함께 넣는 토마토·표 설정 (연결 주소 등은 제외)
+const BK_KEYS = ['vn_tm_src', 'vn_tm_per', 'vn_tm_marks', 'vn_tm_dates', 'vn_tm_plan', 'vn_trows', 'vn_tcols'];   // 백업에 함께 넣는 토마토·표 설정 (연결 주소 등은 제외)
 $('#sBkJson').addEventListener('click', () => {
   const settings = {}; BK_KEYS.forEach(k => { const v = lsGet(k, null); if (v != null) settings[k] = v; });
   const data = { app: 'voca-note', version: APP_VERSION, exported: new Date().toISOString(), words: words.map(w => Object.assign({}, w)), settings: settings };
@@ -3233,6 +3302,7 @@ $('#sRestoreFile').addEventListener('change', async e => {
       tmSrc = lsGet('vn_tm_src', ''); if (tmSrc.startsWith('d:')) tmSrc = 'h:' + tmSrc.slice(2);
       try { tmMarks = JSON.parse(lsGet('vn_tm_marks', '{}')) || {}; } catch (x) { tmMarks = {}; }
       try { tmDates = JSON.parse(lsGet('vn_tm_dates', '{}')) || {}; } catch (x) { tmDates = {}; }
+      try { tmPlan = JSON.parse(lsGet('vn_tm_plan', '{}')) || {}; } catch (x) { tmPlan = {}; }
       tm.page = 0; tm.view = 'home'; tmRender(); tblPage = 0; renderList();
     }
     st.textContent = '✅ ' + (miss.length ? '단어 ' + added + '개' : '') + (miss.length && sets.length ? ' · ' : '') + (sets.length ? '토마토 설정' : '') + (sets.length ? '을' : '를') + ' 복원했어요';
