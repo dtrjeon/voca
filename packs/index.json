@@ -1,6 +1,11 @@
 {
  "packs": [
   {
+   "file": "wordmaster-2000.md",
+   "title": "워드마스터 수능 2000",
+   "desc": "2000개 · Day 1~100 (하루 20개)"
+  },
+  {
    "file": "essential3.md",
    "title": "고1~2 영어 필수 20 (3편)",
    "desc": "60개"
