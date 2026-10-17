@@ -675,6 +675,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
       <div id="folderBar"></div>
       <select id="sortSel" aria-label="정렬">
         <option value="new">최신순</option>
+        <option value="day">Day순 (토마토 기준)</option>
         <option value="wrong">오답순</option>
         <option value="due">복습순</option>
         <option value="level">난이도순</option>
@@ -987,7 +988,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.8.8', APP_DATE = '2026-10-17', SERVER_NEED = 18;
+const APP_VERSION = '1.8.9', APP_DATE = '2026-10-17', SERVER_NEED = 18;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1585,7 +1586,9 @@ function renderList() {
   const q = $('#search').value.trim().toLowerCase();
   renderDateBar();
   let arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning + ' ' + ((w.extra && w.extra.meaning_en) || '')).toLowerCase().indexOf(q) >= 0));
+  dayPrep();
   arr = arr.slice().sort((a, b) => {
+    if (sortMode === 'day') return dayCmp(a, b);
     if (sortMode === 'abc') return abcCmp(a, b);
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
     if (sortMode === 'wrong') return (b.wrong || 0) - (a.wrong || 0) || (a.right || 0) - (b.right || 0);
@@ -1602,7 +1605,7 @@ function renderList() {
   box.classList.toggle('tblmode', tblView && arr.length > 0);
   if (tblView && arr.length) { renderTable(arr, box); return; }
   if (!arr.length) { box.innerHTML = '<div class="empty">' + (words.length ? (dateFilter ? '그 날 등록한 단어가 없어요' : '검색 결과가 없어요') : '아직 단어가 없어요.<br>“쓰기” 탭에서 첫 단어를 써 보세요!') + '</div>'; return; }
-  const dayCnt = {}; if (sortMode === 'abc') arr.forEach(w => { const d = abcGroup(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
+  const dayCnt = {}; if (sortMode === 'abc' || sortMode === 'day') arr.forEach(w => { const d = listGroup(w); dayCnt[d] = (dayCnt[d] || 0) + 1; });
   box.innerHTML = arr.map((w, ix) => dayHead(arr, ix, dayCnt) +
     '<div class="w-item" data-id="' + esc(w.id) + '">' +
       '<div class="w-top"><span class="w-word">' + esc(w.word) + '</span>' +
@@ -1695,7 +1698,7 @@ function setDateView(d, k) { dateFilter = d || ''; dateKind = k || dayKind; fold
 $('#dfInput').addEventListener('change', e => { if (e.target.value) setDateView(e.target.value, dayKind); });
 $('#btnView').addEventListener('click', () => { tblView = !tblView; lsSet('vn_tblview', tblView ? '1' : '0'); tblPage = 0; renderList(); });
 $('#search').addEventListener('input', () => { tblPage = 0; renderList(); });
-$('#sortSel').addEventListener('change', e => { sortMode = e.target.value; tblPage = 0; renderList(); });
+$('#sortSel').addEventListener('change', e => { sortMode = e.target.value; tblPage = 0; if (sortMode === 'day') toast('🍅 토마토 토픽「' + tmLabel() + '」기준 Day순 · 하루 ' + tmPer() + '개', 2600); renderList(); });
 
 // 마이크로 단어를 따라 말하면 맞게 들리는지 확인 (지원하는 브라우저에서만)
 function sayWord(word, out) {
@@ -2061,7 +2064,9 @@ const addedYmd = w => { const d = new Date(w.added); return isNaN(d) ? String(w.
 function curListWords() {
   const q = ($('#search').value || '').trim().toLowerCase();
   const arr = words.filter(w => inFolder(w) && (!dateFilter || (addedYmd(w) === dateFilter && srcOf(w) === dateKind)) && (!q || (w.word + ' ' + w.meaning + ' ' + ((w.extra && w.extra.meaning_en) || '')).toLowerCase().indexOf(q) >= 0));
+  dayPrep();
   return arr.sort((a, b) => {
+    if (sortMode === 'day') return dayCmp(a, b);
     if (sortMode === 'abc') return abcCmp(a, b);
     if (sortMode === 'level') return (b.level || 0) - (a.level || 0) || String(b.added).localeCompare(String(a.added));
     if (sortMode === 'wrong') return (b.wrong || 0) - (a.wrong || 0) || (a.right || 0) - (b.right || 0);
@@ -2729,9 +2734,18 @@ function abcCmp(a, b) {
   const wa = String(a.word || '').trim().toLowerCase(), wb = String(b.word || '').trim().toLowerCase();
   return wa.localeCompare(wb, ra === 0 ? 'ko' : 'en', { sensitivity: 'base' }) || String(b.added).localeCompare(String(a.added));
 }
+/* Day순: 토마토에서 고른 토픽의 Day 구성(하루 tmPer 개)과 똑같이 묶는다. 토픽 밖 단어는 맨 뒤 */
+let dayMap = null;
+function dayPrep() { dayMap = null; if (sortMode !== 'day') return; dayMap = new Map(); tmWords().forEach((w, i) => dayMap.set(w.id, i)); }
+function dayGroup(w) { if (!dayMap || !dayMap.has(w.id)) return '토마토 토픽 밖'; return 'Day ' + (Math.floor(dayMap.get(w.id) / tmPer()) + 1); }
+function dayCmp(a, b) {
+  const ia = dayMap && dayMap.has(a.id) ? dayMap.get(a.id) : 1e9, ib = dayMap && dayMap.has(b.id) ? dayMap.get(b.id) : 1e9;
+  return ia - ib || abcCmp(a, b);
+}
+const listGroup = w => sortMode === 'day' ? dayGroup(w) : abcGroup(w);
 function dayHead(arr, ix, cnt) {
-  if (sortMode !== 'abc') return '';
-  const g = abcGroup(arr[ix]); if (ix && abcGroup(arr[ix - 1]) === g) return '';
+  if (sortMode !== 'abc' && sortMode !== 'day') return '';
+  const g = listGroup(arr[ix]); if (ix && listGroup(arr[ix - 1]) === g) return '';
   return '<div class="day-h"><span>' + esc(g) + '</span><small>' + cnt[g] + '개</small></div>';
 }
 renderWDate();
