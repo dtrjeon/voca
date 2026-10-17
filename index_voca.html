@@ -997,7 +997,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.11.0', APP_DATE = '2026-10-17', SERVER_NEED = 20;
+const APP_VERSION = '1.11.1', APP_DATE = '2026-10-17', SERVER_NEED = 20;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1055,7 +1055,8 @@ async function rawApi(action, data) {
   gasTs = Date.now();
   const url = gasUrl();
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {}, teacherCode() ? { code: teacherCode() } : {})) });
-  const j = await res.json();
+  const txt = await res.text(); let j;
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('서버가 JSON이 아닌 화면(HTML)을 돌려줬어요 — Code.gs 배포를 확인하세요: ① 새 버전으로 배포했는지 ② 액세스 권한이 “모든 사용자”인지 ③ 설정의 Apps Script URL이 배포된 /exec 주소인지' + (/SyntaxError|구문/.test(txt) ? ' (코드에 구문 오류가 있어요: 붙여넣기가 잘렸는지 확인)' : '')); }
   if (!j.ok) { const err = new Error(j.error || '요청 실패'); err.data = j; throw err; }
   return j;
 }
