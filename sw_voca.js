@@ -1,4 +1,4 @@
-const CACHE = 'voca-shell-v39';
+const CACHE = 'voca-shell-v40';
 const SHELL = ['./index_voca.html', './manifest_voca.json', './icon_voca.svg', './img/tm_hero.jpg'];
 
 self.addEventListener('install', e => {
