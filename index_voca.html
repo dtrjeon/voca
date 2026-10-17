@@ -422,6 +422,18 @@ header .count{white-space:nowrap}
 .tm-f.done::before{background:#45c283}
 .tm-f.done b::after{content:" ◎"}
 .tm-f:active{transform:scale(.96)}
+.tm-intro{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px;background:#fff}
+.tm-in-hero{position:relative;background:linear-gradient(#bfe3ff,#eef8ff)}
+.tm-in-hero svg{display:block;width:100%;height:auto}
+.tm-in-msg{position:absolute;left:14px;top:12px;right:46%;color:#17365d}
+.tm-in-msg b{display:block;font-size:17px;line-height:1.3;letter-spacing:-.3px}
+.tm-in-msg span{display:block;font-size:12.5px;margin-top:4px;opacity:.85;line-height:1.35}
+.tm-in-how{padding:10px 14px 12px}
+.tm-in-how h3{margin:0 0 6px;font-size:14px}
+.tm-in-how ol{margin:0;padding-left:20px;font-size:13.5px;line-height:1.55;color:#333}
+.tm-in-how li{margin:2px 0}
+.tm-in-fold{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;background:#fff;padding:10px 14px;font-size:14px;font-weight:600;color:#17365d;text-align:left}
+.tm-in-x{border:0;background:rgba(255,255,255,.7);border-radius:999px;position:absolute;right:8px;top:8px;padding:4px 10px;font-size:12px;color:#17365d}
 .tm-f.today{box-shadow:0 0 0 3px #ffb020}
 .tm-f.rv{box-shadow:0 0 0 3px #b79cf2}
 .tm-plan{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
@@ -960,7 +972,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.8.0', APP_DATE = '2026-10-17', SERVER_NEED = 17;
+const APP_VERSION = '1.8.1', APP_DATE = '2026-10-17', SERVER_NEED = 17;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2801,6 +2813,27 @@ function tmPlanCard(all, nd) {
   return h + '<div style="margin-top:8px">' + startIn + '</div></div>';
 }
 
+function tmIntro(nd, per) {
+  const root = tmSrc.startsWith('m:') ? tmSrc.slice(2).split('\u0001')[0] : tmSrc.slice(2).split('/')[0];
+  const title = esc(root) + ' ' + nd + '일 도전';
+  if (lsGet('vn_tm_intro', '1') === '0') return '<div class="tm-intro"><button class="tm-in-fold" data-act="intro" type="button"><span>🏔 ' + title + ' · 사용방법 보기</span><b>▾</b></button></div>';
+  const svg = '<svg viewBox="0 0 320 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="산 정상의 깃발을 향해 오르는 길">' +
+    '<circle cx="268" cy="30" r="14" fill="#ffd166"/>' +
+    '<path d="M0 130 L0 96 L58 64 L96 86 L150 40 L214 92 L258 70 L320 104 L320 130Z" fill="#9ccbe8"/>' +
+    '<path d="M120 130 L206 38 L292 130Z" fill="#4f86c6"/><path d="M206 38 L226 60 L212 56 L206 66 L198 56 L186 60Z" fill="#fff"/>' +
+    '<path d="M150 124 C176 112 160 98 188 88 C208 80 196 68 206 58" fill="none" stroke="#ffd166" stroke-width="3" stroke-dasharray="1 7" stroke-linecap="round"/>' +
+    '<line x1="206" y1="38" x2="206" y2="20" stroke="#17365d" stroke-width="2"/><path d="M206 20 L226 26 L206 32Z" fill="#ef5350"/></svg>';
+  return '<div class="tm-intro"><div class="tm-in-hero"><div class="tm-in-msg"><b>' + title + '</b><span>하루 ' + per + '단어, ' + nd + '일 뒤의 나를 만나요. 오늘 한 칸만 올라가면 돼요.</span></div>' + svg +
+    '<button class="tm-in-x" data-act="intro" type="button">접기 ▴</button></div>' +
+    '<div class="tm-in-how"><h3>사용방법</h3><ol>' +
+    '<li>아래 <b>오늘 루틴</b>에서 시작일을 정하고 <b>시작하기</b>를 눌러요.</li>' +
+    '<li>오늘 할 일(새 Day + 1·3·7일 전 복습)의 <b>열기</b>를 눌러 단어를 봐요.</li>' +
+    '<li>단어 옆 표시를 눌러 ◎(확실히 안다) · △(헷갈린다) · ✕(모른다)로 바꿔요.</li>' +
+    '<li>다 봤으면 <b>✓ 체크</b>! 회독 날짜가 자동으로 기록돼요.</li>' +
+    '<li>7일마다 <b>주간 테스트</b>(90% 이상 통과). ✕·△ 단어는 퀴즈로 다시 풀어요.</li>' +
+    '</ol></div></div>';
+}
+
 function tmHome() {
   const all = tmWords(), per = tmPer(), nd = Math.ceil(all.length / per), pages = Math.max(1, Math.ceil(nd / 30));
   const pOn = tmPlanOn() && nd > 0, pIt = pOn ? tmPlanItems(nd) : [];
@@ -2813,7 +2846,7 @@ function tmHome() {
     h += '</div>';
   }
   if (!nd) return h + '<div class="tm-empty">이 범위에 단어가 없어요.<br>단어장에 단어를 등록하거나 위에서 범위를 바꿔 보세요.</div>';
-  if (pOn) h += tmPlanCard(all, nd);
+  if (pOn) h += tmIntro(nd, per) + tmPlanCard(all, nd);
   h += '<div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="gn" type="button">📄 굿노트용 PDF 만들기</button></div>';
   h += '<div class="tm-grid">';
   for (let d = tm.page * 30 + 1; d <= Math.min(nd, (tm.page + 1) * 30); d++) {
@@ -2870,6 +2903,7 @@ $('#tmBody').addEventListener('click', e => {
   else if (act === 'gn') { gnOpen(); return; }
   else if (act === 'pstart') { const inp = $('#tmBody input[data-plan="start"]'), v = inp && inp.value; if (!v) return; tmPlan[tmSrc] = { start: v, done: {} }; tmSavePlan(); tm.planInit = false; toast('오늘 루틴을 시작했어요'); }
   else if (act === 'pdone') tmTogglePlanDone(+el.dataset.d);
+  else if (act === 'intro') lsSet('vn_tm_intro', lsGet('vn_tm_intro', '1') === '0' ? '1' : '0');
   else if (act === 'wtest') {
     const a = +el.dataset.a, b = +el.dataset.b, per = tmPer(), arr = tmWords().slice((a - 1) * per, b * per);
     if (!arr.length) return; $('nav button[data-tab="quiz"]').click(); startQuiz(arr, 'mix'); return;
