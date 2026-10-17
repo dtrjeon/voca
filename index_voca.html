@@ -983,7 +983,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.8.3', APP_DATE = '2026-10-17', SERVER_NEED = 18;
+const APP_VERSION = '1.8.4', APP_DATE = '2026-10-17', SERVER_NEED = 18;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2526,6 +2526,7 @@ $('#impBuiltin').addEventListener('click', async e => {
   try {
     const r = await fetch('packs/' + encodeURIComponent(p.file), { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status);
     const pk = parseWordMd(await r.text()); if (!pk.items.length) throw new Error('단어 표를 찾지 못했어요');
+    if (p.mode) pk.mode = p.mode;
     runImport(pk);
   } catch (err) { $('#impPreview').textContent = '❌ 불러오지 못했어요: ' + err.message; }
 });
@@ -2622,7 +2623,8 @@ async function runImport(p) {
   if (impBusy || !p || !p.items.length) return; impBusy = true; impPending = p; impLast = null;
   $('#impPreview').innerHTML = impSummary(p); $('#impResult').innerHTML = '';
   const st = t => { $('#impStatus').innerHTML = '<span class="spinner"></span> ' + t; };
-  const mode = $('#impDup').checked ? 'dup' : ($('#impMove').checked ? 'move' : 'skip'), n = p.items.length;
+  const auto = p.mode || (/^\s*모의고사/.test((p.items[0].folder || '').split('/')[0] || p.title || '') ? 'skip' : '');   // 모의고사 묶음은 기존에 없는 단어만 추가
+  const mode = auto || ($('#impDup').checked ? 'dup' : ($('#impMove').checked ? 'move' : 'skip')), n = p.items.length;
   let added = 0, moved = 0, skipped = 0, ids = [], movedList = [], skippedList = [];
   try {
     for (let i = 0; i < n; i += 100) {
@@ -2637,7 +2639,7 @@ async function runImport(p) {
     impLast = { ids: ids, moves: movedList, root: root };
     folderSel.f = root; folderSel.s = ''; folderSel.ss = null; renderList(); renderHome();
     $('#impStatus').textContent = '';
-    $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b> — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
+    $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b>' + (auto === 'skip' ? ' (모의고사 묶음: 이미 있는 단어는 건너뛰고 새 단어만 추가)' : '') + ' — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
       (skippedList.length ? '<div class="isk">건너뛴 단어(이미 있는 폴더): ' + skippedList.map(x => esc(x.word) + (x.folder ? ' → ' + esc(x.folder) : '')).join(' · ') + (skipped > skippedList.length ? ' …' : '') + '</div>' : '') +
       '<div class="irow"><button class="btn primary" data-ir="list">📒 단어장에서 보기</button><button class="btn primary" data-ir="tomato">🍅 토마토에서 열기</button>' + (ids.length || movedList.length ? '<button class="btn danger" data-ir="undo">↩ 되돌리기</button>' : '') + '</div></div>';
   } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v18)으로 다시 배포해 주세요' : ''); }
