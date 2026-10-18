@@ -710,7 +710,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
       </div>
       <div class="cal-wd"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
       <div class="cal-grid" id="calGrid"></div>
-      <div class="cal-legend">파란 숫자 = 그날 등록한 단어 · 주황 숫자 = 그날 복습할 단어<br>날짜를 한 번 누르면 시작일, 다른 날짜를 한 번 더 누르면 끝나는 날이에요.</div>
+      <div class="cal-legend">파란 숫자 = 그날 손으로 써서 등록한 단어 · 주황 숫자 = 그날 복습할 단어 (가져온 단어는 제외)<br>날짜를 한 번 누르면 시작일, 다른 날짜를 한 번 더 누르면 끝나는 날이에요.</div>
     </div>
     <div class="card cal-sum" id="calSum"></div>
   </section>
@@ -1045,7 +1045,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.15.0', APP_DATE = '2026-10-18', SERVER_NEED = 24;
+const APP_VERSION = '1.15.1', APP_DATE = '2026-10-18', SERVER_NEED = 24;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -2329,7 +2329,7 @@ function buildDeck() {
   else if (c.scope === 'due') arr = arr.filter(isDue);
   else if (c.scope === 'hard') arr = arr.filter(w => (w.level || 0) >= 4);
   else if (c.scope === 'today') arr = arr.filter(w => addedYmd(w) === td);
-  else if (c.scope === 'range') { const f = lsGet('vn_cv_from', ''), t = lsGet('vn_cv_to', '') || td; arr = arr.filter(w => { const d = addedYmd(w); return (!f || d >= f) && d <= t; }); }
+  else if (c.scope === 'range') { const f = lsGet('vn_cv_from', ''), t = lsGet('vn_cv_to', '') || td; arr = arr.filter(w => { const d = addedYmd(w); return srcOf(w) === 'hand' && (!f || d >= f) && d <= t; }); }
   if (cv.bmOnly) arr = arr.filter(w => bm.has(w.id));
   if (cv.shuffled) for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
   cv.deck = arr;
@@ -2527,11 +2527,13 @@ function calSave() {
 const pad2 = n => String(n).padStart(2, '0');
 const calKey = (y, m, d) => y + '-' + pad2(m + 1) + '-' + pad2(d);
 function calRange() { if (!cal.from) return null; const a = cal.from, b = cal.to || cal.from; return a <= b ? [a, b] : [b, a]; }
-function calWords() { const r = calRange(); return r ? words.filter(w => { const d = addedYmd(w); return d >= r[0] && d <= r[1]; }) : []; }
+/* 달력에는 직접 손으로 쓴 단어(수기 등록)만 나온다. 파일·내장 단어장으로 가져온 단어는 제외 */
+const calPool = () => words.filter(w => srcOf(w) === 'hand');
+function calWords() { const r = calRange(); return r ? calPool().filter(w => { const d = addedYmd(w); return d >= r[0] && d <= r[1]; }) : []; }
 function renderCal() {
   const first = new Date(cal.y, cal.m, 1), dim = new Date(cal.y, cal.m + 1, 0).getDate(), lead = first.getDay(), td = todayStr(), r = calRange();
   const added = {}, due = {};
-  words.forEach(w => { const d = addedYmd(w); added[d] = (added[d] || 0) + 1; if (!isNew(w) && w.due) due[w.due] = (due[w.due] || 0) + 1; });
+  calPool().forEach(w => { const d = addedYmd(w); added[d] = (added[d] || 0) + 1; if (!isNew(w) && w.due) due[w.due] = (due[w.due] || 0) + 1; });
   $('#calTitle').textContent = cal.y + '년 ' + (cal.m + 1) + '월';
   let h = ''; for (let i = 0; i < lead; i++) h += '<div class="cal-d off"></div>';
   for (let d = 1; d <= dim; d++) {
@@ -2544,7 +2546,7 @@ function renderCal() {
 }
 function renderCalSum() {
   const el = $('#calSum'), r = calRange();
-  if (!r) { el.innerHTML = '<h3>기간을 골라 보세요</h3><div style="color:var(--sub)">달력에서 시작일(과 끝나는 날)을 누르면 그 기간에 등록한 단어로 카드와 퀴즈를 바로 시작할 수 있어요.<br><br>등록한 단어 전체: <b>' + words.length + '</b>개</div>'; return; }
+  if (!r) { el.innerHTML = '<h3>기간을 골라 보세요</h3><div style="color:var(--sub)">달력에서 시작일(과 끝나는 날)을 누르면 그 기간에 손으로 써서 등록한 단어로 카드와 퀴즈를 바로 시작할 수 있어요.<br><br>손글씨로 등록한 단어: <b>' + calPool().length + '</b>개</div>'; return; }
   const ws = calWords(), nn = ws.filter(isNew).length, dd = ws.filter(isDue).length;
   const f = x => x.slice(5).replace('-', '/');
   el.innerHTML = '<h3>' + (r[0] === r[1] ? f(r[0]) : f(r[0]) + ' ~ ' + f(r[1])) + ' · 단어 ' + ws.length + '개</h3>' +
