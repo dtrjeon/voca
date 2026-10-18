@@ -618,6 +618,12 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 #dlgSettings[open]{height:calc(min(88dvh,620px) / var(--z,1));max-height:calc(88vh / var(--z,1))}
 #dlgSettings .setgrid{grid-template-columns:1fr!important;gap:0}
+body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !important; }
+#dlgLogin, #dlgReg, #dlgStudents { max-width: 440px; width: calc(100% - 24px); }
+.lg-msg { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 6px; }
+#stuTbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+#stuTbl th, #stuTbl td { border-bottom: 1px solid var(--line, #ddd); padding: 5px 4px; text-align: left; white-space: nowrap; }
+.stu-wrap { overflow: auto; max-height: 46vh; }
 </style>
 </head>
 <body>
@@ -672,7 +678,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <section id="tab-list">
     <div class="icon-row">
       <button class="ibtn primary" id="btnCards" title="카드로 보기" aria-label="카드로 보기"><span class="ic">🃏</span><span class="lb">카드로 보기</span></button>
-      <button class="ibtn" id="btnImport" title="가져오기" aria-label="가져오기"><span class="ic">📥</span><span class="lb">가져오기</span></button>
+      <button class="ibtn t-only" id="btnImport" title="가져오기" aria-label="가져오기"><span class="ic">📥</span><span class="lb">가져오기</span></button>
       <label class="tg" title="뜻 보이기/가리기"><input type="checkbox" id="tgMean" checked aria-label="뜻 보이기"><span class="sw"></span><span class="tg-l">뜻</span></label>
       <button class="ibtn" id="btnView" title="표로 보기" aria-label="표로 보기"><span class="ic">▦</span><span class="lb">표로 보기</span></button>
       <button class="ibtn" id="btnDate" title="일자별 보기" aria-label="일자별 보기"><span class="ic">📅</span><span class="lb">일자</span></button>
@@ -868,6 +874,34 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div class="row" style="margin-top:14px"><button class="btn primary grow" id="cvOptOk">확인</button></div>
 </dialog>
 
+<dialog id="dlgLogin">
+  <h3 style="margin:0 0 8px">로그인</h3>
+  <div class="row" id="lgTabs"><button class="chip on" data-r="student" type="button">🎒 학생</button><button class="chip" data-r="teacher" type="button">👩‍🏫 선생님</button></div>
+  <div id="lgStu"><label class="lbl" for="lgName">이름</label><input type="text" id="lgName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="선생님이 적어 둔 내 이름">
+  <label class="lbl" for="lgCode">내 코드</label><input type="password" id="lgCode" autocomplete="off" autocapitalize="none" placeholder="선생님이 알려 준 코드"></div>
+  <div id="lgTea" style="display:none"><label class="lbl" for="lgTCode">선생님 코드</label><input type="password" id="lgTCode" autocomplete="off" autocapitalize="none"></div>
+  <div class="lg-msg" id="lgMsg"></div>
+  <div class="row" style="margin-top:10px"><button class="btn primary grow" id="lgGo" type="button">들어가기</button></div>
+</dialog>
+
+<dialog id="dlgReg">
+  <h3 style="margin:0 0 6px">처음 오셨네요 🎉</h3>
+  <div style="font-size:13px;color:var(--sub);line-height:1.5">목표 대학과 시작일을 정해요. 시작일은 나중에 토마토 탭에서 “시작일 다시 정하기”로 바꿀 수 있어요.</div>
+  <label class="lbl" for="rgUniv">목표 대학</label><input type="text" id="rgUniv" list="rgUnivList" maxlength="20" autocomplete="off" placeholder="목록에서 고르거나 직접 입력"><datalist id="rgUnivList"></datalist>
+  <label class="lbl" for="rgStart">시작일 (Day 1이 되는 날)</label><input type="date" id="rgStart">
+  <div class="lg-msg" id="rgMsg"></div>
+  <div class="row" style="margin-top:10px"><button class="btn primary grow" id="rgGo" type="button">시작하기</button></div>
+</dialog>
+
+<dialog id="dlgStudents">
+  <h3 style="margin:0 0 6px">👩‍🏫 학생 현황</h3>
+  <div class="stu-wrap"><table id="stuTbl"><thead><tr><th>이름</th><th>목표 대학</th><th>시작일</th><th>◎</th><th>내 단어</th><th>마지막 접속</th><th>앱</th></tr></thead><tbody></tbody></table></div>
+  <div id="stuSt" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  <label class="lbl">학생 추가 (이름 · 개인 코드)</label>
+  <div class="row"><input type="text" id="stName" placeholder="이름" autocomplete="off" style="flex:1"><input type="text" id="stCode" placeholder="코드" autocomplete="off" autocapitalize="none" style="flex:1"></div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="stAdd" type="button">추가</button><button class="btn" id="stRefresh" type="button">🔄 새로고침</button><button class="btn grow" id="stClose" type="button">닫기</button></div>
+</dialog>
+
 <dialog id="dlgImport">
   <h3 style="margin:0 0 6px">단어 가져오기</h3>
   <div style="font-size:14px;color:var(--sub)"><b>고르면 바로 등록</b>돼요 (읽기 → 폴더 만들기 → 등록 → 완료).</div>
@@ -888,6 +922,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div class="sbody">
   <div class="spane on" data-p="conn">
 
+  <div id="sAcct" style="margin:6px 0 10px;font-size:14px;line-height:1.6"></div>
   <div id="sVer" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   <label class="lbl">저장 · 연결</label>
   <div class="row" id="sMode"><button class="chip" data-v="auto" type="button">자동</button><button class="chip" data-v="online" type="button">항상 온라인</button><button class="chip" data-v="offline" type="button">항상 오프라인</button></div>
@@ -897,8 +932,8 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <details id="sAdv" style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--sub);padding:6px 0">⚙️ 고급 · 서버 주소 (보통은 건드리지 않아도 돼요)</summary>
   <label class="lbl">Apps Script 웹 앱 URL</label>
   <input type="text" id="sGas" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="none" autocomplete="off" spellcheck="false">
-  <label class="lbl">선생님 코드 (서버를 잠갔을 때만 필요해요)</label>
-  <input type="password" id="sCode" placeholder="비워 두면 코드 없이 보내요" autocapitalize="none" autocomplete="off" spellcheck="false">
+  <label class="lbl t-only">선생님 코드 (서버를 잠갔을 때만 필요해요)</label>
+  <input class="t-only" type="password" id="sCode" placeholder="비워 두면 코드 없이 보내요" autocapitalize="none" autocomplete="off" spellcheck="false">
   <div id="sTest" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
   <div class="row" style="margin-top:8px"><button class="btn" id="sTestBtn" type="button">연결 테스트</button></div>
   </details>
@@ -932,7 +967,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <div class="spane" data-p="manage">
   <label class="lbl">백업 (기기에 파일로 저장)</label>
   <div class="row"><button class="btn grow" id="sBkJson" type="button">💾 JSON 백업</button><button class="btn grow" id="sBkCsv" type="button">📊 엑셀용 CSV</button></div>
-  <div class="row" style="margin-top:8px"><button class="btn grow" id="sRestore" type="button">📂 백업 불러오기</button><input type="file" id="sRestoreFile" accept=".json,application/json" style="display:none"></div>
+  <div class="row t-only" style="margin-top:8px"><button class="btn grow" id="sRestore" type="button">📂 백업 불러오기</button><input type="file" id="sRestoreFile" accept=".json,application/json" style="display:none"></div>
   <div id="sBkSt" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   <label class="lbl">📲 홈 화면에 설치 (앱처럼 쓰기)</label>
   <div id="sInstNote" style="font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:6px">설치하면 주소창 없이 전체 화면으로 열리고, 한 번 접속해 두면 인터넷이 없어도 열려요.</div>
@@ -940,9 +975,9 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   <details class="inst"><summary>🤖 삼성 폰 · 갤럭시 탭</summary><div><b>삼성 인터넷</b><ol><li>앱 주소(dtrjeon.github.io/voca/index_voca.html)를 엽니다.</li><li>아래 <b>≡ 메뉴</b>를 누릅니다.</li><li><b>현재 페이지 추가</b> → <b>홈 화면</b>을 고릅니다.</li><li>이름을 확인하고 <b>추가</b>를 누릅니다.</li></ol><b>크롬</b><ol><li>오른쪽 위 <b>⋮</b>를 누릅니다.</li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 누릅니다.</li><li><b>설치 / 추가</b>를 누릅니다.</li></ol></div></details>
   <details class="inst"><summary>🍎 아이폰 · 아이패드</summary><div><b>Safari로 열어야 해요</b> (다른 앱 안의 브라우저에서는 안 보일 수 있어요)<ol><li>앱 주소를 Safari에서 엽니다.</li><li>아이폰은 아래쪽, 아이패드는 위쪽의 <b>공유 버튼(□ 위쪽 화살표)</b>을 누릅니다.</li><li>목록을 올려 <b>홈 화면에 추가</b>를 누릅니다.</li><li>이름을 확인하고 <b>추가</b>를 누릅니다.</li></ol></div></details>
   <div style="font-size:12px;color:var(--sub);line-height:1.5;margin-top:6px">설치한 뒤 홈 화면의 아이콘으로 열어야 앱처럼 보여요. 앱 파일을 새로 올린 뒤에는 한 번 완전히 닫았다가 다시 열면 새 버전이 적용돼요.</div>
-  <label class="lbl">단어장 관리</label>
-  <div class="row"><button class="btn grow" id="sDup" type="button">🔍 중복 단어 찾기</button></div>
-  <label class="impmv" style="margin-top:12px"><input type="checkbox" id="sImpDup"><span>가져올 때 같은 단어도 폴더마다 따로 등록<small>끄면 이미 있는 단어는 건너뛰어요. ('모의고사'로 시작하는 묶음은 항상 새 단어만 추가해요)</small></span></label>
+  <label class="lbl t-only">단어장 관리</label>
+  <div class="row t-only"><button class="btn grow" id="sDup" type="button">🔍 중복 단어 찾기</button></div>
+  <label class="impmv t-only" style="margin-top:12px"><input type="checkbox" id="sImpDup"><span>가져올 때 같은 단어도 폴더마다 따로 등록<small>끄면 이미 있는 단어는 건너뛰어요. ('모의고사'로 시작하는 묶음은 항상 새 단어만 추가해요)</small></span></label>
   </div>
   </div>
   <div class="row" style="margin-top:10px;flex:0 0 auto">
@@ -997,7 +1032,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.12.0', APP_DATE = '2026-10-18', SERVER_NEED = 21;
+const APP_VERSION = '1.13.0', APP_DATE = '2026-10-18', SERVER_NEED = 22;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1013,9 +1048,18 @@ const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 function lsGet(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
-function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+/* 로그인한 학생의 토마토 상태는 서버에도 저장한다 (바뀔 때마다 잠깐 모아서 한 번에 보냄) */
+var STATE_KEYS = ['vn_tm_src', 'vn_tm_per', 'vn_tm_marks', 'vn_tm_dates', 'vn_tm_plan', 'vn_tm_goal', 'vn_tm_intro'];
+var stateMute = false, stateTimer = 0;
+var me = { role: '', name: '', univ: '', start: '' };
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} if (!stateMute && me.role === 'student' && STATE_KEYS.indexOf(k) >= 0) stateDirty(); }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+function stateDirty() { try { localStorage.setItem('vn_state_dirty', '1'); } catch (e) {} clearTimeout(stateTimer); stateTimer = setTimeout(pushState, 1500); }
 
 const teacherCode = () => lsGet('vn_teacher_code', '').trim();
+(function () { const n = lsGet('vn_user', ''); if (n && lsGet('vn_ucode', '') && !teacherCode()) me = { role: 'student', name: n, univ: lsGet('vn_prof_univ', ''), start: lsGet('vn_prof_start', '') }; else if (teacherCode()) me.role = 'teacher'; document.body.classList.toggle('stu', me.role === 'student'); })();
+const isStu = () => me.role === 'student';
+const canEditW = w => !isStu() || isLocalId(w.id) || (w.src === 'hand' && w.owner === me.name);
 function gasUrl() { return (lsGet('vn_gas', '') || DEFAULT_GAS_URL).trim(); }
 
 let toastTimer;
@@ -1054,10 +1098,12 @@ function warmGas() {
 async function rawApi(action, data) {
   gasTs = Date.now();
   const url = gasUrl();
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {}, teacherCode() ? { code: teacherCode() } : {})) });
+  let cred = teacherCode() ? { code: teacherCode() } : (lsGet('vn_user', '') ? { user: lsGet('vn_user', ''), ucode: lsGet('vn_ucode', '') } : {});
+  if (data && data.__cred) { cred = data.__cred; data = Object.assign({}, data); delete data.__cred; }
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {}, cred)) });
   const txt = await res.text(); let j;
   try { j = JSON.parse(txt); } catch (e) { throw new Error('서버가 JSON이 아닌 화면(HTML)을 돌려줬어요 — Code.gs 배포를 확인하세요: ① 새 버전으로 배포했는지 ② 액세스 권한이 “모든 사용자”인지 ③ 설정의 Apps Script URL이 배포된 /exec 주소인지' + (/SyntaxError|구문/.test(txt) ? ' (코드에 구문 오류가 있어요: 붙여넣기가 잘렸는지 확인)' : '')); }
-  if (!j.ok) { const err = new Error(j.error || '요청 실패'); err.data = j; throw err; }
+  if (!j.ok) { const err = new Error(j.error || '요청 실패'); err.data = j; if (j.auth && action !== 'login') setTimeout(() => showLogin(j.error), 0); throw err; }
   return j;
 }
 function queueOp(action, data) {
@@ -1088,6 +1134,134 @@ async function api(action, data) {
     throw e;
   }
 }
+
+/* ====== 로그인 · 학생 정보 ====== */
+let loginRole = 'student';
+function showLogin(msg) {
+  const d = $('#dlgLogin'); if (!d) return;
+  $('#lgMsg').textContent = msg || '';
+  if (!d.open) { $('#lgName').value = lsGet('vn_user', ''); $('#lgCode').value = ''; $('#lgTCode').value = ''; d.showModal(); }
+}
+function lgTab(r) { loginRole = r; $$('#lgTabs .chip').forEach(b => b.classList.toggle('on', b.dataset.r === r)); $('#lgStu').style.display = r === 'student' ? '' : 'none'; $('#lgTea').style.display = r === 'teacher' ? '' : 'none'; }
+function reloadTmVars() {
+  tmSrc = lsGet('vn_tm_src', ''); if (tmSrc.startsWith('d:')) tmSrc = 'h:' + tmSrc.slice(2);
+  try { tmMarks = JSON.parse(lsGet('vn_tm_marks', '{}')) || {}; } catch (x) { tmMarks = {}; }
+  try { tmDates = JSON.parse(lsGet('vn_tm_dates', '{}')) || {}; } catch (x) { tmDates = {}; }
+  try { tmPlan = JSON.parse(lsGet('vn_tm_plan', '{}')) || {}; } catch (x) { tmPlan = {}; }
+}
+function applyState(txt) {
+  let st = null; try { st = JSON.parse(txt); } catch (e) {} if (!st) return false;
+  stateMute = true;
+  try { STATE_KEYS.forEach(k => { if (typeof st[k] === 'string') lsSet(k, st[k]); else lsDel(k); }); } finally { stateMute = false; }
+  return true;
+}
+function wipeLocal() { STATE_KEYS.forEach(lsDel); lsDel('vn_words'); lsDel('vn_outbox'); lsDel('vn_state_dirty'); words = []; outbox = []; }
+async function pushState() {
+  if (me.role !== 'student' || !isOnline()) return;
+  const st = {}; STATE_KEYS.forEach(k => { const v = lsGet(k, null); if (v != null) st[k] = v; });
+  try {
+    await rawApi('statesave', { state: JSON.stringify(st) });
+    const g = lsGet('vn_tm_goal', null);
+    if (g !== null && g !== me.univ) { await rawApi('profile', { univ: g }); me.univ = g; lsSet('vn_prof_univ', g); }
+    lsDel('vn_state_dirty');
+  } catch (e) {}
+}
+async function saveProfile(p) {
+  if (!isStu()) return;
+  try { const j = await rawApi('profile', p); me.univ = j.profile.univ; me.start = j.profile.start; lsSet('vn_prof_univ', me.univ); lsSet('vn_prof_start', me.start); } catch (e) { toast(e.message); }
+}
+/* 서버가 확인해 준 학생으로 들어간다. 다른 사람이 쓰던 기기면 이전 기록은 지운다 */
+async function enterStudent(j, name, code) {
+  const prev = lsGet('vn_user', '');
+  if (prev && prev !== name) wipeLocal();
+  lsDel('vn_teacher_code'); lsSet('vn_user', name); lsSet('vn_ucode', code);
+  const p = j.profile || {};
+  me = { role: 'student', name: name, univ: p.univ || '', start: p.start || '' };
+  lsSet('vn_prof_univ', me.univ); lsSet('vn_prof_start', me.start);
+  document.body.classList.add('stu');
+  const hasSrv = !!(j.state && j.state.length > 2);
+  if (hasSrv && lsGet('vn_state_dirty', '') !== '1') applyState(j.state);
+  stateMute = true; try { if (me.univ) lsSet('vn_tm_goal', me.univ); } finally { stateMute = false; }
+  reloadTmVars();
+  if (!me.univ || !me.start) { showReg(); return; }
+  if (lsGet('vn_state_dirty', '') === '1') pushState();
+}
+function showReg() {
+  const d = $('#dlgReg'); if (d.open) return;
+  $('#rgUnivList').innerHTML = Object.keys(UNIV_LOGO).concat(['서강대학교', '중앙대학교', '한국외국어대학교', '서울시립대학교', '동국대학교', '홍익대학교', 'KAIST', 'POSTECH', '아주대학교', '인하대학교']).map(u => '<option value="' + u + '">').join('');
+  $('#rgUniv').value = me.univ || ''; $('#rgStart').value = me.start || ymdLocal(new Date()); $('#rgMsg').textContent = '';
+  d.showModal();
+}
+async function doLogin() {
+  const go = $('#lgGo'); go.disabled = true; $('#lgMsg').textContent = '';
+  try {
+    if (loginRole === 'teacher') {
+      const c = $('#lgTCode').value.trim(); if (!c) { $('#lgMsg').textContent = '코드를 입력하세요'; return; }
+      const j = await rawApi('login', { ver: APP_VERSION, __cred: { code: c } });
+      if (lsGet('vn_user', '')) wipeLocal();
+      lsDel('vn_user'); lsDel('vn_ucode'); lsSet('vn_teacher_code', c);
+      me = { role: 'teacher', name: '', univ: '', start: '' }; document.body.classList.remove('stu');
+      $('#dlgLogin').close(); toast('선생님으로 들어왔어요');
+    } else {
+      const n = $('#lgName').value.trim(), c = $('#lgCode').value.trim(); if (!n || !c) { $('#lgMsg').textContent = '이름과 코드를 입력하세요'; return; }
+      const j = await rawApi('login', { ver: APP_VERSION, __cred: { user: n, ucode: c } });
+      if (j.role !== 'student') { $('#lgMsg').textContent = '이름이나 코드가 맞지 않아요'; return; }
+      await enterStudent(j, n, c);
+      $('#dlgLogin').close();
+    }
+    updateAcct(); renderList(); updateCount(); tmRender(); refreshWords(true);
+  } catch (e) { $('#lgMsg').textContent = e.message; }
+  finally { go.disabled = false; }
+}
+async function doReg() {
+  const u = $('#rgUniv').value.trim(), st = $('#rgStart').value;
+  if (!u) { $('#rgMsg').textContent = '목표 대학을 적어 주세요'; return; }
+  if (!st) { $('#rgMsg').textContent = '시작일을 골라 주세요'; return; }
+  $('#rgGo').disabled = true;
+  try {
+    const j = await rawApi('profile', { univ: u, start: st });
+    me.univ = j.profile.univ; me.start = j.profile.start; lsSet('vn_prof_univ', me.univ); lsSet('vn_prof_start', me.start);
+    stateMute = true; try { lsSet('vn_tm_goal', me.univ); lsDel('vn_tm_goal_img'); } finally { stateMute = false; }
+    await pushState();                      // 기기에 있던 토마토 기록이 서버로 옮겨 간다
+    $('#dlgReg').close(); updateAcct(); tmRender(); toast('시작할게요! 🍅');
+  } catch (e) { $('#rgMsg').textContent = e.message; }
+  finally { $('#rgGo').disabled = false; }
+}
+function updateAcct() {
+  const el = $('#sAcct'); if (!el) return;
+  if (isStu()) el.innerHTML = '👤 <b>' + esc(me.name) + '</b> (학생)' + (me.univ ? ' · 🎓 ' + esc(me.univ) : '') + '<div class="row" style="margin-top:6px"><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
+  else if (me.role === 'teacher') el.innerHTML = '👩‍🏫 <b>선생님 모드</b><div class="row" style="margin-top:6px"><button class="btn" id="sStudents" type="button">👥 학생 현황</button><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
+  else el.innerHTML = '<div class="row"><button class="btn" id="sLogin" type="button">🔐 로그인</button></div>';
+}
+async function bootAuth() {
+  const u = gasUrl(); if (!u || u.indexOf('PASTE_GAS_URL') >= 0) return true;
+  try {
+    if (me.role === 'student') { const j = await rawApi('login', { ver: APP_VERSION }); await enterStudent(j, me.name, lsGet('vn_ucode', '')); }
+    else if (me.role === 'teacher') await rawApi('login', { ver: APP_VERSION });
+    else { const j = await (await fetch(u)).json(); if (j.locked) { showLogin(); return false; } }
+  } catch (e) { if (e.data && e.data.auth) return false; }
+  return true;
+}
+function fmtSeen(v) { if (!v) return '—'; const d = new Date(v); if (isNaN(d)) return String(v).slice(0, 16); const n = Math.floor((Date.now() - d) / 86400000); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + (n >= 1 ? ' (' + n + '일 전)' : ''); }
+async function loadStudents() {
+  $('#stuSt').textContent = '불러오는 중…';
+  try {
+    const j = await rawApi('students');
+    $('#stuTbl tbody').innerHTML = (j.students || []).map(s => '<tr><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.univ || '—') + '</td><td>' + esc(s.start ? s.start.slice(5).replace('-', '/') : '—') + '</td><td>' + s.marks + '</td><td>' + s.own + '</td><td>' + fmtSeen(s.lastSeen) + '</td><td>' + esc(s.ver || '') + '</td></tr>').join('') || '<tr><td colspan="7" style="color:var(--sub)">아직 학생이 없어요. 아래에서 추가하세요.</td></tr>';
+    $('#stuSt').textContent = (j.students || []).length + '명 · ◎ = 토마토에서 ◎로 표시한 단어 수';
+  } catch (e) { $('#stuSt').textContent = e.message; }
+}
+document.addEventListener('click', e => {
+  const id = e.target && e.target.id;
+  if (id === 'sLogin') { $('#dlgSettings').close(); showLogin(); }
+  else if (id === 'sStudents') { $('#dlgSettings').close(); $('#dlgStudents').showModal(); loadStudents(); }
+  else if (id === 'sLogout') {
+    if (!confirm('로그아웃할까요?')) return;
+    (async () => { if (isStu()) { try { await pushState(); } catch (x) {} wipeLocal(); } lsDel('vn_user'); lsDel('vn_ucode'); lsDel('vn_teacher_code'); lsDel('vn_prof_univ'); lsDel('vn_prof_start'); location.reload(); })();
+  }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && me.role === 'student' && lsGet('vn_state_dirty', '') === '1') pushState(); });
+document.addEventListener('DOMContentLoaded', () => {});
 let flushing = false;
 async function flushOutbox() {
   if (flushing || !outbox.length || !isOnline()) return 0;
@@ -1148,7 +1322,7 @@ async function flushUnsaved(manual) {
 function addLocal(r) {
   const id = 'L' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   r.id = id; r.saved = true;
-  words.unshift({ id: id, word: r.word, pos: r.pos || '', meaning: r.meaning || '', example: r.example || '', example_ko: r.example_ko || '', tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: r.src || 'hand', folder: r.folder || '' });
+  words.unshift({ id: id, word: r.word, pos: r.pos || '', meaning: r.meaning || '', example: r.example || '', example_ko: r.example_ko || '', tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: r.src || 'hand', folder: r.folder || '', owner: isStu() ? me.name : '' });
   saveCache(); renderList(); updateCount(); updateSetupInfo(); updateNetUI(); wDateAfterSave();
   if (!r.example) enrichWord(words[0]);
   scheduleFlush();
@@ -1387,7 +1561,7 @@ function renderResult(badge) {
 function applySaved(id) {
   const r = curResult; if (!r) return;
   r.id = id; r.saved = true;
-  words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: 'hand' });
+  words.unshift({ id: r.id, word: r.word, pos: r.pos, meaning: r.meaning, example: r.example, example_ko: r.example_ko, tip: r.tip || '', level: r.level || 0, added: regISO(), right: 0, wrong: 0, last: '', box: 0, due: '', src: 'hand', owner: isStu() ? me.name : '' });
   saveCache(); renderList(); updateCount(); updateSetupInfo();
   renderResult(); wDateAfterSave();
   setTimeout(() => ensureExtra(words[0]), 600);
@@ -1631,7 +1805,7 @@ function renderList() {
         (w.example_ko ? '<div class="w-exko">' + esc(w.example_ko) + '</div>' : '') +
         (w.tip ? '<div class="w-tip">💡 ' + esc(w.tip) + '</div>' : '') +
         '<div class="row" style="margin-top:10px">' + (SR ? '<button class="btn" data-act="say">🎤 발음 말해보기</button>' : '') +
-        '<button class="btn" data-act="edit">수정</button><button class="btn danger" data-act="del">삭제</button></div>' +
+        (canEditW(w) ? '<button class="btn" data-act="edit">수정</button><button class="btn danger" data-act="del">삭제</button>' : '') + '</div>' +
         '<div class="say-out"></div>' +
       '</div></div>';
   const STEP = 120; let shown = Math.min(STEP, arr.length);
@@ -2026,7 +2200,7 @@ $('#btnQuit').addEventListener('click', () => { if (confirm('퀴즈를 그만할
 
 /* ====== 설정 ====== */
 $('#btnSettings').addEventListener('click', () => {
-  $('#sCode').value = lsGet('vn_teacher_code', '');
+  $('#sCode').value = lsGet('vn_teacher_code', ''); updateAcct();
   $('#sGas').value = lsGet('vn_gas', '') || (DEFAULT_GAS_URL.indexOf('PASTE') >= 0 ? '' : DEFAULT_GAS_URL);
   sTmVal = tmSrc; pkSetBtn(); $('#sTmPer').value = tmPer(); $('#sRows').value = tblRows(); $('#sCols').value = tblCols(); $('#sNewPerDay').value = newPerDay(); $('#sTest').textContent = '';
   syncMode(); updateNetUI(); $('#sBkSt').textContent = ''; $('#sTabs [data-p="conn"]').click(); $('#sAdv').open = !$('#sGas').value;
@@ -2680,7 +2854,7 @@ async function runImport(p) {
     $('#impResult').innerHTML = '<div class="ires"><b>✅ 완료</b>' + (auto === 'skip' ? ' (모의고사 묶음: 이미 있는 단어는 건너뛰고 새 단어만 추가)' : '') + ' — 새로 ' + added + '개 등록' + (moved ? ' · 폴더로 옮김 ' + moved + '개' : '') + (filled ? ' · 연어 채움 ' + filled + '개' : '') + (skipped ? ' · 건너뜀 ' + skipped + '개' : '') +
       (skippedList.length ? '<div class="isk">건너뛴 단어(이미 있는 폴더): ' + skippedList.map(x => esc(x.word) + (x.folder ? ' → ' + esc(x.folder) : '')).join(' · ') + (skipped > skippedList.length ? ' …' : '') + '</div>' : '') +
       '<div class="irow"><button class="btn primary" data-ir="list">📒 단어장에서 보기</button><button class="btn primary" data-ir="tomato">🍅 토마토에서 열기</button>' + (ids.length || movedList.length ? '<button class="btn danger" data-ir="undo">↩ 되돌리기</button>' : '') + '</div></div>';
-  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v21)으로 다시 배포해 주세요' : ''); }
+  } catch (e) { $('#impStatus').textContent = '❌ ' + e.message + (/unknown action|mode/.test(e.message) && /unknown/.test(e.message) ? ' — Code.gs 를 새 버전(v22)으로 다시 배포해 주세요' : ''); }
   impBusy = false;
 }
 $('#impResult').addEventListener('click', async e => {
@@ -2853,8 +3027,9 @@ function tmTogglePlanDone(d) {
   tmSaveDates(); tmSavePlan();
 }
 function tmPlanCard(all, nd) {
+  if (isStu() && me.start && tmPlanOn() && !tmPlan[tmSrc]) { tmPlan[tmSrc] = { start: me.start, done: {} }; tmSavePlan(); }
   const p = tmPlan[tmSrc], today = ymdLocal(new Date());
-  const startIn = '<label class="tm-pl-d">시작일 <input type="date" data-plan="start" value="' + esc(p && p.start || today) + '"></label>';
+  const startIn = '<label class="tm-pl-d">' + (isStu() ? '시작일 다시 정하기' : '시작일') + ' <input type="date" data-plan="start" value="' + esc(p && p.start || today) + '"></label>';
   if (!p || !p.start) return '<div class="tm-plan"><div class="tm-pl-h"><b>🗓 오늘 루틴</b></div><div class="tm-pl-s">매일 새 Day 1개를 외우고, 1일·3일·7일 전 Day를 복습하도록 알려 드려요. 시작일을 정하고 눌러 주세요.</div><div class="row">' + startIn + '<button class="btn primary" data-act="pstart" type="button">시작하기</button></div></div>';
   const n = tmTodayNo(), per = tmPer();
   if (n < 1) return '<div class="tm-plan"><div class="tm-pl-h"><b>🗓 오늘 루틴</b></div><div class="tm-pl-s">시작일(' + esc(p.start) + ')이 아직 안 됐어요. 그날부터 Day 1이 시작돼요.</div>' + startIn + '</div>';
@@ -2873,6 +3048,13 @@ function tmPlanCard(all, nd) {
   return h + '<div style="margin-top:8px">' + startIn + '</div></div>';
 }
 
+/* 이름 부르기: 성을 빼고 받침이 있으면 '아', 없으면 '야' (길동 → 길동아, 민지 → 민지야) */
+function callName(n) {
+  n = String(n || '').trim(); let g = n.length === 3 ? n.slice(1) : n.length === 4 ? n.slice(2) : n;
+  const c = g.charCodeAt(g.length - 1);
+  if (c < 0xAC00 || c > 0xD7A3) return g;
+  return g + ((c - 0xAC00) % 28 ? '아' : '야');
+}
 const tmGoalName = () => lsGet('vn_tm_goal', '성균관대학교');   // 처음엔 성균관대학교, 직접 지우면 비워 둠
 const UNIV_LOGO = { '성균관대학교': 'skku', '가천대학교': 'gachon', '강원대학교': 'kangwon', '건국대학교': 'konkuk', '경기대학교': 'kyonggi', '경북대학교': 'kyungpook', '경상국립대학교': 'gnu', '경희대학교': 'kyunghee', '계명대학교': 'keimyung', '고려대학교': 'korea', '국립군산대학교': 'kunsan', '단국대학교': 'dku', '동아대학교': 'donga', '부산대학교': 'pusan', '서울대학교': 'snu', '숙명여자대학교': 'sookmyung', '연세대학교': 'yonsei', '영남대학교': 'yeungnam', '우석대학교': 'woosuk', '원광대학교': 'wonkwang', '이화여자대학교': 'ewha', '전남대학교': 'chonnam', '전북대학교': 'jeonbuk', '전주대학교': 'jeonju', '제주대학교': 'jeju', '충남대학교': 'cnu', '충북대학교': 'chungbuk', '한림대학교': 'hallym', '한양대학교': 'hanyang' };   // img/univ/*.png (이름이 같으면 배너에 로고가 나온다)
 const univLogo = n => UNIV_LOGO[String(n || '').trim()] ? 'img/univ/' + UNIV_LOGO[String(n).trim()] + '.png' : '';
@@ -2898,7 +3080,7 @@ function tmGoalImage(file) {
 function tmIntro(nd, per) {
   const root = tmSrc.startsWith('m:') ? tmSrc.slice(2).split('\u0001')[0] : tmSrc.slice(2).split('/')[0];
   const goal = tmGoalName(), img = tmGoalImg();
-  const title = goal ? esc(goal) + ' 합격 도전' : esc(root) + ' ' + nd + '일 도전';
+  const title = goal ? (isStu() ? esc(callName(me.name)) + '! ' : '') + esc(goal) + ' 합격 도전' : esc(root) + ' ' + nd + '일 도전';
   if (lsGet('vn_tm_intro', '1') === '0') return '<div class="tm-intro"><button class="tm-in-fold" data-act="intro" type="button"><span>' + (img ? '🎓 ' : '🏔 ') + title + ' · 사용방법 보기</span><b>▾</b></button></div>';
   const svg = '<svg viewBox="0 0 320 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="산 정상의 깃발을 향해 오르는 길">' +
     '<circle cx="268" cy="30" r="14" fill="#ffd166"/>' +
@@ -2991,7 +3173,7 @@ $('#tmBody').addEventListener('click', e => {
   else if (act === 'next') { tm.day++; tm.rev.clear(); }
   else if (act === 'mode') { tm.mode = el.dataset.m; tm.rev.clear(); }
   else if (act === 'gn') { gnOpen(); return; }
-  else if (act === 'pstart') { const inp = $('#tmBody input[data-plan="start"]'), v = inp && inp.value; if (!v) return; tmPlan[tmSrc] = { start: v, done: {} }; tmSavePlan(); tm.planInit = false; toast('오늘 루틴을 시작했어요'); }
+  else if (act === 'pstart') { const inp = $('#tmBody input[data-plan="start"]'), v = inp && inp.value; if (!v) return; tmPlan[tmSrc] = { start: v, done: {} }; tmSavePlan(); if (isStu()) saveProfile({ start: v }); tm.planInit = false; toast('오늘 루틴을 시작했어요'); }
   else if (act === 'pdone') tmTogglePlanDone(+el.dataset.d);
   else if (act === 'intro') lsSet('vn_tm_intro', lsGet('vn_tm_intro', '1') === '0' ? '1' : '0');
   else if (act === 'goal') tm.goalEdit = !tm.goalEdit;
@@ -3017,7 +3199,7 @@ $('#tmBody').addEventListener('click', e => {
 });
 $('#tmBody').addEventListener('change', e => {
   if (e.target.dataset.goal === 'img') { tmGoalImage(e.target.files && e.target.files[0]); e.target.value = ''; return; }
-  if (e.target.dataset.plan === 'start') { const p = tmPlan[tmSrc]; if (p && e.target.value) { p.start = e.target.value; tmSavePlan(); tmRender(); } return; }
+  if (e.target.dataset.plan === 'start') { const p = tmPlan[tmSrc]; if (p && e.target.value) { p.start = e.target.value; tmSavePlan(); if (isStu()) saveProfile({ start: e.target.value }); tmRender(); } return; }
   if (e.target.dataset.i != null && e.target.type === 'date') {
     const k = tmDateKey(tm.day), a = (tmDates[k] || ['', '', '']).slice(); a[+e.target.dataset.i] = e.target.value || '';
     if (a.every(x => !x)) delete tmDates[k]; else tmDates[k] = a; tmSaveDates(); tmRender();
@@ -3033,7 +3215,20 @@ if (wideMQ.addEventListener) wideMQ.addEventListener('change', syncWide);
 syncWide();
 fitPad(); resizePad();
 renderList(); updateCount(); updateSetupInfo();
-if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) refreshWords(true);
+$$('#lgTabs .chip').forEach(b => b.addEventListener('click', () => lgTab(b.dataset.r)));
+$('#lgGo').addEventListener('click', doLogin);
+['#lgCode', '#lgTCode', '#lgName'].forEach(q => $(q).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
+$('#rgGo').addEventListener('click', doReg);
+$('#dlgLogin').addEventListener('cancel', e => e.preventDefault());
+$('#dlgReg').addEventListener('cancel', e => e.preventDefault());
+$('#stClose').addEventListener('click', () => $('#dlgStudents').close());
+$('#stRefresh').addEventListener('click', loadStudents);
+$('#stAdd').addEventListener('click', async () => {
+  const n = $('#stName').value.trim(), c = $('#stCode').value.trim(); if (!n || !c) { $('#stuSt').textContent = '이름과 코드를 모두 적어 주세요'; return; }
+  try { await rawApi('studentadd', { name: n, studentCode: c }); $('#stName').value = ''; $('#stCode').value = ''; await loadStudents(); toast(n + ' 학생을 추가했어요'); } catch (e) { $('#stuSt').textContent = e.message; }
+});
+updateAcct();
+if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) bootAuth().then(ok => { if (ok) refreshWords(true); });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw_voca.js').catch(() => {});
 
 /* --- 중복 단어 찾기 --- */

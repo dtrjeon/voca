@@ -7,6 +7,8 @@
  *      ANTHROPIC_API_KEY = (Anthropic API 키)
  *    (선택) MODEL = claude-haiku-5-5   (기본값)
  *    (선택) TEACHER_CODE = (선생님 코드)  ← 넣으면 AI 기능(손글씨 인식·뜻/예문·상세·연어·영영)이 코드를 아는 앱에서만 동작해요. 코드는 이 파일에 쓰지 마세요.
+ *    (선택) 학생 로그인: 'TEACHER_CODE' 를 정하면 잠금이 켜져요. 선생님은 이 코드로, 학생은 '학생' 시트의 이름+코드로 들어와요.
+ *      '학생' 시트(자동 생성)의 A열 이름, B열 코드(서식: 일반 텍스트)를 선생님이 적거나 앱의 '학생 현황'에서 추가하세요.
  * 3) 배포 > 새 배포 > 웹 앱 (실행: 나, 액세스: 모든 사용자) > URL 복사
  *    -> index_voca.html 의 DEFAULT_GAS_URL 에 붙여넣기 (또는 앱 ⚙️ 설정에 입력)
  *
@@ -17,8 +19,12 @@
 
 const SHEET_WORDS = '단어';
 const SHEET_LOG = '학습기록';
-const HEADERS_WORDS = ['id', '단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '마지막학습', '단계', '다음복습', '어근팁', '난이도', '추가정보', '폴더', '구분'];
-const HEADERS_LOG = ['시각', 'id', '단어', '유형', '결과'];
+const HEADERS_WORDS = ['id', '단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '마지막학습', '단계', '다음복습', '어근팁', '난이도', '추가정보', '폴더', '구분', '소유자'];
+const HEADERS_LOG = ['시각', 'id', '단어', '유형', '결과', '이름'];
+const SHEET_STU = '학생', HEADERS_STU = ['이름', '코드', '목표대학', '시작일', '가입일', '마지막접속', '앱버전'];
+const SHEET_STATE = '진행', HEADERS_STATE = ['이름', '순번', '내용'];   // 토마토 표시·회독 날짜 등을 JSON 조각으로 저장
+const SHEET_PROG = '진도', HEADERS_PROG = ['이름', 'id', '정답수', '오답수', '마지막학습', '단계', '다음복습'];   // 학생별 암기 진도(공유 단어)
+let CUR_AU_ = { role: 'teacher' };
 
 // 간격 반복: 단계(0~5)별로 "다음 복습까지 며칠"
 //  정답이면 단계 +1(최대 5), 오답이면 단계 0(내일 다시)
@@ -65,11 +71,13 @@ function dstr_(v) {
 function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
-    // 비용이 드는 기능(AI 호출)은 선생님 코드를 맞춰야 쓸 수 있다. 스크립트 속성 TEACHER_CODE 가 비어 있으면 잠그지 않는다.
-    if (LOCKED_ACTIONS_[req.action]) {
-      const need = PropertiesService.getScriptProperties().getProperty('TEACHER_CODE');
-      if (need && String(req.code || '') !== String(need)) return json_({ ok: false, locked: true, error: '선생님 코드가 필요해요 (앱 설정 › 고급 › 선생님 코드)' });
-    }
+    // 권한: 스크립트 속성 TEACHER_CODE 가 있으면 선생님 코드 또는 학생(이름+코드)만 쓸 수 있다. 없으면 예전처럼 모두 열려 있다.
+    const au = auth_(req);
+    if (au.blocked) return json_({ ok: false, auth: true, error: '잠시 후에 다시 시도해 주세요 (코드를 여러 번 틀렸어요)' });
+    if (req.action === 'login') return json_(login_(req, au));
+    if (au.role === 'none') return json_({ ok: false, auth: true, error: '로그인이 필요해요 (이름과 코드를 입력하세요)' });
+    if (au.role === 'student' && !STUDENT_OK_[req.action]) return json_({ ok: false, forbidden: true, error: '선생님만 할 수 있어요' });
+    CUR_AU_ = au;
     switch (req.action) {
       case 'recognize': {
         const t0 = Date.now();
@@ -100,6 +108,10 @@ function doPost(e) {
       case 'renamefolder': return json_(renameFolder_(req));
       case 'undoimport': return json_(undoImport_(req));
       case 'restore':   return json_(restore_(req));
+      case 'profile':   return json_(profile_(req));
+      case 'statesave': return json_(stateSave_(req));
+      case 'students':  return json_(students_());
+      case 'studentadd': return json_(studentAdd_(req));
       default:          return json_({ ok: false, error: 'unknown action' });
     }
   } catch (err) {
@@ -107,10 +119,11 @@ function doPost(e) {
   }
 }
 
-const LOCKED_ACTIONS_ = { recognize: 1, enrich: 1, detail: 1, colloc: 1, defen: 1 };
+// 학생이 쓸 수 있는 기능 (나머지는 선생님만)
+const STUDENT_OK_ = { list: 1, add: 1, addmany: 1, recognize: 1, enrich: 1, detail: 1, record: 1, update: 1, delete: 1, profile: 1, statesave: 1 };
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 21, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 22, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -247,17 +260,19 @@ function addWord_(req) {
   const w = String(req.word || '').trim().toLowerCase();
   if (!w) return { ok: false, error: '단어가 비어 있습니다.' };
 
-  // 중복 검사는 '단어' 열(2번째)만 읽는다 (시트 전체를 읽는 것보다 훨씬 빠름)
+  // 중복 검사는 '단어' 열(2번째)과 '소유자' 열만 읽는다. 공유 단어와 내(학생) 단어만 비교한다.
+  const owner = CUR_AU_.role === 'student' ? CUR_AU_.name : '';
   const last = sh.getLastRow();
   if (last > 1) {
-    const col = sh.getRange(2, 2, last - 1, 1).getValues();
+    const col = sh.getRange(2, 2, last - 1, 1).getValues(), ow = sh.getRange(2, 18, last - 1, 1).getValues();
     for (let i = 0; i < col.length; i++) {
-      if (String(col[i][0]).toLowerCase() === w) return { ok: false, error: '이미 저장된 단어입니다: ' + w, duplicate: true };
+      const o = String(ow[i][0] || '');
+      if ((!o || o === owner) && String(col[i][0]).toLowerCase() === w) return { ok: false, error: '이미 저장된 단어입니다: ' + w, duplicate: true };
     }
   }
   const id = Utilities.getUuid().slice(0, 8);
   const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  sh.appendRow([id, w, req.pos || '', req.meaning || '', req.example || '', req.example_ko || '', parseYmd_(req.date) || new Date(), 0, 0, '', 0, today, req.tip || '', Number(req.level) || '', '', req.folder || '', req.src === 'import' ? 'import' : 'hand']);
+  sh.appendRow([id, w, req.pos || '', req.meaning || '', req.example || '', req.example_ko || '', parseYmd_(req.date) || new Date(), 0, 0, '', 0, today, req.tip || '', Number(req.level) || '', '', req.folder || '', req.src === 'import' ? 'import' : 'hand', owner]);
   return { ok: true, id: id };
 }
 
@@ -271,8 +286,12 @@ function addMany_(req) {
   const results = [], rows = [];
   try {
     const have = {};
+    const owner = CUR_AU_.role === 'student' ? CUR_AU_.name : '';
     const last = sh.getLastRow();
-    if (last > 1) sh.getRange(2, 2, last - 1, 1).getValues().forEach(function (r) { have[String(r[0]).toLowerCase()] = true; });
+    if (last > 1) {
+      const ws = sh.getRange(2, 2, last - 1, 1).getValues(), ow = sh.getRange(2, 18, last - 1, 1).getValues();
+      ws.forEach(function (r, i) { const o = String(ow[i][0] || ''); if (!o || o === owner) have[String(r[0]).toLowerCase()] = true; });
+    }
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
     items.forEach(function (it) {
       const w = String(it.word || '').trim().toLowerCase();
@@ -280,7 +299,7 @@ function addMany_(req) {
       if (have[w]) { results.push({ lid: it.lid, ok: false, duplicate: true }); return; }
       have[w] = true;
       const id = Utilities.getUuid().slice(0, 8);
-      rows.push([id, w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', parseYmd_(it.date) || new Date(), 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', it.folder || '', it.src === 'import' ? 'import' : 'hand']);
+      rows.push([id, w, it.pos || '', it.meaning || '', it.example || '', it.example_ko || '', parseYmd_(it.date) || new Date(), 0, 0, '', 0, today, it.tip || '', Number(it.level) || '', '', it.folder || '', it.src === 'import' ? 'import' : 'hand', owner]);
       results.push({ lid: it.lid, ok: true, id: id });
     });
     if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
@@ -291,21 +310,39 @@ function addMany_(req) {
 }
 
 function listWords_() {
+  const au = CUR_AU_, stu = au.role === 'student';
   const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
   const rows = sh.getDataRange().getValues();
+  const prog = stu ? progOf_(au.name) : null;
   const out = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r[0]) continue;
+    const owner = String(r[17] || '');
+    if (stu && owner && owner !== au.name) continue;          // 다른 학생이 쓴 단어는 보이지 않는다
+    const id = String(r[0]), p = stu ? prog[id] : null;
     out.push({
-      id: String(r[0]), word: r[1], pos: r[2], meaning: r[3], example: r[4], example_ko: r[5],
+      id: id, word: r[1], pos: r[2], meaning: r[3], example: r[4], example_ko: r[5],
       added: r[6] instanceof Date ? r[6].toISOString() : String(r[6]),
-      right: Number(r[7]) || 0, wrong: Number(r[8]) || 0,
-      last: r[9] instanceof Date ? r[9].toISOString() : String(r[9] || ''),
-      box: Number(r[10]) || 0, due: dstr_(r[11]), tip: String(r[12] || ''), level: Number(r[13]) || 0, extra: String(r[14] || ''), folder: String(r[15] || ''), src: String(r[16] || '')
+      right: stu ? (p ? p.right : 0) : (Number(r[7]) || 0), wrong: stu ? (p ? p.wrong : 0) : (Number(r[8]) || 0),
+      last: stu ? (p ? p.last : '') : (r[9] instanceof Date ? r[9].toISOString() : String(r[9] || '')),
+      box: stu ? (p ? p.box : 0) : (Number(r[10]) || 0), due: stu ? (p ? p.due : dstr_(r[11])) : dstr_(r[11]),
+      tip: String(r[12] || ''), level: Number(r[13]) || 0, extra: String(r[14] || ''), folder: String(r[15] || ''), src: String(r[16] || ''), owner: owner
     });
   }
   return { ok: true, words: out };
+}
+
+// 학생 한 명의 암기 진도(공유 단어용): id -> {right, wrong, last, box, due}
+function progOf_(name) {
+  const sh = getSheet_(SHEET_PROG, HEADERS_PROG), m = {};
+  const last = sh.getLastRow();
+  if (last < 2) return m;
+  sh.getRange(2, 1, last - 1, 7).getValues().forEach(function (r) {
+    if (String(r[0]) !== name) return;
+    m[String(r[1])] = { right: Number(r[2]) || 0, wrong: Number(r[3]) || 0, last: r[4] instanceof Date ? r[4].toISOString() : String(r[4] || ''), box: Number(r[5]) || 0, due: dstr_(r[6]) };
+  });
+  return m;
 }
 
 function findRow_(sh, id) {
@@ -314,10 +351,18 @@ function findRow_(sh, id) {
   return -1;
 }
 
+// 학생은 자기 이름으로 쓴 손글씨 단어만 고치거나 지울 수 있다 (선생님은 모두)
+function mayEdit_(sh, row) {
+  if (CUR_AU_.role !== 'student') return true;
+  const v = sh.getRange(row, 17, 1, 2).getValues()[0];
+  return String(v[0]) === 'hand' && String(v[1] || '') === CUR_AU_.name;
+}
+
 function deleteWord_(req) {
   const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
   const row = findRow_(sh, req.id);
   if (row < 0) return { ok: false, error: '단어를 찾을 수 없습니다.' };
+  if (!mayEdit_(sh, row)) return { ok: false, forbidden: true, error: '내가 쓴 단어만 지울 수 있어요' };
   sh.deleteRow(row);
   return { ok: true };
 }
@@ -326,19 +371,173 @@ function updateWord_(req) {
   const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
   const row = findRow_(sh, req.id);
   if (row < 0) return { ok: false, error: '단어를 찾을 수 없습니다.' };
+  if (!mayEdit_(sh, row)) return { ok: false, forbidden: true, error: '내가 쓴 단어만 고칠 수 있어요' };
+  const stu = CUR_AU_.role === 'student';
   sh.getRange(row, 2, 1, 5).setValues([[
     String(req.word || '').trim().toLowerCase(), req.pos || '', req.meaning || '', req.example || '', req.example_ko || ''
   ]]);
   sh.getRange(row, 13, 1, 2).setValues([[req.tip || '', Number(req.level) || '']]);
-  if (req.folder !== undefined) sh.getRange(row, 16).setValue(String(req.folder || ''));
-  if (req.src === 'hand' || req.src === 'import') sh.getRange(row, 17).setValue(req.src);   // 구분(손쓰기/업로드)
+  if (!stu && req.folder !== undefined) sh.getRange(row, 16).setValue(String(req.folder || ''));
+  if (!stu && (req.src === 'hand' || req.src === 'import')) sh.getRange(row, 17).setValue(req.src);   // 구분(손쓰기/업로드)
   const dd = parseYmd_(req.date);
   if (dd) sh.getRange(row, 7).setValue(dd);   // 등록일 변경
   return { ok: true };
 }
 
 /* ---------- 학습 기록 + 복습 일정 계산 ---------- */
+// ───────── 학생 / 선생님 로그인 ─────────
+function normCode_(v) { return String(v === null || v === undefined ? '' : v).replace(/\s+/g, ''); }
+
+// 요청이 누구에게서 왔는지: {role:'teacher'|'student'|'none', name, blocked}
+function auth_(req) {
+  const tc = PropertiesService.getScriptProperties().getProperty('TEACHER_CODE');
+  if (!tc) return { role: 'teacher' };                       // 선생님 코드를 안 정했으면 예전처럼 모두 열림
+  if (req.code && normCode_(req.code) === normCode_(tc)) return { role: 'teacher' };
+  const name = String(req.user || '').trim();
+  if (!name || !req.ucode) return { role: 'none' };
+  const cache = CacheService.getScriptCache(), key = 'fail_' + name;
+  if (Number(cache.get(key) || 0) >= 10) return { role: 'none', blocked: true };
+  const f = findStudent_(name);
+  const inp = normCode_(req.ucode);
+  if (f && normCode_(f.rec[1]) !== '' && (normCode_(f.rec[1]) === inp || (typeof f.rec[1] === 'number' && String(f.rec[1]) === inp.replace(/^0+/, '')))) {
+    return { role: 'student', name: String(f.rec[0]).trim(), row: f.row };
+  }
+  cache.put(key, String(Number(cache.get(key) || 0) + 1), 600);   // 10분 안에 10번 틀리면 잠시 막기
+  return { role: 'none' };
+}
+
+function findStudent_(name) {
+  const sh = getSheet_(SHEET_STU, HEADERS_STU);
+  const last = sh.getLastRow();
+  if (last < 2) return null;
+  const d = sh.getRange(2, 1, last - 1, 7).getValues();
+  for (let i = 0; i < d.length; i++) if (String(d[i][0]).trim() === name) return { row: i + 2, rec: d[i] };
+  return null;
+}
+
+function profileOf_(rec) {
+  return { name: String(rec[0]).trim(), univ: String(rec[2] || ''), start: dstr_(rec[3]) };
+}
+
+function login_(req, au) {
+  if (au.role === 'teacher') return { ok: true, role: 'teacher', locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') };
+  if (au.role !== 'student') return { ok: false, auth: true, error: '이름이나 코드가 맞지 않아요' };
+  const sh = getSheet_(SHEET_STU, HEADERS_STU);
+  sh.getRange(au.row, 6, 1, 2).setValues([[new Date(), String(req.ver || '')]]);
+  const f = findStudent_(au.name);
+  if (f && !f.rec[4]) sh.getRange(au.row, 5).setValue(new Date());
+  return { ok: true, role: 'student', profile: profileOf_(f.rec), state: loadState_(au.name) };
+}
+
+// 학생 본인 정보 저장: 목표대학, 시작일
+function profile_(req) {
+  if (CUR_AU_.role !== 'student') return { ok: false, error: '학생만 쓸 수 있어요' };
+  const sh = getSheet_(SHEET_STU, HEADERS_STU);
+  const row = CUR_AU_.row;
+  if (req.univ !== undefined) sh.getRange(row, 3).setValue(String(req.univ || '').slice(0, 40));
+  if (req.start !== undefined) {
+    const c = sh.getRange(row, 4); c.setNumberFormat('@'); c.setValue(String(req.start || '').slice(0, 10));
+  }
+  return { ok: true, profile: profileOf_(sh.getRange(row, 1, 1, 7).getValues()[0]) };
+}
+
+// 토마토 표시·회독 날짜 등 학생별 학습 상태(JSON 문자열)를 '진행' 시트에 조각으로 저장
+function loadState_(name) {
+  const sh = getSheet_(SHEET_STATE, HEADERS_STATE), last = sh.getLastRow();
+  if (last < 2) return '';
+  const parts = [];
+  sh.getRange(2, 1, last - 1, 3).getValues().forEach(function (r) { if (String(r[0]) === name) parts.push([Number(r[1]) || 0, String(r[2])]); });
+  parts.sort(function (a, b) { return a[0] - b[0]; });
+  return parts.map(function (x) { return x[1]; }).join('');
+}
+
+function stateSave_(req) {
+  if (CUR_AU_.role !== 'student') return { ok: false, error: '학생만 쓸 수 있어요' };
+  const name = CUR_AU_.name;
+  const txt = typeof req.state === 'string' ? req.state : JSON.stringify(req.state || {});
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sh = getSheet_(SHEET_STATE, HEADERS_STATE);
+    sh.getRange('C:C').setNumberFormat('@');
+    const last = sh.getLastRow();
+    if (last > 1) {
+      const names = sh.getRange(2, 1, last - 1, 1).getValues();
+      for (let i = names.length - 1; i >= 0; i--) if (String(names[i][0]) === name) sh.deleteRow(i + 2);
+    }
+    const rows = [];
+    for (let i = 0, n = 0; i < txt.length || n === 0; i += 40000, n++) rows.push([name, n, txt.slice(i, i + 40000)]);
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true };
+}
+
+// 선생님: 학생 현황
+function students_() {
+  const sh = getSheet_(SHEET_STU, HEADERS_STU), last = sh.getLastRow();
+  if (last < 2) return { ok: true, students: [] };
+  const wsh = getSheet_(SHEET_WORDS, HEADERS_WORDS), wl = wsh.getLastRow();
+  const own = {};
+  if (wl > 1) wsh.getRange(2, 18, wl - 1, 1).getValues().forEach(function (r) { const o = String(r[0] || ''); if (o) own[o] = (own[o] || 0) + 1; });
+  const out = sh.getRange(2, 1, last - 1, 7).getValues().filter(function (r) { return String(r[0]).trim(); }).map(function (r) {
+    const name = String(r[0]).trim();
+    let marks = 0;
+    try { const st = JSON.parse(loadState_(name) || '{}'); const m = st.vn_tm_marks ? (typeof st.vn_tm_marks === 'string' ? JSON.parse(st.vn_tm_marks) : st.vn_tm_marks) : {}; marks = Object.keys(m || {}).length; } catch (e) { marks = 0; }
+    return { name: name, univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
+  });
+  return { ok: true, students: out };
+}
+
+// 선생님: 학생 추가 (이름 + 개인 코드)
+function studentAdd_(req) {
+  const name = String(req.name || '').trim(), code = normCode_(req.studentCode);
+  if (!name || !code) return { ok: false, error: '이름과 코드를 모두 입력하세요' };
+  if (findStudent_(name)) return { ok: false, error: '이미 있는 이름이에요: ' + name };
+  const sh = getSheet_(SHEET_STU, HEADERS_STU), r = sh.getLastRow() + 1;
+  sh.getRange(r, 2).setNumberFormat('@');
+  sh.getRange(r, 1, 1, 3).setValues([[name, code, String(req.univ || '')]]);
+  return { ok: true };
+}
+
+// 학생의 암기 기록: 공유 단어는 '진도' 시트에 학생별로 저장하고, 학습기록에는 이름을 남긴다
+function recordStudent_(req) {
+  const name = CUR_AU_.name;
+  const sh = getSheet_(SHEET_PROG, HEADERS_PROG);
+  const log = getSheet_(SHEET_LOG, HEADERS_LOG);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  const updates = [];
+  try {
+    const last = sh.getLastRow();
+    const data = last > 1 ? sh.getRange(2, 1, last - 1, 7).getValues() : [];
+    const rowOf = {};
+    data.forEach(function (r, i) { if (String(r[0]) === name) rowOf[String(r[1])] = i; });
+    const now = new Date(), today = Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
+    const logRows = [], adds = [];
+    (req.items || []).forEach(function (it) {
+      const id = String(it.id);
+      let i = rowOf[id], right = 0, wrong = 0, box = 0;
+      if (i !== undefined) { right = Number(data[i][2]) || 0; wrong = Number(data[i][3]) || 0; box = Number(data[i][5]) || 0; }
+      if (it.correct) { right++; box = Math.min(box + 1, 5); } else { wrong++; box = 0; }
+      const due = addDays_(today, DAYS[box]);
+      const rec = [name, id, right, wrong, now, box, due];
+      if (i !== undefined) { data[i] = rec; sh.getRange(i + 2, 1, 1, 7).setValues([rec]); }
+      else { rowOf[id] = data.length; data.push(rec); adds.push(rec); }
+      updates.push({ id: id, box: box, due: due });
+      logRows.push([now, id, it.word, it.type, it.correct ? '정답' : '오답', name]);
+    });
+    if (adds.length) sh.getRange(sh.getLastRow() + 1, 1, adds.length, 7).setValues(adds);
+    if (logRows.length) log.getRange(log.getLastRow() + 1, 1, logRows.length, 6).setValues(logRows);
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, updates: updates };
+}
+
 function record_(req) {
+  if (CUR_AU_.role === 'student') return recordStudent_(req);
   const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
   const log = getSheet_(SHEET_LOG, HEADERS_LOG);
   const lock = LockService.getScriptLock();
@@ -364,9 +563,9 @@ function record_(req) {
         sh.getRange(i + 1, 8, 1, 5).setValues([[right, wrong, now, box, due]]);
         updates.push({ id: String(it.id), box: box, due: due });
       }
-      logRows.push([now, it.id, it.word, it.type, it.correct ? '정답' : '오답']);
+      logRows.push([now, it.id, it.word, it.type, it.correct ? '정답' : '오답', '']);
     });
-    if (logRows.length) log.getRange(log.getLastRow() + 1, 1, logRows.length, 5).setValues(logRows);
+    if (logRows.length) log.getRange(log.getLastRow() + 1, 1, logRows.length, 6).setValues(logRows);
   } finally {
     lock.releaseLock();
   }
@@ -434,13 +633,12 @@ function detail_(req) {
     const d0 = sh0.getDataRange().getValues();
     for (let i = 1; i < d0.length; i++) if (String(d0[i][0]) === String(req.id)) { try { old = JSON.parse(d0[i][14] || '{}') || {}; } catch (e) { old = {}; } break; }
   }
-  const extra = {
-    colloc: old.colloc || '', colloc_ko: old.colloc_ko || '',
+  const extra = Object.assign({}, old, {
     freq: Math.max(1, Math.min(5, Math.round(Number(x.freq)) || 3)),
     examples: (x.examples || []).slice(0, 3).map(function (e) { return { en: String(e.en || ''), ko: String(e.ko || '') }; }),
     forms: String(x.forms || ''),
     derivs: (x.derivs || []).slice(0, 4).map(String)
-  };
+  });
   if (req.id) {
     const sh = getSheet_(SHEET_WORDS, HEADERS_WORDS);
     const data = sh.getDataRange().getValues();
