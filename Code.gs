@@ -21,10 +21,11 @@ const SHEET_WORDS = '단어';
 const SHEET_LOG = '학습기록';
 const HEADERS_WORDS = ['id', '단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '마지막학습', '단계', '다음복습', '어근팁', '난이도', '추가정보', '폴더', '구분', '소유자'];
 const HEADERS_LOG = ['시각', 'id', '단어', '유형', '결과', '이름'];
-const SHEET_STU = '학생', HEADERS_STU = ['이름', '코드', '목표대학', '시작일', '가입일', '마지막접속', '앱버전', '상태', '기기표'];   // 상태: '신청'(승인 대기) | 그 외(승인됨), 기기표: 신청한 기기만 코드를 받아 가는 비밀 값
+const SHEET_STU = '학생', HEADERS_STU = ['이름', '코드', '목표대학', '시작일', '가입일', '마지막접속', '앱버전', '상태', '기기표'];   // 상태: '체험'(7일 체험, 가입일이 시작일) | '승인'/빈칸(정식), 기기표: 체험 중인 기기를 알아보는 비밀 값
 const SHEET_STATE = '진행', HEADERS_STATE = ['이름', '순번', '내용'];   // 토마토 표시·회독 날짜 등을 JSON 조각으로 저장
 const SHEET_PROG = '진도', HEADERS_PROG = ['이름', 'id', '정답수', '오답수', '마지막학습', '단계', '다음복습'];   // 학생별 암기 진도(공유 단어)
 let CUR_AU_ = { role: 'teacher' };
+const TRIAL_MS_ = 7 * 86400000, TRIAL_AI_PER_DAY_ = 30;   // 체험 기간 7일, 체험 중 AI 기능(손글씨 인식 · 뜻/상세 채우기) 하루 한도
 
 // 간격 반복: 단계(0~5)별로 "다음 복습까지 며칠"
 //  정답이면 단계 +1(최대 5), 오답이면 단계 0(내일 다시)
@@ -77,9 +78,14 @@ function doPost(e) {
     const au = auth_(req);
     if (au.blocked) return json_({ ok: false, auth: true, error: '잠시 후에 다시 시도해 주세요 (코드를 여러 번 틀렸어요)' });
     if (req.action === 'login') return json_(login_(req, au));
+    if (au.expired) return json_({ ok: false, auth: true, expired: true, error: '체험 기간(7일)이 끝났어요. 돕는이에게 승인번호(코드)를 받아 입력하세요' });
     if (au.role === 'none') return json_({ ok: false, auth: true, error: '로그인이 필요해요 (이름과 코드를 입력하세요)' });
     if (au.role === 'student' && !STUDENT_OK_[req.action]) return json_({ ok: false, forbidden: true, error: '돕는이만 할 수 있어요' });
     CUR_AU_ = au;
+    if (au.trial && (req.action === 'recognize' || req.action === 'enrich' || req.action === 'detail')) {
+      const q = trialQuota_(au.name, req.action === 'recognize' ? 'rc' : 'ai');
+      if (q) return json_({ ok: false, quota: true, error: q });
+    }
     switch (req.action) {
       case 'recognize': {
         const t0 = Date.now();
@@ -127,7 +133,7 @@ function doPost(e) {
 const STUDENT_OK_ = { list: 1, add: 1, addmany: 1, recognize: 1, enrich: 1, detail: 1, record: 1, update: 1, delete: 1, profile: 1, statesave: 1 };
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 23, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 24, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -398,6 +404,15 @@ function auth_(req) {
   if (!tc) return { role: 'teacher' };                       // 돕는이 코드를 안 정했으면 예전처럼 모두 열림
   if (req.code && normCode_(req.code) === normCode_(tc)) return { role: 'teacher' };
   const name = String(req.user || '').trim();
+  if (name && req.utoken && !req.ucode) {                    // 체험 중인 러너: 이름 + 기기표
+    const t = findStudent_(name);
+    if (t && String(t.rec[7]) === '체험' && String(t.rec[8]) === String(req.utoken)) {
+      const st = t.rec[4] instanceof Date ? t.rec[4].getTime() : new Date(String(t.rec[4])).getTime();
+      if (isNaN(st) || Date.now() - st < TRIAL_MS_) return { role: 'student', name: String(t.rec[0]).trim(), row: t.row, trial: true, left: isNaN(st) ? 7 : Math.ceil((TRIAL_MS_ - (Date.now() - st)) / 86400000) };
+      return { role: 'none', expired: true };
+    }
+    return { role: 'none' };
+  }
   if (!name || !req.ucode) return { role: 'none' };
   const cache = CacheService.getScriptCache(), key = 'fail_' + name;
   if (Number(cache.get(key) || 0) >= 10) return { role: 'none', blocked: true };
@@ -430,7 +445,7 @@ function login_(req, au) {
   sh.getRange(au.row, 6, 1, 2).setValues([[new Date(), String(req.ver || '')]]);
   const f = findStudent_(au.name);
   if (f && !f.rec[4]) sh.getRange(au.row, 5).setValue(new Date());
-  return { ok: true, role: 'student', profile: profileOf_(f.rec), state: loadState_(au.name) };
+  return { ok: true, role: 'student', trial: !!au.trial, daysLeft: au.left || 0, profile: profileOf_(f.rec), state: loadState_(au.name) };
 }
 
 // 학생 본인 정보 저장: 목표대학, 시작일
@@ -489,7 +504,8 @@ function students_() {
     const name = String(r[0]).trim();
     let marks = 0;
     try { const st = JSON.parse(loadState_(name) || '{}'); const m = st.vn_tm_marks ? (typeof st.vn_tm_marks === 'string' ? JSON.parse(st.vn_tm_marks) : st.vn_tm_marks) : {}; marks = Object.keys(m || {}).length; } catch (e) { marks = 0; }
-    return { name: name, status: String(r[7] || ''), code: normCode_(r[1]), univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
+    const jt = r[4] instanceof Date ? r[4].getTime() : NaN, tl = isTrialRow_(r) && !isNaN(jt) ? Math.ceil((TRIAL_MS_ - (Date.now() - jt)) / 86400000) : null;
+    return { name: name, status: String(r[7] || ''), trialLeft: tl, code: normCode_(r[1]), univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
   });
   return { ok: true, students: out };
 }
@@ -502,7 +518,7 @@ function newCode_(sh) {
   return code;
 }
 
-// 러너가 처음 열어서 '사용하겠습니다'를 누르면 신청만 쌓이고, 돕는이가 승인하면 코드가 만들어진다
+// 러너가 처음 열어서 '사용하겠습니다'를 누르면 바로 7일 체험이 시작된다. 이후 돕는이가 승인하면 코드가 만들어진다
 function signup_(req) {
   const name = String(req.name || '').replace(/\s+/g, ' ').trim(), tok = String(req.token || '').slice(0, 64);
   if (!name || name.length > 20 || !tok || /^[=+\-@]/.test(name)) return { ok: false, error: '이름을 다시 확인해 주세요' };
@@ -513,31 +529,44 @@ function signup_(req) {
   try {
     const f = findStudent_(name);
     if (f) {
-      if (String(f.rec[7]) === '신청' && String(f.rec[8]) === tok) return { ok: true, status: 'pending' };
-      return { ok: false, error: '이미 있는 이름이에요. 돕는이에게 알려 주세요' };
+      if (String(f.rec[7]) === '체험' && String(f.rec[8]) === tok) return { ok: true, status: 'trial' };   // 같은 기기가 다시 눌렀을 때
+      return { ok: false, error: '이미 있는 이름이에요. 같은 이름이면 돕는이에게 알려 주세요' };
     }
-    const sh = getSheet_(SHEET_STU, HEADERS_STU), last = sh.getLastRow();
-    let pend = 0;
-    if (last > 1) sh.getRange(2, 8, last - 1, 1).getValues().forEach(function (x) { if (String(x[0]) === '신청') pend++; });
-    if (pend >= 20) return { ok: false, error: '대기 중인 신청이 너무 많아요. 돕는이에게 알려 주세요' };
+    const sh = getSheet_(SHEET_STU, HEADERS_STU), last = sh.getLastRow(), now = Date.now();
+    let act = 0;
+    if (last > 1) sh.getRange(2, 1, last - 1, 8).getValues().forEach(function (x) {
+      if (String(x[7]) === '체험' && x[4] instanceof Date && now - x[4].getTime() < TRIAL_MS_) act++;
+    });
+    if (act >= 20) return { ok: false, error: '체험 중인 사람이 너무 많아요. 돕는이에게 알려 주세요' };
     const r = last + 1;
     sh.getRange(r, 2).setNumberFormat('@');
-    sh.getRange(r, 1, 1, 9).setValues([[name, '', '', '', '', '', '', '신청', tok]]);
+    sh.getRange(r, 1, 1, 9).setValues([[name, '', '', '', new Date(), new Date(), '', '체험', tok]]);
     cache.put(nk, String(n + 1), 86400);
   } finally {
     lock.releaseLock();
   }
-  return { ok: true, status: 'pending' };
+  return { ok: true, status: 'trial' };
 }
 
-// 신청한 그 기기만 승인 여부를 확인하고, 승인됐으면 코드를 받아 간다
+// 체험 중인 러너가 정식 승인됐는지 확인하고, 승인됐으면 코드를 받아 간다 (체험을 시작한 기기만)
 function signupStatus_(req) {
   const name = String(req.name || '').trim(), tok = String(req.token || '');
   const f = name && tok ? findStudent_(name) : null;
   if (!f || String(f.rec[8]) !== tok) return { ok: true, status: 'none' };
-  if (String(f.rec[7]) === '신청') return { ok: true, status: 'pending' };
+  if (String(f.rec[7]) === '체험') return { ok: true, status: 'trial' };
   return { ok: true, status: 'approved', code: normCode_(f.rec[1]) };
 }
+
+// 체험 중 AI 기능 하루 한도 (kind 'rc' = 손글씨 인식, 'ai' = 뜻·상세 채우기). 넘으면 안내 문구를 돌려준다
+function trialQuota_(name, kind) {
+  const cache = CacheService.getScriptCache(), day = Utilities.formatDate(new Date(), TZ, 'yyyyMMdd'), k = 'q_' + kind + '_' + name + '_' + day;
+  const n = Number(cache.get(k) || 0);
+  if (n >= TRIAL_AI_PER_DAY_) return '체험 중에는 ' + (kind === 'rc' ? '손글씨 인식을' : '뜻·상세 자동 채우기를') + ' 하루 ' + TRIAL_AI_PER_DAY_ + '번까지 쓸 수 있어요. 내일 다시 하거나, 돕는이가 승인하면 제한이 없어져요';
+  cache.put(k, String(n + 1), 86400);
+  return '';
+}
+
+function isTrialRow_(r) { return String(r[7]) === '체험' || String(r[7]) === '신청'; }
 
 function studentApprove_(req) {
   const name = String(req.name || '').trim();
@@ -545,8 +574,8 @@ function studentApprove_(req) {
   lock.waitLock(10000);
   try {
     const f = findStudent_(name);
-    if (!f) return { ok: false, error: '신청을 찾을 수 없어요' };
-    if (String(f.rec[7]) !== '신청') return { ok: false, error: '이미 승인된 러너예요' };
+    if (!f) return { ok: false, error: '러너를 찾을 수 없어요' };
+    if (!isTrialRow_(f.rec)) return { ok: false, error: '이미 승인된 러너예요' };
     const sh = getSheet_(SHEET_STU, HEADERS_STU), code = newCode_(sh);
     sh.getRange(f.row, 2).setNumberFormat('@');
     sh.getRange(f.row, 2).setValue(code);
@@ -559,7 +588,7 @@ function studentApprove_(req) {
 
 function studentReject_(req) {
   const name = String(req.name || '').trim(), f = findStudent_(name);
-  if (!f || String(f.rec[7]) !== '신청') return { ok: false, error: '대기 중인 신청이 아니에요' };
+  if (!f || !isTrialRow_(f.rec)) return { ok: false, error: '체험 중인 러너가 아니에요' };
   getSheet_(SHEET_STU, HEADERS_STU).deleteRow(f.row);
   return { ok: true };
 }
