@@ -87,7 +87,7 @@ button{font:inherit;cursor:pointer}
 .gnsw.on .sw{background:var(--accent)}
 .gnsw.on .sw::after{left:25px}
 label.lbl{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
-input[type=text],input[type=number],textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+input[type=text],input[type=password],input[type=date],input[type=number],textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
 textarea{resize:vertical;min-height:60px}
 input:focus,textarea:focus{outline:2px solid var(--accent);border-color:transparent}
 
@@ -520,7 +520,7 @@ table.tm-t{width:100%;border-collapse:collapse;table-layout:fixed}
   #toast{bottom:28px}
   .btn{padding:14px 20px;font-size:17px}
   .chip{padding:9px 18px;font-size:15px}
-  input[type=text],input[type=number],textarea{font-size:17px}
+  input[type=text],input[type=password],input[type=date],input[type=number],textarea{font-size:17px}
   dialog{width:min(80vw,560px)}
 
   /* 쓰기: 왼쪽 큰 캔버스 / 오른쪽 결과 + 최근 단어 */
@@ -876,10 +876,10 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <dialog id="dlgLogin">
   <h3 style="margin:0 0 8px">로그인</h3>
-  <div class="row" id="lgTabs"><button class="chip on" data-r="student" type="button">🎒 학생</button><button class="chip" data-r="teacher" type="button">👩‍🏫 선생님</button></div>
-  <div id="lgStu"><label class="lbl" for="lgName">이름</label><input type="text" id="lgName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="선생님이 적어 둔 내 이름">
-  <label class="lbl" for="lgCode">내 코드</label><input type="password" id="lgCode" autocomplete="off" autocapitalize="none" placeholder="선생님이 알려 준 코드"></div>
-  <div id="lgTea" style="display:none"><label class="lbl" for="lgTCode">선생님 코드</label><input type="password" id="lgTCode" autocomplete="off" autocapitalize="none"></div>
+  <div class="row" id="lgTabs"><button class="chip on" data-r="student" type="button">🎒 러너</button><button class="chip" data-r="teacher" type="button">👩‍🏫 돕는이</button></div>
+  <div id="lgStu"><label class="lbl" for="lgName">이름</label><input type="text" id="lgName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="돕는이이 적어 둔 내 이름">
+  <label class="lbl" for="lgCode">내 코드</label><input type="password" id="lgCode" autocomplete="off" autocapitalize="none" placeholder="돕는이이 알려 준 코드"></div>
+  <div id="lgTea" style="display:none"><label class="lbl" for="lgTCode">돕는이 코드</label><input type="password" id="lgTCode" autocomplete="off" autocapitalize="none"></div>
   <div class="lg-msg" id="lgMsg"></div>
   <div class="row" style="margin-top:10px"><button class="btn primary grow" id="lgGo" type="button">들어가기</button></div>
 </dialog>
@@ -894,10 +894,10 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 </dialog>
 
 <dialog id="dlgStudents">
-  <h3 style="margin:0 0 6px">👩‍🏫 학생 현황</h3>
+  <h3 style="margin:0 0 6px">👩‍🏫 러너 현황</h3>
   <div class="stu-wrap"><table id="stuTbl"><thead><tr><th>이름</th><th>목표 대학</th><th>시작일</th><th>◎</th><th>내 단어</th><th>마지막 접속</th><th>앱</th></tr></thead><tbody></tbody></table></div>
   <div id="stuSt" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
-  <label class="lbl">학생 추가 (이름 · 개인 코드)</label>
+  <label class="lbl">러너 추가 (이름 · 개인 코드)</label>
   <div class="row"><input type="text" id="stName" placeholder="이름" autocomplete="off" style="flex:1"><input type="text" id="stCode" placeholder="코드" autocomplete="off" autocapitalize="none" style="flex:1"></div>
   <div class="row" style="margin-top:8px"><button class="btn" id="stAdd" type="button">추가</button><button class="btn" id="stRefresh" type="button">🔄 새로고침</button><button class="btn grow" id="stClose" type="button">닫기</button></div>
 </dialog>
@@ -932,7 +932,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
   <details id="sAdv" style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--sub);padding:6px 0">⚙️ 고급 · 서버 주소 (보통은 건드리지 않아도 돼요)</summary>
   <label class="lbl">Apps Script 웹 앱 URL</label>
   <input type="text" id="sGas" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="none" autocomplete="off" spellcheck="false">
-  <label class="lbl t-only">선생님 코드 (서버를 잠갔을 때만 필요해요)</label>
+  <label class="lbl t-only">돕는이 코드 (서버를 잠갔을 때만 필요해요)</label>
   <input class="t-only" type="password" id="sCode" placeholder="비워 두면 코드 없이 보내요" autocapitalize="none" autocomplete="off" spellcheck="false">
   <div id="sTest" style="font-size:13px;color:var(--sub);margin-top:6px"></div>
   <div class="row" style="margin-top:8px"><button class="btn" id="sTestBtn" type="button">연결 테스트</button></div>
@@ -1032,7 +1032,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.13.0', APP_DATE = '2026-10-18', SERVER_NEED = 22;
+const APP_VERSION = '1.13.1', APP_DATE = '2026-10-18', SERVER_NEED = 22;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1201,7 +1201,7 @@ async function doLogin() {
       if (lsGet('vn_user', '')) wipeLocal();
       lsDel('vn_user'); lsDel('vn_ucode'); lsSet('vn_teacher_code', c);
       me = { role: 'teacher', name: '', univ: '', start: '' }; document.body.classList.remove('stu');
-      $('#dlgLogin').close(); toast('선생님으로 들어왔어요');
+      $('#dlgLogin').close(); toast('돕는이으로 들어왔어요');
     } else {
       const n = $('#lgName').value.trim(), c = $('#lgCode').value.trim(); if (!n || !c) { $('#lgMsg').textContent = '이름과 코드를 입력하세요'; return; }
       const j = await rawApi('login', { ver: APP_VERSION, __cred: { user: n, ucode: c } });
@@ -1229,8 +1229,8 @@ async function doReg() {
 }
 function updateAcct() {
   const el = $('#sAcct'); if (!el) return;
-  if (isStu()) el.innerHTML = '👤 <b>' + esc(me.name) + '</b> (학생)' + (me.univ ? ' · 🎓 ' + esc(me.univ) : '') + '<div class="row" style="margin-top:6px"><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
-  else if (me.role === 'teacher') el.innerHTML = '👩‍🏫 <b>선생님 모드</b><div class="row" style="margin-top:6px"><button class="btn" id="sStudents" type="button">👥 학생 현황</button><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
+  if (isStu()) el.innerHTML = '👤 <b>' + esc(me.name) + '</b> (러너)' + (me.univ ? ' · 🎓 ' + esc(me.univ) : '') + '<div class="row" style="margin-top:6px"><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
+  else if (me.role === 'teacher') el.innerHTML = '👩‍🏫 <b>돕는이 모드</b><div class="row" style="margin-top:6px"><button class="btn" id="sStudents" type="button">👥 러너 현황</button><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
   else el.innerHTML = '<div class="row"><button class="btn" id="sLogin" type="button">🔐 로그인</button></div>';
 }
 async function bootAuth() {
@@ -3225,7 +3225,7 @@ $('#stClose').addEventListener('click', () => $('#dlgStudents').close());
 $('#stRefresh').addEventListener('click', loadStudents);
 $('#stAdd').addEventListener('click', async () => {
   const n = $('#stName').value.trim(), c = $('#stCode').value.trim(); if (!n || !c) { $('#stuSt').textContent = '이름과 코드를 모두 적어 주세요'; return; }
-  try { await rawApi('studentadd', { name: n, studentCode: c }); $('#stName').value = ''; $('#stCode').value = ''; await loadStudents(); toast(n + ' 학생을 추가했어요'); } catch (e) { $('#stuSt').textContent = e.message; }
+  try { await rawApi('studentadd', { name: n, studentCode: c }); $('#stName').value = ''; $('#stCode').value = ''; await loadStudents(); toast(n + ' 러너을 추가했어요'); } catch (e) { $('#stuSt').textContent = e.message; }
 });
 updateAcct();
 if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) bootAuth().then(ok => { if (ok) refreshWords(true); });

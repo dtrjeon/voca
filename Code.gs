@@ -6,8 +6,8 @@
  * 2) 프로젝트 설정 > 스크립트 속성에 추가
  *      ANTHROPIC_API_KEY = (Anthropic API 키)
  *    (선택) MODEL = claude-haiku-5-5   (기본값)
- *    (선택) TEACHER_CODE = (선생님 코드)  ← 넣으면 AI 기능(손글씨 인식·뜻/예문·상세·연어·영영)이 코드를 아는 앱에서만 동작해요. 코드는 이 파일에 쓰지 마세요.
- *    (선택) 학생 로그인: 'TEACHER_CODE' 를 정하면 잠금이 켜져요. 선생님은 이 코드로, 학생은 '학생' 시트의 이름+코드로 들어와요.
+ *    (선택) TEACHER_CODE = (돕는이 코드)  ← 넣으면 AI 기능(손글씨 인식·뜻/예문·상세·연어·영영)이 코드를 아는 앱에서만 동작해요. 코드는 이 파일에 쓰지 마세요.
+ *    (선택) 러너 로그인: 'TEACHER_CODE' 를 정하면 잠금이 켜져요. 돕는이는 이 코드로, 러너는 '학생' 시트의 이름+코드로 들어와요.
  *      '학생' 시트(자동 생성)의 A열 이름, B열 코드(서식: 일반 텍스트)를 선생님이 적거나 앱의 '학생 현황'에서 추가하세요.
  * 3) 배포 > 새 배포 > 웹 앱 (실행: 나, 액세스: 모든 사용자) > URL 복사
  *    -> index_voca.html 의 DEFAULT_GAS_URL 에 붙여넣기 (또는 앱 ⚙️ 설정에 입력)
@@ -71,12 +71,12 @@ function dstr_(v) {
 function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
-    // 권한: 스크립트 속성 TEACHER_CODE 가 있으면 선생님 코드 또는 학생(이름+코드)만 쓸 수 있다. 없으면 예전처럼 모두 열려 있다.
+    // 권한: 스크립트 속성 TEACHER_CODE 가 있으면 돕는이 코드 또는 학생(이름+코드)만 쓸 수 있다. 없으면 예전처럼 모두 열려 있다.
     const au = auth_(req);
     if (au.blocked) return json_({ ok: false, auth: true, error: '잠시 후에 다시 시도해 주세요 (코드를 여러 번 틀렸어요)' });
     if (req.action === 'login') return json_(login_(req, au));
     if (au.role === 'none') return json_({ ok: false, auth: true, error: '로그인이 필요해요 (이름과 코드를 입력하세요)' });
-    if (au.role === 'student' && !STUDENT_OK_[req.action]) return json_({ ok: false, forbidden: true, error: '선생님만 할 수 있어요' });
+    if (au.role === 'student' && !STUDENT_OK_[req.action]) return json_({ ok: false, forbidden: true, error: '돕는이만 할 수 있어요' });
     CUR_AU_ = au;
     switch (req.action) {
       case 'recognize': {
@@ -391,7 +391,7 @@ function normCode_(v) { return String(v === null || v === undefined ? '' : v).re
 // 요청이 누구에게서 왔는지: {role:'teacher'|'student'|'none', name, blocked}
 function auth_(req) {
   const tc = PropertiesService.getScriptProperties().getProperty('TEACHER_CODE');
-  if (!tc) return { role: 'teacher' };                       // 선생님 코드를 안 정했으면 예전처럼 모두 열림
+  if (!tc) return { role: 'teacher' };                       // 돕는이 코드를 안 정했으면 예전처럼 모두 열림
   if (req.code && normCode_(req.code) === normCode_(tc)) return { role: 'teacher' };
   const name = String(req.user || '').trim();
   if (!name || !req.ucode) return { role: 'none' };
@@ -431,7 +431,7 @@ function login_(req, au) {
 
 // 학생 본인 정보 저장: 목표대학, 시작일
 function profile_(req) {
-  if (CUR_AU_.role !== 'student') return { ok: false, error: '학생만 쓸 수 있어요' };
+  if (CUR_AU_.role !== 'student') return { ok: false, error: '러너만 쓸 수 있어요' };
   const sh = getSheet_(SHEET_STU, HEADERS_STU);
   const row = CUR_AU_.row;
   if (req.univ !== undefined) sh.getRange(row, 3).setValue(String(req.univ || '').slice(0, 40));
@@ -452,7 +452,7 @@ function loadState_(name) {
 }
 
 function stateSave_(req) {
-  if (CUR_AU_.role !== 'student') return { ok: false, error: '학생만 쓸 수 있어요' };
+  if (CUR_AU_.role !== 'student') return { ok: false, error: '러너만 쓸 수 있어요' };
   const name = CUR_AU_.name;
   const txt = typeof req.state === 'string' ? req.state : JSON.stringify(req.state || {});
   const lock = LockService.getScriptLock();
