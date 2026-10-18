@@ -877,8 +877,9 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 <dialog id="dlgLogin">
   <h3 style="margin:0 0 8px">로그인</h3>
   <div class="row" id="lgTabs"><button class="chip on" data-r="student" type="button">🎒 러너</button><button class="chip" data-r="new" type="button">🙋 처음이에요</button><button class="chip" data-r="teacher" type="button">👩‍🏫 돕는이</button></div>
-  <div id="lgStu"><label class="lbl" for="lgName">이름</label><input type="text" id="lgName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="돕는이이 적어 둔 내 이름">
-  <label class="lbl" for="lgCode">내 코드</label><input type="password" id="lgCode" autocomplete="off" autocapitalize="none" placeholder="돕는이이 알려 준 코드"></div>
+  <div id="lgStu"><label class="lbl" for="lgName">이름</label><input type="text" id="lgName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="돕는이가 적어 둔 내 이름">
+  <label class="lbl" for="lgCode">내 코드</label><input type="password" id="lgCode" autocomplete="off" autocapitalize="none" placeholder="돕는이가 알려 준 코드">
+  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="lgRemember" style="width:20px;height:20px;margin:0"><span>이름·코드 자동저장 <small style="color:var(--sub)">(다음부터 바로 들어가요)</small></span></label></div>
   <div id="lgNew" style="display:none">
     <div id="lgNewForm"><div style="font-size:13px;color:var(--sub);line-height:1.5;margin-top:8px">이름을 적고 신청하면 돕는이가 확인한 뒤 코드를 만들어 줘요. 확인되면 이 화면에 코드가 나와요.</div>
     <label class="lbl" for="lgNewName">이름</label><input type="text" id="lgNewName" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="내 이름"></div>
@@ -1044,7 +1045,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.14.1', APP_DATE = '2026-10-18', SERVER_NEED = 22;
+const APP_VERSION = '1.14.2', APP_DATE = '2026-10-18', SERVER_NEED = 22;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1069,7 +1070,7 @@ function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 function stateDirty() { try { localStorage.setItem('vn_state_dirty', '1'); } catch (e) {} clearTimeout(stateTimer); stateTimer = setTimeout(pushState, 1500); }
 
 const teacherCode = () => lsGet('vn_teacher_code', '').trim();
-(function () { const n = lsGet('vn_user', ''); if (n && lsGet('vn_ucode', '') && !teacherCode()) me = { role: 'student', name: n, univ: lsGet('vn_prof_univ', ''), start: lsGet('vn_prof_start', '') }; else if (teacherCode()) me.role = 'teacher'; document.body.classList.toggle('stu', me.role === 'student'); })();
+(function () { if (lsGet('vn_forget', '') === '1' && !teacherCode()) { lsDel('vn_user'); lsDel('vn_ucode'); lsDel('vn_forget'); } const n = lsGet('vn_user', ''); if (n && lsGet('vn_ucode', '') && !teacherCode()) me = { role: 'student', name: n, univ: lsGet('vn_prof_univ', ''), start: lsGet('vn_prof_start', '') }; else if (teacherCode()) me.role = 'teacher'; document.body.classList.toggle('stu', me.role === 'student'); })();
 const isStu = () => me.role === 'student';
 const canEditW = w => !isStu() || isLocalId(w.id) || (w.src === 'hand' && w.owner === me.name);
 function gasUrl() { return (lsGet('vn_gas', '') || DEFAULT_GAS_URL).trim(); }
@@ -1152,7 +1153,7 @@ let loginRole = 'student';
 function showLogin(msg) {
   const d = $('#dlgLogin'); if (!d) return;
   $('#lgMsg').textContent = msg || '';
-  if (!d.open) { $('#lgName').value = lsGet('vn_user', ''); $('#lgCode').value = ''; $('#lgTCode').value = ''; d.showModal(); }
+  if (!d.open) { $('#lgName').value = lsGet('vn_user', ''); const rm = lsGet('vn_remember', '1') !== '0'; $('#lgRemember').checked = rm; $('#lgCode').value = rm ? lsGet('vn_ucode', '') : ''; if (!rm) $('#lgName').value = ''; $('#lgTCode').value = ''; d.showModal(); }
   if (lsGet('vn_signup_tok', '')) { lgTab('new'); checkSignup(true); }
 }
 function lgTab(r) { loginRole = r; $$('#lgTabs .chip').forEach(b => b.classList.toggle('on', b.dataset.r === r)); $('#lgStu').style.display = r === 'student' ? '' : 'none'; $('#lgTea').style.display = r === 'teacher' ? '' : 'none'; $('#lgNew').style.display = r === 'new' ? '' : 'none'; $('#lgMsg').textContent = ''; if (r === 'new') renderNew(); else $('#lgGo').textContent = '들어가기'; }
@@ -1249,6 +1250,7 @@ async function doLogin() {
       const j = await rawApi('login', { ver: APP_VERSION, __cred: { user: n, ucode: c } });
       if (j.role !== 'student') { $('#lgMsg').textContent = '이름이나 코드가 맞지 않아요'; return; }
       await enterStudent(j, n, c);
+      const rm = $('#lgRemember').checked; lsSet('vn_remember', rm ? '1' : '0'); if (rm) lsDel('vn_forget'); else lsSet('vn_forget', '1');   // 체크 해제: 이번에만 쓰고, 앱을 다시 열면 이름·코드를 지운다
       $('#dlgLogin').close();
     }
     updateAcct(); renderList(); updateCount(); tmRender(); refreshWords(true);
