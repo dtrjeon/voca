@@ -485,20 +485,25 @@ function students_() {
     const name = String(r[0]).trim();
     let marks = 0;
     try { const st = JSON.parse(loadState_(name) || '{}'); const m = st.vn_tm_marks ? (typeof st.vn_tm_marks === 'string' ? JSON.parse(st.vn_tm_marks) : st.vn_tm_marks) : {}; marks = Object.keys(m || {}).length; } catch (e) { marks = 0; }
-    return { name: name, univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
+    return { name: name, code: normCode_(r[1]), univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
   });
   return { ok: true, students: out };
 }
 
 // 선생님: 학생 추가 (이름 + 개인 코드)
 function studentAdd_(req) {
-  const name = String(req.name || '').trim(), code = normCode_(req.studentCode);
-  if (!name || !code) return { ok: false, error: '이름과 코드를 모두 입력하세요' };
+  const name = String(req.name || '').trim();
+  if (!name) return { ok: false, error: '이름을 입력하세요' };
   if (findStudent_(name)) return { ok: false, error: '이미 있는 이름이에요: ' + name };
   const sh = getSheet_(SHEET_STU, HEADERS_STU), r = sh.getLastRow() + 1;
+  // 코드는 자동으로 정한다: 다른 러너와 겹치지 않는 4자리 숫자 (직접 넣고 싶으면 studentCode 로 보내도 됨)
+  const used = {};
+  if (r > 2) sh.getRange(2, 2, r - 2, 1).getValues().forEach(function (x) { used[normCode_(x[0])] = true; });
+  let code = normCode_(req.studentCode);
+  if (!code) { do { code = String(1000 + Math.floor(Math.random() * 9000)); } while (used[code]); }
   sh.getRange(r, 2).setNumberFormat('@');
   sh.getRange(r, 1, 1, 3).setValues([[name, code, String(req.univ || '')]]);
-  return { ok: true };
+  return { ok: true, name: name, code: code };
 }
 
 // 학생의 암기 기록: 공유 단어는 '진도' 시트에 학생별로 저장하고, 학습기록에는 이름을 남긴다
