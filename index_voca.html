@@ -887,6 +887,13 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
   <div id="lgTea" style="display:none"><label class="lbl" for="lgTCode">돕는이 코드</label><input type="password" id="lgTCode" autocomplete="off" autocapitalize="none"></div>
   <div class="lg-msg" id="lgMsg"></div>
   <div class="row" style="margin-top:10px"><button class="btn primary grow" id="lgGo" type="button">들어가기</button></div>
+  <div id="lgInst" style="margin-top:12px;border-top:1px solid var(--line);padding-top:8px">
+  <div style="font-size:13px;font-weight:700">📲 홈 화면에 추가 <span id="lgInstOk" style="font-weight:400;color:var(--ok)"></span></div>
+  <div style="font-size:12px;color:var(--sub);line-height:1.5;margin:2px 0 6px">홈 화면에 두면 아이콘으로 바로 열려요 (주소창 없이 전체 화면).</div>
+  <div class="row" id="lgInstRow" style="display:none"><button class="btn primary grow" id="lgInstall" type="button">📲 지금 홈 화면에 추가</button></div>
+  <details class="inst"><summary>🤖 삼성 폰 · 갤럭시 탭</summary><div><b>삼성 인터넷</b><ol><li>앱 주소(dtrjeon.github.io/voca/index_voca.html)를 엽니다.</li><li>아래 <b>≡ 메뉴</b>를 누릅니다.</li><li><b>현재 페이지 추가</b> → <b>홈 화면</b>을 고릅니다.</li><li>이름을 확인하고 <b>추가</b>를 누릅니다.</li></ol><b>크롬</b><ol><li>오른쪽 위 <b>⋮</b>를 누릅니다.</li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 누릅니다.</li><li><b>설치 / 추가</b>를 누릅니다.</li></ol></div></details>
+  <details class="inst"><summary>🍎 아이폰 · 아이패드</summary><div><b>Safari로 열어야 해요</b> (다른 앱 안의 브라우저에서는 안 보일 수 있어요)<ol><li>앱 주소를 Safari에서 엽니다.</li><li>아이폰은 아래쪽, 아이패드는 위쪽의 <b>공유 버튼(□ 위쪽 화살표)</b>을 누릅니다.</li><li>목록을 올려 <b>홈 화면에 추가</b>를 누릅니다.</li><li>이름을 확인하고 <b>추가</b>를 누릅니다.</li></ol></div></details>
+  </div>
 </dialog>
 
 <dialog id="dlgReg">
@@ -1037,7 +1044,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.14.0', APP_DATE = '2026-10-18', SERVER_NEED = 22;
+const APP_VERSION = '1.14.1', APP_DATE = '2026-10-18', SERVER_NEED = 22;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -3680,10 +3687,11 @@ $('#sTabs').addEventListener('click', e => { const b = e.target.closest('[data-p
 
 /* --- 설치 버튼 (지원하는 브라우저에서만) --- */
 let instEv = null;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; const r = $('#sInstRow'); if (r) r.style.display = ''; });
-window.addEventListener('appinstalled', () => { instEv = null; const r = $('#sInstRow'); if (r) r.style.display = 'none'; toast('설치했어요'); });
-$('#sInstall').addEventListener('click', async () => { if (!instEv) return; instEv.prompt(); try { await instEv.userChoice; } catch (e) {} instEv = null; $('#sInstRow').style.display = 'none'; });
-if (window.matchMedia && matchMedia('(display-mode: standalone)').matches || navigator.standalone) { const n = $('#sInstNote'); if (n) n.textContent = '✅ 이미 홈 화면 앱으로 실행 중이에요.'; }
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; const r = $('#sInstRow'); if (r) r.style.display = ''; const l = $('#lgInstRow'); if (l) l.style.display = ''; });
+window.addEventListener('appinstalled', () => { instEv = null; const r = $('#sInstRow'); if (r) r.style.display = 'none'; const l = $('#lgInstRow'); if (l) l.style.display = 'none'; toast('설치했어요'); });
+$('#sInstall').addEventListener('click', async () => { if (!instEv) return; instEv.prompt(); try { await instEv.userChoice; } catch (e) {} instEv = null; $('#sInstRow').style.display = 'none'; $('#lgInstRow').style.display = 'none'; });
+$('#lgInstall').addEventListener('click', () => $('#sInstall').click());
+if (window.matchMedia && matchMedia('(display-mode: standalone)').matches || navigator.standalone) { const n = $('#sInstNote'); if (n) n.textContent = '✅ 이미 홈 화면 앱으로 실행 중이에요.'; $('#lgInstOk').textContent = '· ✅ 이미 추가됨'; $$('#lgInst details').forEach(x => x.style.display = 'none'); }
 
 /* --- 화면 크기 (페이지 확대/축소) --- */
 const zoomPct = () => { const v = parseInt(lsGet('vn_zoom', '100'), 10); return isNaN(v) ? 100 : Math.max(70, Math.min(150, v)); };
