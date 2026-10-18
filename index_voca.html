@@ -1045,7 +1045,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.14.2', APP_DATE = '2026-10-18', SERVER_NEED = 22;
+const APP_VERSION = '1.14.3', APP_DATE = '2026-10-18', SERVER_NEED = 23;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1167,7 +1167,7 @@ async function doSignup() {
   const n = $('#lgNewName').value.trim(); if (!n) { $('#lgMsg').textContent = '이름을 적어 주세요'; return; }
   const tok = newTok();
   try { await rawApi('signup', { name: n, token: tok, __cred: {} }); lsSet('vn_signup_name', n); lsSet('vn_signup_tok', tok); renderNew(); }
-  catch (e) { $('#lgMsg').textContent = e.message; }
+  catch (e) { $('#lgMsg').textContent = (e.data && e.data.auth) ? '서버(Code.gs)가 아직 예전 버전이에요. 돕는이가 최신 Code.gs를 “새 버전”으로 배포해야 신청할 수 있어요' : e.message; }
 }
 async function checkSignup(silent) {
   const n = lsGet('vn_signup_name', ''), t = lsGet('vn_signup_tok', ''); if (!n || !t) return false;

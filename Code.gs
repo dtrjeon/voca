@@ -127,7 +127,7 @@ function doPost(e) {
 const STUDENT_OK_ = { list: 1, add: 1, addmany: 1, recognize: 1, enrich: 1, detail: 1, record: 1, update: 1, delete: 1, profile: 1, statesave: 1 };
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 22, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 23, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
