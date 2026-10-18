@@ -21,7 +21,7 @@ const SHEET_WORDS = '단어';
 const SHEET_LOG = '학습기록';
 const HEADERS_WORDS = ['id', '단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '마지막학습', '단계', '다음복습', '어근팁', '난이도', '추가정보', '폴더', '구분', '소유자'];
 const HEADERS_LOG = ['시각', 'id', '단어', '유형', '결과', '이름'];
-const SHEET_STU = '학생', HEADERS_STU = ['이름', '코드', '목표대학', '시작일', '가입일', '마지막접속', '앱버전', '상태', '기기표'];   // 상태: '체험'(7일 체험, 가입일이 시작일) | '승인'/빈칸(정식), 기기표: 체험 중인 기기를 알아보는 비밀 값
+const SHEET_STU = '학생', HEADERS_STU = ['이름', '코드', '목표대학', '시작일', '가입일', '마지막접속', '앱버전', '상태', '기기표', '표시이름'];   // 이름=러너가 정한 아이디(로그인 키), 코드=비밀번호(암호화해서 저장, 예전 숫자 코드도 인식), 상태: '체험'(가입 후 7일) | '승인'/빈칸(정식), 표시이름=배너에서 부르는 이름
 const SHEET_STATE = '진행', HEADERS_STATE = ['이름', '순번', '내용'];   // 토마토 표시·회독 날짜 등을 JSON 조각으로 저장
 const SHEET_PROG = '진도', HEADERS_PROG = ['이름', 'id', '정답수', '오답수', '마지막학습', '단계', '다음복습'];   // 학생별 암기 진도(공유 단어)
 let CUR_AU_ = { role: 'teacher' };
@@ -74,11 +74,10 @@ function doPost(e) {
     const req = JSON.parse(e.postData.contents);
     // 권한: 스크립트 속성 TEACHER_CODE 가 있으면 돕는이 코드 또는 학생(이름+코드)만 쓸 수 있다. 없으면 예전처럼 모두 열려 있다.
     if (req.action === 'signup') return json_(signup_(req));
-    if (req.action === 'signupstatus') return json_(signupStatus_(req));
     const au = auth_(req);
     if (au.blocked) return json_({ ok: false, auth: true, error: '잠시 후에 다시 시도해 주세요 (코드를 여러 번 틀렸어요)' });
     if (req.action === 'login') return json_(login_(req, au));
-    if (au.expired) return json_({ ok: false, auth: true, expired: true, error: '체험 기간(7일)이 끝났어요. 돕는이에게 승인번호(코드)를 받아 입력하세요' });
+    if (au.expired) return json_({ ok: false, auth: true, expired: true, error: '체험 기간(7일)이 끝났어요. 돕는이가 승인하면 다시 쓸 수 있어요' });
     if (au.role === 'none') return json_({ ok: false, auth: true, error: '로그인이 필요해요 (이름과 코드를 입력하세요)' });
     if (au.role === 'student' && !STUDENT_OK_[req.action]) return json_({ ok: false, forbidden: true, error: '돕는이만 할 수 있어요' });
     CUR_AU_ = au;
@@ -121,6 +120,8 @@ function doPost(e) {
       case 'students':  return json_(students_());
       case 'studentadd': return json_(studentAdd_(req));
       case 'studentapprove': return json_(studentApprove_(req));
+      case 'studentreset': return json_(studentReset_(req));
+      case 'pwchange':  return json_(pwChange_(req));
       case 'studentreject': return json_(studentReject_(req));
       default:          return json_({ ok: false, error: 'unknown action' });
     }
@@ -130,10 +131,10 @@ function doPost(e) {
 }
 
 // 학생이 쓸 수 있는 기능 (나머지는 선생님만)
-const STUDENT_OK_ = { list: 1, add: 1, addmany: 1, recognize: 1, enrich: 1, detail: 1, record: 1, update: 1, delete: 1, profile: 1, statesave: 1 };
+const STUDENT_OK_ = { list: 1, add: 1, addmany: 1, recognize: 1, enrich: 1, detail: 1, record: 1, update: 1, delete: 1, profile: 1, statesave: 1, pwchange: 1 };
 
 function doGet() {
-  return json_({ ok: true, msg: 'wordnote api alive', version: 24, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
+  return json_({ ok: true, msg: 'wordnote api alive', version: 25, locked: !!PropertiesService.getScriptProperties().getProperty('TEACHER_CODE') });
 }
 
 /* ---------- Claude: 손글씨 인식 + 뜻/예문/어근 팁 ---------- */
@@ -398,28 +399,34 @@ function updateWord_(req) {
 // ───────── 학생 / 선생님 로그인 ─────────
 function normCode_(v) { return String(v === null || v === undefined ? '' : v).replace(/\s+/g, ''); }
 
-// 요청이 누구에게서 왔는지: {role:'teacher'|'student'|'none', name, blocked}
+// 비밀번호: 'h:솔트:SHA-256' 형태로 저장한다 (시트를 열어 봐도 원래 비밀번호는 보이지 않는다). 예전에 숫자 코드로 저장된 것도 그대로 인식한다.
+function digest_(s) { return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8)); }
+function pwHash_(pw) { const salt = Utilities.getUuid().replace(/-/g, '').slice(0, 8); return 'h:' + salt + ':' + digest_(salt + ':' + pw); }
+function pwCheck_(raw, pw) {
+  const st = String(raw === null || raw === undefined ? '' : raw);
+  if (!st || !pw) return false;
+  if (st.indexOf('h:') === 0) { const p = st.split(':'); return p.length >= 3 && digest_(p[1] + ':' + pw) === p.slice(2).join(':'); }
+  return normCode_(st) === normCode_(pw) || (typeof raw === 'number' && st === normCode_(pw).replace(/^0+/, ''));
+}
+
+// 요청이 누구에게서 왔는지: {role:'teacher'|'student'|'none', name, blocked, expired}
 function auth_(req) {
   const tc = PropertiesService.getScriptProperties().getProperty('TEACHER_CODE');
   if (!tc) return { role: 'teacher' };                       // 돕는이 코드를 안 정했으면 예전처럼 모두 열림
   if (req.code && normCode_(req.code) === normCode_(tc)) return { role: 'teacher' };
-  const name = String(req.user || '').trim();
-  if (name && req.utoken && !req.ucode) {                    // 체험 중인 러너: 이름 + 기기표
-    const t = findStudent_(name);
-    if (t && String(t.rec[7]) === '체험' && String(t.rec[8]) === String(req.utoken)) {
-      const st = t.rec[4] instanceof Date ? t.rec[4].getTime() : new Date(String(t.rec[4])).getTime();
-      if (isNaN(st) || Date.now() - st < TRIAL_MS_) return { role: 'student', name: String(t.rec[0]).trim(), row: t.row, trial: true, left: isNaN(st) ? 7 : Math.ceil((TRIAL_MS_ - (Date.now() - st)) / 86400000) };
-      return { role: 'none', expired: true };
-    }
-    return { role: 'none' };
-  }
-  if (!name || !req.ucode) return { role: 'none' };
+  const name = String(req.user || '').trim(), pw = String(req.ucode === undefined || req.ucode === null ? '' : req.ucode);
+  if (!name || !pw) return { role: 'none' };
   const cache = CacheService.getScriptCache(), key = 'fail_' + name;
   if (Number(cache.get(key) || 0) >= 10) return { role: 'none', blocked: true };
   const f = findStudent_(name);
-  const inp = normCode_(req.ucode);
-  if (f && normCode_(f.rec[1]) !== '' && (normCode_(f.rec[1]) === inp || (typeof f.rec[1] === 'number' && String(f.rec[1]) === inp.replace(/^0+/, '')))) {
-    return { role: 'student', name: String(f.rec[0]).trim(), row: f.row };
+  if (f && pwCheck_(f.rec[1], pw)) {
+    const status = String(f.rec[7] || ''), me = { role: 'student', name: String(f.rec[0]).trim(), row: f.row };
+    if (status === '체험' || status === '신청') {            // 승인 전: 가입 후 7일까지만
+      const st = f.rec[4] instanceof Date ? f.rec[4].getTime() : new Date(String(f.rec[4])).getTime();
+      if (!isNaN(st) && Date.now() - st >= TRIAL_MS_) return { role: 'none', expired: true };
+      me.trial = true; me.left = isNaN(st) ? 7 : Math.ceil((TRIAL_MS_ - (Date.now() - st)) / 86400000);
+    }
+    return me;
   }
   cache.put(key, String(Number(cache.get(key) || 0) + 1), 600);   // 10분 안에 10번 틀리면 잠시 막기
   return { role: 'none' };
@@ -429,13 +436,13 @@ function findStudent_(name) {
   const sh = getSheet_(SHEET_STU, HEADERS_STU);
   const last = sh.getLastRow();
   if (last < 2) return null;
-  const d = sh.getRange(2, 1, last - 1, 9).getValues();
+  const d = sh.getRange(2, 1, last - 1, 10).getValues();
   for (let i = 0; i < d.length; i++) if (String(d[i][0]).trim() === name) return { row: i + 2, rec: d[i] };
   return null;
 }
 
 function profileOf_(rec) {
-  return { name: String(rec[0]).trim(), univ: String(rec[2] || ''), start: dstr_(rec[3]) };
+  return { name: String(rec[0]).trim(), display: String(rec[9] || '').trim() || String(rec[0]).trim(), univ: String(rec[2] || ''), start: dstr_(rec[3]) };
 }
 
 function login_(req, au) {
@@ -500,12 +507,12 @@ function students_() {
   const wsh = getSheet_(SHEET_WORDS, HEADERS_WORDS), wl = wsh.getLastRow();
   const own = {};
   if (wl > 1) wsh.getRange(2, 18, wl - 1, 1).getValues().forEach(function (r) { const o = String(r[0] || ''); if (o) own[o] = (own[o] || 0) + 1; });
-  const out = sh.getRange(2, 1, last - 1, 9).getValues().filter(function (r) { return String(r[0]).trim(); }).map(function (r) {
+  const out = sh.getRange(2, 1, last - 1, 10).getValues().filter(function (r) { return String(r[0]).trim(); }).map(function (r) {
     const name = String(r[0]).trim();
     let marks = 0;
     try { const st = JSON.parse(loadState_(name) || '{}'); const m = st.vn_tm_marks ? (typeof st.vn_tm_marks === 'string' ? JSON.parse(st.vn_tm_marks) : st.vn_tm_marks) : {}; marks = Object.keys(m || {}).length; } catch (e) { marks = 0; }
     const jt = r[4] instanceof Date ? r[4].getTime() : NaN, tl = isTrialRow_(r) && !isNaN(jt) ? Math.ceil((TRIAL_MS_ - (Date.now() - jt)) / 86400000) : null;
-    return { name: name, status: String(r[7] || ''), trialLeft: tl, code: normCode_(r[1]), univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
+    return { name: name, status: String(r[7] || ''), trialLeft: tl, display: String(r[9] || ''), code: String(r[1]).indexOf('h:') === 0 ? '' : normCode_(r[1]), univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
   });
   return { ok: true, students: out };
 }
@@ -518,20 +525,18 @@ function newCode_(sh) {
   return code;
 }
 
-// 러너가 처음 열어서 '사용하겠습니다'를 누르면 바로 7일 체험이 시작된다. 이후 돕는이가 승인하면 코드가 만들어진다
+// 러너가 처음 열어서 아이디·이름·비밀번호를 정하면 바로 7일 체험이 시작된다. 돕는이가 승인하면 계속 쓸 수 있다
 function signup_(req) {
-  const name = String(req.name || '').replace(/\s+/g, ' ').trim(), tok = String(req.token || '').slice(0, 64);
-  if (!name || name.length > 20 || !tok || /^[=+\-@]/.test(name)) return { ok: false, error: '이름을 다시 확인해 주세요' };
+  const id = String(req.id || '').trim(), pw = String(req.password === undefined || req.password === null ? '' : req.password), disp = String(req.display || '').replace(/\s+/g, ' ').trim().slice(0, 12) || id;
+  if (!/^[A-Za-z0-9_가-힣]{2,16}$/.test(id)) return { ok: false, error: '아이디는 2~16자의 영문·숫자·한글·밑줄(_)만 쓸 수 있어요' };
+  if (pw.length < 4 || pw.length > 30 || /\s/.test(pw)) return { ok: false, error: '비밀번호는 공백 없이 4~30자로 정해 주세요' };
+  if (/[<>"=+@]/.test(disp)) return { ok: false, error: '이름에 쓸 수 없는 글자가 있어요' };
   const cache = CacheService.getScriptCache(), nk = 'signup_n', n = Number(cache.get(nk) || 0);
   if (n >= 30) return { ok: false, error: '오늘은 신청이 너무 많아요. 돕는이에게 알려 주세요' };
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    const f = findStudent_(name);
-    if (f) {
-      if (String(f.rec[7]) === '체험' && String(f.rec[8]) === tok) return { ok: true, status: 'trial' };   // 같은 기기가 다시 눌렀을 때
-      return { ok: false, error: '이미 있는 이름이에요. 같은 이름이면 돕는이에게 알려 주세요' };
-    }
+    if (findStudent_(id)) return { ok: false, error: '이미 쓰는 아이디예요. 다른 아이디를 정해 주세요' };
     const sh = getSheet_(SHEET_STU, HEADERS_STU), last = sh.getLastRow(), now = Date.now();
     let act = 0;
     if (last > 1) sh.getRange(2, 1, last - 1, 8).getValues().forEach(function (x) {
@@ -540,21 +545,12 @@ function signup_(req) {
     if (act >= 20) return { ok: false, error: '체험 중인 사람이 너무 많아요. 돕는이에게 알려 주세요' };
     const r = last + 1;
     sh.getRange(r, 2).setNumberFormat('@');
-    sh.getRange(r, 1, 1, 9).setValues([[name, '', '', '', new Date(), new Date(), '', '체험', tok]]);
+    sh.getRange(r, 1, 1, 10).setValues([[id, pwHash_(pw), '', '', new Date(), new Date(), '', '체험', '', disp]]);
     cache.put(nk, String(n + 1), 86400);
   } finally {
     lock.releaseLock();
   }
-  return { ok: true, status: 'trial' };
-}
-
-// 체험 중인 러너가 정식 승인됐는지 확인하고, 승인됐으면 코드를 받아 간다 (체험을 시작한 기기만)
-function signupStatus_(req) {
-  const name = String(req.name || '').trim(), tok = String(req.token || '');
-  const f = name && tok ? findStudent_(name) : null;
-  if (!f || String(f.rec[8]) !== tok) return { ok: true, status: 'none' };
-  if (String(f.rec[7]) === '체험') return { ok: true, status: 'trial' };
-  return { ok: true, status: 'approved', code: normCode_(f.rec[1]) };
+  return { ok: true };
 }
 
 // 체험 중 AI 기능 하루 한도 (kind 'rc' = 손글씨 인식, 'ai' = 뜻·상세 채우기). 넘으면 안내 문구를 돌려준다
@@ -576,11 +572,8 @@ function studentApprove_(req) {
     const f = findStudent_(name);
     if (!f) return { ok: false, error: '러너를 찾을 수 없어요' };
     if (!isTrialRow_(f.rec)) return { ok: false, error: '이미 승인된 러너예요' };
-    const sh = getSheet_(SHEET_STU, HEADERS_STU), code = newCode_(sh);
-    sh.getRange(f.row, 2).setNumberFormat('@');
-    sh.getRange(f.row, 2).setValue(code);
-    sh.getRange(f.row, 8).setValue('승인');
-    return { ok: true, name: name, code: code };
+    getSheet_(SHEET_STU, HEADERS_STU).getRange(f.row, 8).setValue('승인');
+    return { ok: true, name: name };
   } finally {
     lock.releaseLock();
   }
@@ -593,17 +586,40 @@ function studentReject_(req) {
   return { ok: true };
 }
 
-// 선생님: 학생 추가 (이름 + 개인 코드)
+function tempPw_() { return String(1000 + Math.floor(Math.random() * 9000)); }
+
+// 돕는이: 러너 직접 추가 (아이디만 적으면 임시 비밀번호 4자리가 자동으로 만들어진다. 러너는 설정에서 직접 바꿀 수 있다)
 function studentAdd_(req) {
   const name = String(req.name || '').trim();
-  if (!name) return { ok: false, error: '이름을 입력하세요' };
-  if (findStudent_(name)) return { ok: false, error: '이미 있는 이름이에요: ' + name };
-  const sh = getSheet_(SHEET_STU, HEADERS_STU), r = sh.getLastRow() + 1;
-  // 코드는 자동으로 정한다: 다른 러너와 겹치지 않는 4자리 숫자 (직접 넣고 싶으면 studentCode 로 보내도 됨)
-  const code = normCode_(req.studentCode) || newCode_(sh);
+  if (!/^[A-Za-z0-9_가-힣]{2,16}$/.test(name)) return { ok: false, error: '아이디는 2~16자의 영문·숫자·한글·밑줄(_)만 쓸 수 있어요' };
+  if (findStudent_(name)) return { ok: false, error: '이미 있는 아이디예요: ' + name };
+  const sh = getSheet_(SHEET_STU, HEADERS_STU), r = sh.getLastRow() + 1, pw = String(req.studentCode || '').trim() || tempPw_();
   sh.getRange(r, 2).setNumberFormat('@');
-  sh.getRange(r, 1, 1, 3).setValues([[name, code, String(req.univ || '')]]);
-  return { ok: true, name: name, code: code };
+  sh.getRange(r, 1, 1, 10).setValues([[name, pwHash_(pw), String(req.univ || ''), '', '', '', '', '승인', '', String(req.display || '').trim()]]);
+  return { ok: true, name: name, code: pw };
+}
+
+// 러너가 자기 비밀번호를 바꾼다 (현재 비밀번호 확인)
+function pwChange_(req) {
+  if (CUR_AU_.role !== 'student') return { ok: false, error: '러너만 쓸 수 있어요' };
+  const nw = String(req.newpw === undefined || req.newpw === null ? '' : req.newpw);
+  if (nw.length < 4 || nw.length > 30 || /\s/.test(nw)) return { ok: false, error: '새 비밀번호는 공백 없이 4~30자로 정해 주세요' };
+  const sh = getSheet_(SHEET_STU, HEADERS_STU), cur = sh.getRange(CUR_AU_.row, 2).getValue();
+  if (!pwCheck_(cur, String(req.oldpw === undefined || req.oldpw === null ? '' : req.oldpw))) return { ok: false, error: '현재 비밀번호가 맞지 않아요' };
+  sh.getRange(CUR_AU_.row, 2).setNumberFormat('@');
+  sh.getRange(CUR_AU_.row, 2).setValue(pwHash_(nw));
+  return { ok: true };
+}
+
+// 돕는이: 비밀번호를 잊은 러너를 위해 임시 비밀번호로 초기화
+function studentReset_(req) {
+  const name = String(req.name || '').trim(), f = findStudent_(name);
+  if (!f) return { ok: false, error: '러너를 찾을 수 없어요' };
+  const pw = tempPw_(), sh = getSheet_(SHEET_STU, HEADERS_STU);
+  sh.getRange(f.row, 2).setNumberFormat('@');
+  sh.getRange(f.row, 2).setValue(pwHash_(pw));
+  CacheService.getScriptCache().remove('fail_' + name);
+  return { ok: true, name: name, code: pw };
 }
 
 // 학생의 암기 기록: 공유 단어는 '진도' 시트에 학생별로 저장하고, 학습기록에는 이름을 남긴다

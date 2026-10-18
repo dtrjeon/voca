@@ -877,16 +877,20 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 <dialog id="dlgLogin">
   <h3 style="margin:0 0 8px">로그인</h3>
   <div class="row" id="lgTabs"><button class="chip on" data-r="student" type="button">🎒 러너</button><button class="chip" data-r="new" type="button">🙋 처음이에요</button><button class="chip" data-r="teacher" type="button">👩‍🏫 돕는이</button></div>
-  <div id="lgStu"><label class="lbl" for="lgName">이름</label><input type="text" id="lgName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="돕는이가 적어 둔 내 이름">
-  <label class="lbl" for="lgCode">내 코드</label><input type="password" id="lgCode" autocomplete="off" autocapitalize="none" placeholder="돕는이가 알려 준 코드">
-  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="lgRemember" style="width:20px;height:20px;margin:0"><span>이름·코드 자동저장 <small style="color:var(--sub)">(다음부터 바로 들어가요)</small></span></label></div>
+  <div id="lgStu"><label class="lbl" for="lgName">아이디</label><input type="text" id="lgName" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="내가 정한 아이디">
+  <label class="lbl" for="lgCode">비밀번호</label><input type="password" id="lgCode" autocomplete="current-password" autocapitalize="none" placeholder="내가 정한 비밀번호">
+  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="lgRemember" style="width:20px;height:20px;margin:0"><span>아이디·비밀번호 자동저장 <small style="color:var(--sub)">(다음부터 바로 들어가요)</small></span></label></div>
   <div id="lgNew" style="display:none">
-    <div id="lgNewForm"><div style="font-size:13px;color:var(--sub);line-height:1.5;margin-top:8px">이름을 적으면 바로 <b>7일 동안 체험</b>할 수 있어요. 돕는이가 승인하면 계속 쓸 수 있고, 승인번호(코드)는 돕는이에게 받아요. 체험 중에는 손글씨 인식이 하루 30번까지예요.</div>
-    <label class="lbl" for="lgNewName">이름</label><input type="text" id="lgNewName" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="내 이름"></div>
-    <div id="lgNewWait" style="display:none;font-size:14px;line-height:1.6;margin-top:10px">⏳ <b></b> 님, 신청했어요.<br>돕는이가 확인하면 코드가 나오고 바로 시작돼요. 이 화면을 닫았다가 다시 열어도 괜찮아요.<div class="row" style="margin-top:8px"><button class="btn" id="lgNewCancel" type="button">다른 이름으로 다시 신청</button></div></div>
+    <div id="lgNewForm"><div style="font-size:13px;color:var(--sub);line-height:1.5;margin-top:8px">아이디와 비밀번호를 정하면 바로 <b>7일 동안 체험</b>할 수 있어요. 돕는이가 승인하면 계속 쓸 수 있어요. 체험 중에는 손글씨 인식이 하루 30번까지예요.</div>
+    <label class="lbl" for="lgNewId">아이디 <small style="color:var(--sub)">(영문·숫자·한글 2~16자)</small></label><input type="text" id="lgNewId" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="16" placeholder="예: saebom">
+    <label class="lbl" for="lgNewName">이름 <small style="color:var(--sub)">(화면에서 불러 줄 이름)</small></label><input type="text" id="lgNewName" autocomplete="off" maxlength="12" placeholder="예: 김새봄">
+    <label class="lbl" for="lgNewPw">비밀번호 <small style="color:var(--sub)">(4자 이상, 공백 없이)</small></label><input type="password" id="lgNewPw" autocomplete="new-password" autocapitalize="none" maxlength="30" placeholder="비밀번호">
+    <label class="lbl" for="lgNewPw2">비밀번호 확인</label><input type="password" id="lgNewPw2" autocomplete="new-password" autocapitalize="none" maxlength="30" placeholder="한 번 더"></div>
+    <div id="lgNewWait" style="display:none"></div>
   </div>
   <div id="lgTea" style="display:none"><label class="lbl" for="lgTCode">돕는이 코드</label><input type="password" id="lgTCode" autocomplete="off" autocapitalize="none"></div>
   <div class="lg-msg" id="lgMsg"></div>
+  <div style="font-size:12px;color:var(--sub);margin-top:2px">비밀번호를 잊었으면 돕는이에게 초기화를 부탁하세요.</div>
   <div class="row" style="margin-top:10px"><button class="btn primary grow" id="lgGo" type="button">들어가기</button></div>
   <div id="lgInst" style="margin-top:12px;border-top:1px solid var(--line);padding-top:8px">
   <div style="font-size:13px;font-weight:700">📲 홈 화면에 추가 <span id="lgInstOk" style="font-weight:400;color:var(--ok)"></span></div>
@@ -908,10 +912,10 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <dialog id="dlgStudents">
   <h3 style="margin:0 0 6px">👩‍🏫 러너 현황</h3>
-  <div class="stu-wrap"><table id="stuTbl"><thead><tr><th>이름</th><th>코드</th><th>목표 대학</th><th>시작일</th><th>◎</th><th>내 단어</th><th>마지막 접속</th><th>앱</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div class="stu-wrap"><table id="stuTbl"><thead><tr><th>아이디</th><th>상태</th><th>목표 대학</th><th>시작일</th><th>◎</th><th>내 단어</th><th>마지막 접속</th><th>앱</th><th></th></tr></thead><tbody></tbody></table></div>
   <div id="stuSt" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
-  <label class="lbl">러너 추가 (코드는 자동으로 만들어져요)</label>
-  <div class="row"><input type="text" id="stName" placeholder="이름" autocomplete="off" style="flex:1"></div>
+  <label class="lbl">러너 추가 (임시 비밀번호가 만들어져요)</label>
+  <div class="row"><input type="text" id="stName" placeholder="아이디" autocomplete="off" style="flex:1"></div>
   <div class="row" style="margin-top:8px"><button class="btn" id="stAdd" type="button">추가</button><button class="btn" id="stRefresh" type="button">🔄 새로고침</button><button class="btn grow" id="stClose" type="button">닫기</button></div>
 </dialog>
 
@@ -1045,7 +1049,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.15.1', APP_DATE = '2026-10-18', SERVER_NEED = 24;
+const APP_VERSION = '1.16.0', APP_DATE = '2026-10-18', SERVER_NEED = 25;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1070,7 +1074,7 @@ function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 function stateDirty() { try { localStorage.setItem('vn_state_dirty', '1'); } catch (e) {} clearTimeout(stateTimer); stateTimer = setTimeout(pushState, 1500); }
 
 const teacherCode = () => lsGet('vn_teacher_code', '').trim();
-(function () { if (lsGet('vn_forget', '') === '1' && !teacherCode()) { lsDel('vn_user'); lsDel('vn_ucode'); lsDel('vn_forget'); } const n = lsGet('vn_user', ''); if (n && (lsGet('vn_ucode', '') || lsGet('vn_utoken', '')) && !teacherCode()) me = { role: 'student', name: n, univ: lsGet('vn_prof_univ', ''), start: lsGet('vn_prof_start', '') }; else if (teacherCode()) me.role = 'teacher'; document.body.classList.toggle('stu', me.role === 'student'); })();
+(function () { if (lsGet('vn_forget', '') === '1' && !teacherCode()) { lsDel('vn_user'); lsDel('vn_ucode'); lsDel('vn_forget'); } const n = lsGet('vn_user', ''); lsDel('vn_utoken'); if (n && lsGet('vn_ucode', '') && !teacherCode()) me = { role: 'student', name: n, display: lsGet('vn_prof_name', ''), univ: lsGet('vn_prof_univ', ''), start: lsGet('vn_prof_start', '') }; else if (teacherCode()) me.role = 'teacher'; document.body.classList.toggle('stu', me.role === 'student'); })();
 const isStu = () => me.role === 'student';
 const canEditW = w => !isStu() || isLocalId(w.id) || (w.src === 'hand' && w.owner === me.name);
 function gasUrl() { return (lsGet('vn_gas', '') || DEFAULT_GAS_URL).trim(); }
@@ -1111,7 +1115,7 @@ function warmGas() {
 async function rawApi(action, data) {
   gasTs = Date.now();
   const url = gasUrl();
-  let cred = teacherCode() ? { code: teacherCode() } : (lsGet('vn_user', '') ? (lsGet('vn_ucode', '') ? { user: lsGet('vn_user', ''), ucode: lsGet('vn_ucode', '') } : { user: lsGet('vn_user', ''), utoken: lsGet('vn_utoken', '') }) : {});
+  let cred = teacherCode() ? { code: teacherCode() } : (lsGet('vn_user', '') ? { user: lsGet('vn_user', ''), ucode: lsGet('vn_ucode', '') } : {});
   if (data && data.__cred) { cred = data.__cred; data = Object.assign({}, data); delete data.__cred; }
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data || {}, cred)) });
   const txt = await res.text(); let j;
@@ -1156,31 +1160,35 @@ function showLogin(msg) {
   if (!d.open) { $('#lgName').value = lsGet('vn_user', ''); const rm = lsGet('vn_remember', '1') !== '0'; $('#lgRemember').checked = rm; $('#lgCode').value = rm ? lsGet('vn_ucode', '') : ''; if (!rm) $('#lgName').value = ''; $('#lgTCode').value = ''; d.showModal(); }
 }
 function lgTab(r) { loginRole = r; $$('#lgTabs .chip').forEach(b => b.classList.toggle('on', b.dataset.r === r)); $('#lgStu').style.display = r === 'student' ? '' : 'none'; $('#lgTea').style.display = r === 'teacher' ? '' : 'none'; $('#lgNew').style.display = r === 'new' ? '' : 'none'; $('#lgMsg').textContent = ''; if (r === 'new') renderNew(); else $('#lgGo').textContent = '들어가기'; }
-function renderNew() { $('#lgNewForm').style.display = ''; $('#lgNewWait').style.display = 'none'; $('#lgGo').textContent = '사용하겠습니다'; }
-const newTok = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2));
-/* 이름만 적으면 바로 7일 체험이 시작된다 (이 기기의 비밀 값으로 알아본다) */
+function renderNew() { $('#lgGo').textContent = '체험 시작'; }
+/* 아이디·이름·비밀번호를 정하면 바로 7일 체험이 시작된다 */
 async function doSignup() {
-  const n = $('#lgNewName').value.trim(); if (!n) { $('#lgMsg').textContent = '이름을 적어 주세요'; return; }
-  const tok = newTok();
+  const id = $('#lgNewId').value.trim(), nm = $('#lgNewName').value.trim(), pw = $('#lgNewPw').value, pw2 = $('#lgNewPw2').value, M = t => { $('#lgMsg').textContent = t; };
+  if (!/^[A-Za-z0-9_가-힣]{2,16}$/.test(id)) { M('아이디는 2~16자의 영문·숫자·한글·밑줄(_)만 쓸 수 있어요'); return; }
+  if (!nm) { M('이름을 적어 주세요'); return; }
+  if (pw.length < 4 || /\s/.test(pw)) { M('비밀번호는 공백 없이 4자 이상으로 정해 주세요'); return; }
+  if (pw !== pw2) { M('비밀번호 확인이 달라요'); return; }
   try {
-    await rawApi('signup', { name: n, token: tok, __cred: {} });
-    const lj = await rawApi('login', { ver: APP_VERSION, __cred: { user: n, utoken: tok } });
+    await rawApi('signup', { id: id, display: nm, password: pw, __cred: {} });
+    const lj = await rawApi('login', { ver: APP_VERSION, __cred: { user: id, ucode: pw } });
     lsSet('vn_remember', '1'); lsDel('vn_forget');
-    await enterStudent(lj, n, '', tok);
+    await enterStudent(lj, id, pw);
     $('#dlgLogin').close(); updateAcct(); renderList(); updateCount(); tmRender(); refreshWords(true);
     toast('체험 ' + (lj.daysLeft || 7) + '일이 시작됐어요! 돕는이가 승인하면 계속 쓸 수 있어요', 7000);
-  } catch (e) { $('#lgMsg').textContent = (e.data && e.data.auth) ? '서버(Code.gs)가 아직 예전 버전이에요. 돕는이가 최신 Code.gs를 “새 버전”으로 배포해야 시작할 수 있어요' : e.message; }
+  } catch (e) { M((e.data && e.data.auth) ? '서버(Code.gs)가 아직 예전 버전이에요. 돕는이가 최신 Code.gs를 “새 버전”으로 배포해야 시작할 수 있어요' : e.message); }
 }
-/* 체험 중인 러너: 돕는이가 승인했는지 가끔 확인하고, 승인됐으면 코드를 받아 정식 사용자로 바꾼다 */
+/* 체험 중인 러너: 돕는이가 승인했는지 가끔 확인한다 (로그인 응답의 trial 값이 꺼지면 승인된 것) */
 async function checkApproval() {
   if (!isStu() || !me.trial) return;
-  const t = lsGet('vn_utoken', ''); if (!t) return;
   try {
-    const j = await rawApi('signupstatus', { name: me.name, token: t, __cred: {} });
-    if (j.status === 'approved' && j.code) { lsSet('vn_ucode', j.code); lsDel('vn_utoken'); me.trial = false; me.daysLeft = 0; updateAcct(); toast('승인됐어요! 내 코드: ' + j.code + ' (다른 기기에서 로그인할 때 필요해요)', 10000); }
+    const j = await rawApi('login', { ver: APP_VERSION });
+    me.daysLeft = j.daysLeft || 0;
+    if (!j.trial) { me.trial = false; toast('승인됐어요! 이제 제한 없이 쓸 수 있어요 🎉', 6000); }
+    updateAcct();
   } catch (e) {}
 }
 setInterval(() => { if (!document.hidden) checkApproval(); }, 120000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkApproval(); });
 function reloadTmVars() {
   tmSrc = lsGet('vn_tm_src', ''); if (tmSrc.startsWith('d:')) tmSrc = 'h:' + tmSrc.slice(2);
   try { tmMarks = JSON.parse(lsGet('vn_tm_marks', '{}')) || {}; } catch (x) { tmMarks = {}; }
@@ -1209,12 +1217,13 @@ async function saveProfile(p) {
   try { const j = await rawApi('profile', p); me.univ = j.profile.univ; me.start = j.profile.start; lsSet('vn_prof_univ', me.univ); lsSet('vn_prof_start', me.start); } catch (e) { toast(e.message); }
 }
 /* 서버가 확인해 준 학생으로 들어간다. 다른 사람이 쓰던 기기면 이전 기록은 지운다 */
-async function enterStudent(j, name, code, tok) {
+async function enterStudent(j, name, code) {
   const prev = lsGet('vn_user', '');
   if (prev && prev !== name) wipeLocal();
-  lsDel('vn_teacher_code'); lsSet('vn_user', name); if (code) { lsSet('vn_ucode', code); lsDel('vn_utoken'); } else if (tok) { lsDel('vn_ucode'); lsSet('vn_utoken', tok); }
+  lsDel('vn_teacher_code'); lsSet('vn_user', name); lsSet('vn_ucode', code);
   const p = j.profile || {};
-  me = { role: 'student', name: name, univ: p.univ || '', start: p.start || '', trial: !!j.trial, daysLeft: j.daysLeft || 0 };
+  me = { role: 'student', name: name, display: p.display || name, univ: p.univ || '', start: p.start || '', trial: !!j.trial, daysLeft: j.daysLeft || 0 };
+  lsSet('vn_prof_name', me.display);
   lsSet('vn_prof_univ', me.univ); lsSet('vn_prof_start', me.start);
   document.body.classList.add('stu');
   const hasSrv = !!(j.state && j.state.length > 2);
@@ -1242,9 +1251,9 @@ async function doLogin() {
       me = { role: 'teacher', name: '', univ: '', start: '' }; document.body.classList.remove('stu');
       $('#dlgLogin').close(); toast('돕는이으로 들어왔어요');
     } else {
-      const n = $('#lgName').value.trim(), c = $('#lgCode').value.trim(); if (!n || !c) { $('#lgMsg').textContent = '이름과 코드를 입력하세요'; return; }
+      const n = $('#lgName').value.trim(), c = $('#lgCode').value.trim(); if (!n || !c) { $('#lgMsg').textContent = '아이디와 비밀번호를 입력하세요'; return; }
       const j = await rawApi('login', { ver: APP_VERSION, __cred: { user: n, ucode: c } });
-      if (j.role !== 'student') { $('#lgMsg').textContent = '이름이나 코드가 맞지 않아요'; return; }
+      if (j.role !== 'student') { $('#lgMsg').textContent = '아이디나 비밀번호가 맞지 않아요'; return; }
       await enterStudent(j, n, c);
       const rm = $('#lgRemember').checked; lsSet('vn_remember', rm ? '1' : '0'); if (rm) lsDel('vn_forget'); else lsSet('vn_forget', '1');   // 체크 해제: 이번에만 쓰고, 앱을 다시 열면 이름·코드를 지운다
       $('#dlgLogin').close();
@@ -1269,14 +1278,14 @@ async function doReg() {
 }
 function updateAcct() {
   const el = $('#sAcct'); if (!el) return;
-  if (isStu()) el.innerHTML = '👤 <b>' + esc(me.name) + '</b> (러너)' + (me.univ ? ' · 🎓 ' + esc(me.univ) : '') + (me.trial ? '<div style="font-size:13px;color:var(--bad)">🕐 체험 중 · ' + (me.daysLeft || 0) + '일 남음 · 돕는이가 승인하면 계속 쓸 수 있어요</div>' : '') + '<div class="row" style="margin-top:6px"><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
+  if (isStu()) el.innerHTML = '👤 <b>' + esc(me.display || me.name) + '</b> <small style="color:var(--sub)">(' + esc(me.name) + ')</small>' + (me.univ ? ' · 🎓 ' + esc(me.univ) : '') + (me.trial ? '<div style="font-size:13px;color:var(--bad)">🕐 체험 중 · ' + (me.daysLeft || 0) + '일 남음 · 돕는이가 승인하면 계속 쓸 수 있어요</div>' : '') + '<div class="row" style="margin-top:6px"><button class="btn" id="sPw" type="button">🔑 비밀번호 바꾸기</button><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
   else if (me.role === 'teacher') el.innerHTML = '👩‍🏫 <b>돕는이 모드</b><div class="row" style="margin-top:6px"><button class="btn" id="sStudents" type="button">👥 러너 현황</button><button class="btn" id="sLogout" type="button">로그아웃</button></div>';
   else el.innerHTML = '<div class="row"><button class="btn" id="sLogin" type="button">🔐 로그인</button></div>';
 }
 async function bootAuth() {
   const u = gasUrl(); if (!u || u.indexOf('PASTE_GAS_URL') >= 0) return true;
   try {
-    if (me.role === 'student') { const j = await rawApi('login', { ver: APP_VERSION }); await enterStudent(j, me.name, lsGet('vn_ucode', ''), lsGet('vn_utoken', '')); if (me.trial) checkApproval(); }
+    if (me.role === 'student') { const j = await rawApi('login', { ver: APP_VERSION }); await enterStudent(j, me.name, lsGet('vn_ucode', '')); }
     else if (me.role === 'teacher') { await rawApi('login', { ver: APP_VERSION }); rawApi('students').then(j => { const n = (j.students || []).filter(x => x.status === '체험').length; if (n) toast('체험 중인 러너 ' + n + '명 — 설정 → 러너 현황에서 승인하세요', 7000); }).catch(() => {}); }
     else { const j = await (await fetch(u)).json(); if (j.locked) { showLogin(); return false; } }
   } catch (e) { if (e.data && e.data.auth) return false; }
@@ -1287,7 +1296,7 @@ async function loadStudents() {
   $('#stuSt').textContent = '불러오는 중…';
   try {
     const j = await rawApi('students');
-    $('#stuTbl tbody').innerHTML = (j.students || []).map(s => '<tr><td><b>' + esc(s.name) + '</b></td><td>' + ((s.status === '체험' || s.status === '신청') ? '<i style="color:var(--bad)">체험 ' + (s.trialLeft != null ? (s.trialLeft > 0 ? 'D-' + s.trialLeft : '만료') : '') + '</i>' : esc(s.code || '')) + '</td><td>' + esc(s.univ || '—') + '</td><td>' + esc(s.start ? s.start.slice(5).replace('-', '/') : '—') + '</td><td>' + s.marks + '</td><td>' + s.own + '</td><td>' + fmtSeen(s.lastSeen) + '</td><td>' + esc(s.ver || '') + '</td><td>' + ((s.status === '체험' || s.status === '신청') ? '<button class="btn" data-ap="' + esc(s.name) + '" type="button">승인</button> <button class="btn" data-rj="' + esc(s.name) + '" type="button">거절</button>' : '') + '</td></tr>').join('') || '<tr><td colspan="9" style="color:var(--sub)">아직 학생이 없어요. 아래에서 추가하세요.</td></tr>';
+    $('#stuTbl tbody').innerHTML = (j.students || []).map(s => '<tr><td><b>' + esc(s.name) + '</b>' + (s.display && s.display !== s.name ? '<br><small>' + esc(s.display) + '</small>' : '') + '</td><td>' + ((s.status === '체험' || s.status === '신청') ? '<i style="color:var(--bad)">체험 ' + (s.trialLeft != null ? (s.trialLeft > 0 ? 'D-' + s.trialLeft : '만료') : '') + '</i>' : '승인') + '</td><td>' + esc(s.univ || '—') + '</td><td>' + esc(s.start ? s.start.slice(5).replace('-', '/') : '—') + '</td><td>' + s.marks + '</td><td>' + s.own + '</td><td>' + fmtSeen(s.lastSeen) + '</td><td>' + esc(s.ver || '') + '</td><td>' + ((s.status === '체험' || s.status === '신청') ? '<button class="btn" data-ap="' + esc(s.name) + '" type="button">승인</button> <button class="btn" data-rj="' + esc(s.name) + '" type="button">거절</button> ' : '') + '<button class="btn" data-rs="' + esc(s.name) + '" type="button">비번 초기화</button></td></tr>').join('') || '<tr><td colspan="9" style="color:var(--sub)">아직 학생이 없어요. 아래에서 추가하세요.</td></tr>';
     $('#stuSt').textContent = (j.students || []).length + '명 · ◎ = 토마토에서 ◎로 표시한 단어 수';
   } catch (e) { $('#stuSt').textContent = e.message; }
 }
@@ -1295,13 +1304,17 @@ document.addEventListener('click', e => {
   const id = e.target && e.target.id;
   if (id === 'sLogin') { $('#dlgSettings').close(); showLogin(); }
   else if (id === 'sStudents') { $('#dlgSettings').close(); $('#dlgStudents').showModal(); loadStudents(); }
-  else if (e.target && e.target.dataset && (e.target.dataset.ap || e.target.dataset.rj)) {
-    const ap = e.target.dataset.ap, nm = ap || e.target.dataset.rj;
-    (async () => { try { const r = await rawApi(ap ? 'studentapprove' : 'studentreject', { name: nm }); await loadStudents(); if (ap) $('#stuSt').innerHTML = '✅ <b>' + esc(nm) + '</b> 승인 · 코드 <b style="font-size:18px">' + esc(r.code) + '</b> (러너 폰에는 자동으로 전달돼요)'; } catch (x) { $('#stuSt').textContent = x.message; } })();
+  else if (e.target && e.target.dataset && (e.target.dataset.ap || e.target.dataset.rj || e.target.dataset.rs)) {
+    const ap = e.target.dataset.ap, rs = e.target.dataset.rs, nm = ap || rs || e.target.dataset.rj;
+    (async () => { try { if (rs && !confirm(nm + ' 의 비밀번호를 초기화할까요?')) return; const r = await rawApi(ap ? 'studentapprove' : rs ? 'studentreset' : 'studentreject', { name: nm }); await loadStudents(); if (ap) $('#stuSt').innerHTML = '✅ <b>' + esc(nm) + '</b> 승인했어요'; else if (rs) $('#stuSt').innerHTML = '🔑 <b>' + esc(nm) + '</b> 임시 비밀번호: <b style="font-size:18px">' + esc(r.code) + '</b> — 러너에게 알려 주고, 로그인 후 바꾸게 해 주세요'; } catch (x) { $('#stuSt').textContent = x.message; } })();
+  }
+  else if (id === 'sPw') {
+    const o = prompt('지금 비밀번호'); if (o == null) return; const n = prompt('새 비밀번호 (4자 이상, 공백 없이)'); if (n == null) return;
+    (async () => { try { await rawApi('pwchange', { oldpw: o, newpw: n }); lsSet('vn_ucode', n); toast('비밀번호를 바꿨어요'); } catch (x) { toast(x.message, 5000); } })();
   }
   else if (id === 'sLogout') {
     if (!confirm('로그아웃할까요?')) return;
-    (async () => { if (isStu()) { try { await pushState(); } catch (x) {} wipeLocal(); } lsDel('vn_user'); lsDel('vn_ucode'); lsDel('vn_teacher_code'); lsDel('vn_prof_univ'); lsDel('vn_prof_start'); location.reload(); })();
+    (async () => { if (isStu()) { try { await pushState(); } catch (x) {} wipeLocal(); } lsDel('vn_user'); lsDel('vn_ucode'); lsDel('vn_teacher_code'); lsDel('vn_prof_univ'); lsDel('vn_prof_start'); lsDel('vn_prof_name'); location.reload(); })();
   }
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && me.role === 'student' && lsGet('vn_state_dirty', '') === '1') pushState(); });
@@ -3126,7 +3139,7 @@ function tmGoalImage(file) {
 function tmIntro(nd, per) {
   const root = tmSrc.startsWith('m:') ? tmSrc.slice(2).split('\u0001')[0] : tmSrc.slice(2).split('/')[0];
   const goal = tmGoalName(), img = tmGoalImg();
-  const title = goal ? (isStu() ? esc(callName(me.name)) + '! ' : '') + esc(goal) + ' 합격 도전' : esc(root) + ' ' + nd + '일 도전';
+  const title = goal ? (isStu() ? esc(callName(me.display || me.name)) + '! ' : '') + esc(goal) + ' 합격 도전' : esc(root) + ' ' + nd + '일 도전';
   if (lsGet('vn_tm_intro', '1') === '0') return '<div class="tm-intro"><button class="tm-in-fold" data-act="intro" type="button"><span>' + (img ? '🎓 ' : '🏔 ') + title + ' · 사용방법 보기</span><b>▾</b></button></div>';
   const svg = '<svg viewBox="0 0 320 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="산 정상의 깃발을 향해 오르는 길">' +
     '<circle cx="268" cy="30" r="14" fill="#ffd166"/>' +
@@ -3263,7 +3276,7 @@ fitPad(); resizePad();
 renderList(); updateCount(); updateSetupInfo();
 $$('#lgTabs .chip').forEach(b => b.addEventListener('click', () => lgTab(b.dataset.r)));
 $('#lgGo').addEventListener('click', doLogin);
-$('#lgNewName').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+['#lgNewId', '#lgNewName', '#lgNewPw', '#lgNewPw2'].forEach(q => $(q).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
 ['#lgCode', '#lgTCode', '#lgName'].forEach(q => $(q).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
 $('#rgGo').addEventListener('click', doReg);
 $('#dlgLogin').addEventListener('cancel', e => e.preventDefault());
@@ -3271,8 +3284,8 @@ $('#dlgReg').addEventListener('cancel', e => e.preventDefault());
 $('#stClose').addEventListener('click', () => $('#dlgStudents').close());
 $('#stRefresh').addEventListener('click', loadStudents);
 $('#stAdd').addEventListener('click', async () => {
-  const n = $('#stName').value.trim(); if (!n) { $('#stuSt').textContent = '이름을 적어 주세요'; return; }
-  try { const r = await rawApi('studentadd', { name: n }); $('#stName').value = ''; await loadStudents(); $('#stuSt').innerHTML = '✅ <b>' + esc(r.name) + '</b> 코드: <b style="font-size:18px">' + esc(r.code) + '</b> — 러너에게 알려 주세요'; toast(n + ' 러너을 추가했어요'); } catch (e) { $('#stuSt').textContent = e.message; }
+  const n = $('#stName').value.trim(); if (!n) { $('#stuSt').textContent = '아이디를 적어 주세요'; return; }
+  try { const r = await rawApi('studentadd', { name: n }); $('#stName').value = ''; await loadStudents(); $('#stuSt').innerHTML = '✅ 아이디 <b>' + esc(r.name) + '</b> · 임시 비밀번호 <b style="font-size:18px">' + esc(r.code) + '</b> — 러너에게 알려 주세요'; toast(n + ' 러너을 추가했어요'); } catch (e) { $('#stuSt').textContent = e.message; }
 });
 updateAcct();
 if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) bootAuth().then(ok => { if (ok) refreshWords(true); });
