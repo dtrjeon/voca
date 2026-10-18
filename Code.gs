@@ -21,7 +21,7 @@ const SHEET_WORDS = '단어';
 const SHEET_LOG = '학습기록';
 const HEADERS_WORDS = ['id', '단어', '품사', '뜻', '예문', '예문뜻', '등록일', '정답수', '오답수', '마지막학습', '단계', '다음복습', '어근팁', '난이도', '추가정보', '폴더', '구분', '소유자'];
 const HEADERS_LOG = ['시각', 'id', '단어', '유형', '결과', '이름'];
-const SHEET_STU = '학생', HEADERS_STU = ['이름', '코드', '목표대학', '시작일', '가입일', '마지막접속', '앱버전'];
+const SHEET_STU = '학생', HEADERS_STU = ['이름', '코드', '목표대학', '시작일', '가입일', '마지막접속', '앱버전', '상태', '기기표'];   // 상태: '신청'(승인 대기) | 그 외(승인됨), 기기표: 신청한 기기만 코드를 받아 가는 비밀 값
 const SHEET_STATE = '진행', HEADERS_STATE = ['이름', '순번', '내용'];   // 토마토 표시·회독 날짜 등을 JSON 조각으로 저장
 const SHEET_PROG = '진도', HEADERS_PROG = ['이름', 'id', '정답수', '오답수', '마지막학습', '단계', '다음복습'];   // 학생별 암기 진도(공유 단어)
 let CUR_AU_ = { role: 'teacher' };
@@ -72,6 +72,8 @@ function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
     // 권한: 스크립트 속성 TEACHER_CODE 가 있으면 돕는이 코드 또는 학생(이름+코드)만 쓸 수 있다. 없으면 예전처럼 모두 열려 있다.
+    if (req.action === 'signup') return json_(signup_(req));
+    if (req.action === 'signupstatus') return json_(signupStatus_(req));
     const au = auth_(req);
     if (au.blocked) return json_({ ok: false, auth: true, error: '잠시 후에 다시 시도해 주세요 (코드를 여러 번 틀렸어요)' });
     if (req.action === 'login') return json_(login_(req, au));
@@ -112,6 +114,8 @@ function doPost(e) {
       case 'statesave': return json_(stateSave_(req));
       case 'students':  return json_(students_());
       case 'studentadd': return json_(studentAdd_(req));
+      case 'studentapprove': return json_(studentApprove_(req));
+      case 'studentreject': return json_(studentReject_(req));
       default:          return json_({ ok: false, error: 'unknown action' });
     }
   } catch (err) {
@@ -410,7 +414,7 @@ function findStudent_(name) {
   const sh = getSheet_(SHEET_STU, HEADERS_STU);
   const last = sh.getLastRow();
   if (last < 2) return null;
-  const d = sh.getRange(2, 1, last - 1, 7).getValues();
+  const d = sh.getRange(2, 1, last - 1, 9).getValues();
   for (let i = 0; i < d.length; i++) if (String(d[i][0]).trim() === name) return { row: i + 2, rec: d[i] };
   return null;
 }
@@ -481,13 +485,83 @@ function students_() {
   const wsh = getSheet_(SHEET_WORDS, HEADERS_WORDS), wl = wsh.getLastRow();
   const own = {};
   if (wl > 1) wsh.getRange(2, 18, wl - 1, 1).getValues().forEach(function (r) { const o = String(r[0] || ''); if (o) own[o] = (own[o] || 0) + 1; });
-  const out = sh.getRange(2, 1, last - 1, 7).getValues().filter(function (r) { return String(r[0]).trim(); }).map(function (r) {
+  const out = sh.getRange(2, 1, last - 1, 9).getValues().filter(function (r) { return String(r[0]).trim(); }).map(function (r) {
     const name = String(r[0]).trim();
     let marks = 0;
     try { const st = JSON.parse(loadState_(name) || '{}'); const m = st.vn_tm_marks ? (typeof st.vn_tm_marks === 'string' ? JSON.parse(st.vn_tm_marks) : st.vn_tm_marks) : {}; marks = Object.keys(m || {}).length; } catch (e) { marks = 0; }
-    return { name: name, code: normCode_(r[1]), univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
+    return { name: name, status: String(r[7] || ''), code: normCode_(r[1]), univ: String(r[2] || ''), start: dstr_(r[3]), joined: dstr_(r[4]), lastSeen: r[5] instanceof Date ? r[5].toISOString() : String(r[5] || ''), ver: String(r[6] || ''), marks: marks, own: own[name] || 0 };
   });
   return { ok: true, students: out };
+}
+
+// 겹치지 않는 4자리 숫자 코드
+function newCode_(sh) {
+  const used = {}, last = sh.getLastRow();
+  if (last > 1) sh.getRange(2, 2, last - 1, 1).getValues().forEach(function (x) { used[normCode_(x[0])] = true; });
+  let code; do { code = String(1000 + Math.floor(Math.random() * 9000)); } while (used[code]);
+  return code;
+}
+
+// 러너가 처음 열어서 '사용하겠습니다'를 누르면 신청만 쌓이고, 돕는이가 승인하면 코드가 만들어진다
+function signup_(req) {
+  const name = String(req.name || '').replace(/\s+/g, ' ').trim(), tok = String(req.token || '').slice(0, 64);
+  if (!name || name.length > 20 || !tok || /^[=+\-@]/.test(name)) return { ok: false, error: '이름을 다시 확인해 주세요' };
+  const cache = CacheService.getScriptCache(), nk = 'signup_n', n = Number(cache.get(nk) || 0);
+  if (n >= 30) return { ok: false, error: '오늘은 신청이 너무 많아요. 돕는이에게 알려 주세요' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const f = findStudent_(name);
+    if (f) {
+      if (String(f.rec[7]) === '신청' && String(f.rec[8]) === tok) return { ok: true, status: 'pending' };
+      return { ok: false, error: '이미 있는 이름이에요. 돕는이에게 알려 주세요' };
+    }
+    const sh = getSheet_(SHEET_STU, HEADERS_STU), last = sh.getLastRow();
+    let pend = 0;
+    if (last > 1) sh.getRange(2, 8, last - 1, 1).getValues().forEach(function (x) { if (String(x[0]) === '신청') pend++; });
+    if (pend >= 20) return { ok: false, error: '대기 중인 신청이 너무 많아요. 돕는이에게 알려 주세요' };
+    const r = last + 1;
+    sh.getRange(r, 2).setNumberFormat('@');
+    sh.getRange(r, 1, 1, 9).setValues([[name, '', '', '', '', '', '', '신청', tok]]);
+    cache.put(nk, String(n + 1), 86400);
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, status: 'pending' };
+}
+
+// 신청한 그 기기만 승인 여부를 확인하고, 승인됐으면 코드를 받아 간다
+function signupStatus_(req) {
+  const name = String(req.name || '').trim(), tok = String(req.token || '');
+  const f = name && tok ? findStudent_(name) : null;
+  if (!f || String(f.rec[8]) !== tok) return { ok: true, status: 'none' };
+  if (String(f.rec[7]) === '신청') return { ok: true, status: 'pending' };
+  return { ok: true, status: 'approved', code: normCode_(f.rec[1]) };
+}
+
+function studentApprove_(req) {
+  const name = String(req.name || '').trim();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const f = findStudent_(name);
+    if (!f) return { ok: false, error: '신청을 찾을 수 없어요' };
+    if (String(f.rec[7]) !== '신청') return { ok: false, error: '이미 승인된 러너예요' };
+    const sh = getSheet_(SHEET_STU, HEADERS_STU), code = newCode_(sh);
+    sh.getRange(f.row, 2).setNumberFormat('@');
+    sh.getRange(f.row, 2).setValue(code);
+    sh.getRange(f.row, 8).setValue('승인');
+    return { ok: true, name: name, code: code };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function studentReject_(req) {
+  const name = String(req.name || '').trim(), f = findStudent_(name);
+  if (!f || String(f.rec[7]) !== '신청') return { ok: false, error: '대기 중인 신청이 아니에요' };
+  getSheet_(SHEET_STU, HEADERS_STU).deleteRow(f.row);
+  return { ok: true };
 }
 
 // 선생님: 학생 추가 (이름 + 개인 코드)
@@ -497,10 +571,7 @@ function studentAdd_(req) {
   if (findStudent_(name)) return { ok: false, error: '이미 있는 이름이에요: ' + name };
   const sh = getSheet_(SHEET_STU, HEADERS_STU), r = sh.getLastRow() + 1;
   // 코드는 자동으로 정한다: 다른 러너와 겹치지 않는 4자리 숫자 (직접 넣고 싶으면 studentCode 로 보내도 됨)
-  const used = {};
-  if (r > 2) sh.getRange(2, 2, r - 2, 1).getValues().forEach(function (x) { used[normCode_(x[0])] = true; });
-  let code = normCode_(req.studentCode);
-  if (!code) { do { code = String(1000 + Math.floor(Math.random() * 9000)); } while (used[code]); }
+  const code = normCode_(req.studentCode) || newCode_(sh);
   sh.getRange(r, 2).setNumberFormat('@');
   sh.getRange(r, 1, 1, 3).setValues([[name, code, String(req.univ || '')]]);
   return { ok: true, name: name, code: code };

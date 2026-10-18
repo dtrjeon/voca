@@ -876,9 +876,14 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <dialog id="dlgLogin">
   <h3 style="margin:0 0 8px">로그인</h3>
-  <div class="row" id="lgTabs"><button class="chip on" data-r="student" type="button">🎒 러너</button><button class="chip" data-r="teacher" type="button">👩‍🏫 돕는이</button></div>
+  <div class="row" id="lgTabs"><button class="chip on" data-r="student" type="button">🎒 러너</button><button class="chip" data-r="new" type="button">🙋 처음이에요</button><button class="chip" data-r="teacher" type="button">👩‍🏫 돕는이</button></div>
   <div id="lgStu"><label class="lbl" for="lgName">이름</label><input type="text" id="lgName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="돕는이이 적어 둔 내 이름">
   <label class="lbl" for="lgCode">내 코드</label><input type="password" id="lgCode" autocomplete="off" autocapitalize="none" placeholder="돕는이이 알려 준 코드"></div>
+  <div id="lgNew" style="display:none">
+    <div id="lgNewForm"><div style="font-size:13px;color:var(--sub);line-height:1.5;margin-top:8px">이름을 적고 신청하면 돕는이가 확인한 뒤 코드를 만들어 줘요. 확인되면 이 화면에 코드가 나와요.</div>
+    <label class="lbl" for="lgNewName">이름</label><input type="text" id="lgNewName" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="내 이름"></div>
+    <div id="lgNewWait" style="display:none;font-size:14px;line-height:1.6;margin-top:10px">⏳ <b></b> 님, 신청했어요.<br>돕는이가 확인하면 코드가 나오고 바로 시작돼요. 이 화면을 닫았다가 다시 열어도 괜찮아요.<div class="row" style="margin-top:8px"><button class="btn" id="lgNewCancel" type="button">다른 이름으로 다시 신청</button></div></div>
+  </div>
   <div id="lgTea" style="display:none"><label class="lbl" for="lgTCode">돕는이 코드</label><input type="password" id="lgTCode" autocomplete="off" autocapitalize="none"></div>
   <div class="lg-msg" id="lgMsg"></div>
   <div class="row" style="margin-top:10px"><button class="btn primary grow" id="lgGo" type="button">들어가기</button></div>
@@ -895,7 +900,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <dialog id="dlgStudents">
   <h3 style="margin:0 0 6px">👩‍🏫 러너 현황</h3>
-  <div class="stu-wrap"><table id="stuTbl"><thead><tr><th>이름</th><th>코드</th><th>목표 대학</th><th>시작일</th><th>◎</th><th>내 단어</th><th>마지막 접속</th><th>앱</th></tr></thead><tbody></tbody></table></div>
+  <div class="stu-wrap"><table id="stuTbl"><thead><tr><th>이름</th><th>코드</th><th>목표 대학</th><th>시작일</th><th>◎</th><th>내 단어</th><th>마지막 접속</th><th>앱</th><th></th></tr></thead><tbody></tbody></table></div>
   <div id="stuSt" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   <label class="lbl">러너 추가 (코드는 자동으로 만들어져요)</label>
   <div class="row"><input type="text" id="stName" placeholder="이름" autocomplete="off" style="flex:1"></div>
@@ -1032,7 +1037,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.13.2', APP_DATE = '2026-10-18', SERVER_NEED = 22;
+const APP_VERSION = '1.14.0', APP_DATE = '2026-10-18', SERVER_NEED = 22;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -1141,8 +1146,37 @@ function showLogin(msg) {
   const d = $('#dlgLogin'); if (!d) return;
   $('#lgMsg').textContent = msg || '';
   if (!d.open) { $('#lgName').value = lsGet('vn_user', ''); $('#lgCode').value = ''; $('#lgTCode').value = ''; d.showModal(); }
+  if (lsGet('vn_signup_tok', '')) { lgTab('new'); checkSignup(true); }
 }
-function lgTab(r) { loginRole = r; $$('#lgTabs .chip').forEach(b => b.classList.toggle('on', b.dataset.r === r)); $('#lgStu').style.display = r === 'student' ? '' : 'none'; $('#lgTea').style.display = r === 'teacher' ? '' : 'none'; }
+function lgTab(r) { loginRole = r; $$('#lgTabs .chip').forEach(b => b.classList.toggle('on', b.dataset.r === r)); $('#lgStu').style.display = r === 'student' ? '' : 'none'; $('#lgTea').style.display = r === 'teacher' ? '' : 'none'; $('#lgNew').style.display = r === 'new' ? '' : 'none'; $('#lgMsg').textContent = ''; if (r === 'new') renderNew(); else $('#lgGo').textContent = '들어가기'; }
+function renderNew() {
+  const pend = !!lsGet('vn_signup_tok', '');
+  $('#lgNewForm').style.display = pend ? 'none' : ''; $('#lgNewWait').style.display = pend ? '' : 'none';
+  $('#lgNewWait b').textContent = lsGet('vn_signup_name', ''); $('#lgGo').textContent = pend ? '확인하기' : '사용하겠습니다';
+}
+const newTok = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2));
+async function doSignup() {
+  const n = $('#lgNewName').value.trim(); if (!n) { $('#lgMsg').textContent = '이름을 적어 주세요'; return; }
+  const tok = newTok();
+  try { await rawApi('signup', { name: n, token: tok, __cred: {} }); lsSet('vn_signup_name', n); lsSet('vn_signup_tok', tok); renderNew(); }
+  catch (e) { $('#lgMsg').textContent = e.message; }
+}
+async function checkSignup(silent) {
+  const n = lsGet('vn_signup_name', ''), t = lsGet('vn_signup_tok', ''); if (!n || !t) return false;
+  try {
+    const j = await rawApi('signupstatus', { name: n, token: t, __cred: {} });
+    if (j.status === 'approved') {
+      const lj = await rawApi('login', { ver: APP_VERSION, __cred: { user: n, ucode: j.code } });
+      await enterStudent(lj, n, j.code); lsDel('vn_signup_tok'); lsDel('vn_signup_name');
+      $('#dlgLogin').close(); updateAcct(); renderList(); updateCount(); tmRender(); refreshWords(true);
+      toast('승인됐어요! 내 코드: ' + j.code + ' (다른 기기에서 로그인할 때 필요해요)', 10000); return true;
+    }
+    if (j.status === 'none') { lsDel('vn_signup_tok'); lsDel('vn_signup_name'); renderNew(); if (!silent) $('#lgMsg').textContent = '신청 내역이 없어요. 다시 신청해 주세요'; }
+    else if (!silent) $('#lgMsg').textContent = '아직 확인 전이에요. 조금 뒤에 다시 눌러 주세요';
+  } catch (e) { if (!silent) $('#lgMsg').textContent = e.message; }
+  return false;
+}
+setInterval(() => { const d = $('#dlgLogin'); if (d && d.open && loginRole === 'new' && lsGet('vn_signup_tok', '') && !document.hidden) checkSignup(true); }, 15000);
 function reloadTmVars() {
   tmSrc = lsGet('vn_tm_src', ''); if (tmSrc.startsWith('d:')) tmSrc = 'h:' + tmSrc.slice(2);
   try { tmMarks = JSON.parse(lsGet('vn_tm_marks', '{}')) || {}; } catch (x) { tmMarks = {}; }
@@ -1195,6 +1229,7 @@ function showReg() {
 async function doLogin() {
   const go = $('#lgGo'); go.disabled = true; $('#lgMsg').textContent = '';
   try {
+    if (loginRole === 'new') { if (lsGet('vn_signup_tok', '')) await checkSignup(false); else await doSignup(); return; }
     if (loginRole === 'teacher') {
       const c = $('#lgTCode').value.trim(); if (!c) { $('#lgMsg').textContent = '코드를 입력하세요'; return; }
       const j = await rawApi('login', { ver: APP_VERSION, __cred: { code: c } });
@@ -1237,7 +1272,7 @@ async function bootAuth() {
   const u = gasUrl(); if (!u || u.indexOf('PASTE_GAS_URL') >= 0) return true;
   try {
     if (me.role === 'student') { const j = await rawApi('login', { ver: APP_VERSION }); await enterStudent(j, me.name, lsGet('vn_ucode', '')); }
-    else if (me.role === 'teacher') await rawApi('login', { ver: APP_VERSION });
+    else if (me.role === 'teacher') { await rawApi('login', { ver: APP_VERSION }); rawApi('students').then(j => { const n = (j.students || []).filter(x => x.status === '신청').length; if (n) toast('러너 신청 ' + n + '명이 기다려요 — 설정 → 러너 현황', 7000); }).catch(() => {}); }
     else { const j = await (await fetch(u)).json(); if (j.locked) { showLogin(); return false; } }
   } catch (e) { if (e.data && e.data.auth) return false; }
   return true;
@@ -1247,7 +1282,7 @@ async function loadStudents() {
   $('#stuSt').textContent = '불러오는 중…';
   try {
     const j = await rawApi('students');
-    $('#stuTbl tbody').innerHTML = (j.students || []).map(s => '<tr><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.code || '') + '</td><td>' + esc(s.univ || '—') + '</td><td>' + esc(s.start ? s.start.slice(5).replace('-', '/') : '—') + '</td><td>' + s.marks + '</td><td>' + s.own + '</td><td>' + fmtSeen(s.lastSeen) + '</td><td>' + esc(s.ver || '') + '</td></tr>').join('') || '<tr><td colspan="8" style="color:var(--sub)">아직 학생이 없어요. 아래에서 추가하세요.</td></tr>';
+    $('#stuTbl tbody').innerHTML = (j.students || []).map(s => '<tr><td><b>' + esc(s.name) + '</b></td><td>' + (s.status === '신청' ? '<i style="color:var(--bad)">신청 중</i>' : esc(s.code || '')) + '</td><td>' + esc(s.univ || '—') + '</td><td>' + esc(s.start ? s.start.slice(5).replace('-', '/') : '—') + '</td><td>' + s.marks + '</td><td>' + s.own + '</td><td>' + fmtSeen(s.lastSeen) + '</td><td>' + esc(s.ver || '') + '</td><td>' + (s.status === '신청' ? '<button class="btn" data-ap="' + esc(s.name) + '" type="button">승인</button> <button class="btn" data-rj="' + esc(s.name) + '" type="button">거절</button>' : '') + '</td></tr>').join('') || '<tr><td colspan="9" style="color:var(--sub)">아직 학생이 없어요. 아래에서 추가하세요.</td></tr>';
     $('#stuSt').textContent = (j.students || []).length + '명 · ◎ = 토마토에서 ◎로 표시한 단어 수';
   } catch (e) { $('#stuSt').textContent = e.message; }
 }
@@ -1255,6 +1290,10 @@ document.addEventListener('click', e => {
   const id = e.target && e.target.id;
   if (id === 'sLogin') { $('#dlgSettings').close(); showLogin(); }
   else if (id === 'sStudents') { $('#dlgSettings').close(); $('#dlgStudents').showModal(); loadStudents(); }
+  else if (e.target && e.target.dataset && (e.target.dataset.ap || e.target.dataset.rj)) {
+    const ap = e.target.dataset.ap, nm = ap || e.target.dataset.rj;
+    (async () => { try { const r = await rawApi(ap ? 'studentapprove' : 'studentreject', { name: nm }); await loadStudents(); if (ap) $('#stuSt').innerHTML = '✅ <b>' + esc(nm) + '</b> 승인 · 코드 <b style="font-size:18px">' + esc(r.code) + '</b> (러너 화면에도 자동으로 나와요)'; } catch (x) { $('#stuSt').textContent = x.message; } })();
+  }
   else if (id === 'sLogout') {
     if (!confirm('로그아웃할까요?')) return;
     (async () => { if (isStu()) { try { await pushState(); } catch (x) {} wipeLocal(); } lsDel('vn_user'); lsDel('vn_ucode'); lsDel('vn_teacher_code'); lsDel('vn_prof_univ'); lsDel('vn_prof_start'); location.reload(); })();
@@ -3217,6 +3256,8 @@ fitPad(); resizePad();
 renderList(); updateCount(); updateSetupInfo();
 $$('#lgTabs .chip').forEach(b => b.addEventListener('click', () => lgTab(b.dataset.r)));
 $('#lgGo').addEventListener('click', doLogin);
+$('#lgNewCancel').addEventListener('click', () => { lsDel('vn_signup_tok'); lsDel('vn_signup_name'); renderNew(); });
+$('#lgNewName').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 ['#lgCode', '#lgTCode', '#lgName'].forEach(q => $(q).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
 $('#rgGo').addEventListener('click', doReg);
 $('#dlgLogin').addEventListener('cancel', e => e.preventDefault());
