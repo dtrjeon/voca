@@ -1049,7 +1049,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.16.0', APP_DATE = '2026-10-18', SERVER_NEED = 25;
+const APP_VERSION = '1.16.1', APP_DATE = '2026-10-18', SERVER_NEED = 25;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -3288,6 +3288,7 @@ $('#stAdd').addEventListener('click', async () => {
   try { const r = await rawApi('studentadd', { name: n }); $('#stName').value = ''; await loadStudents(); $('#stuSt').innerHTML = '✅ 아이디 <b>' + esc(r.name) + '</b> · 임시 비밀번호 <b style="font-size:18px">' + esc(r.code) + '</b> — 러너에게 알려 주세요'; toast(n + ' 러너을 추가했어요'); } catch (e) { $('#stuSt').textContent = e.message; }
 });
 updateAcct();
+$('nav button[data-tab="tomato"]').click();   /* 첫 화면은 토마토 */
 if (gasUrl() && gasUrl().indexOf('PASTE_GAS_URL') < 0) bootAuth().then(ok => { if (ok) refreshWords(true); });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw_voca.js').catch(() => {});
 
