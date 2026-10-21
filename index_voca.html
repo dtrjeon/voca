@@ -1049,7 +1049,7 @@ body.stu .t-only, body.stu .pk-ren, body.stu [data-pk="ren"] { display: none !im
 
 <script>
 /* ====== 버전 ====== */
-const APP_VERSION = '1.16.1', APP_DATE = '2026-10-18', SERVER_NEED = 25;
+const APP_VERSION = '1.16.2', APP_DATE = '2026-10-18', SERVER_NEED = 25;
 
 /* ====== 설정 ====== */
 // 배포한 Apps Script 웹 앱 URL 을 아래에 붙여넣거나, 앱의 ⚙️ 설정에서 입력하세요.
@@ -3531,7 +3531,7 @@ function gnDrawPages(from, to, mode, type, cv, fs, lang) {
       /* 같은 열은 같은 글자 크기로 맞춘다 (한 칸이 길어도 그 열 전체가 같이 줄어든다. 너무 길면 그 칸만 두 줄) */
       const colCap = fr.map((f, i) => {
         if (i === boxCol) return 0; let cap = 1e9; const cwid = width * f / 100 - 2.4;
-        arr.forEach(w => { const c = cellFn(w, i); if (!c || !c.t) return; let q = c.pt; const fl = c.pt * 0.78; ctx.font = font(q, c.bold); while (ctx.measureText(String(c.t)).width > px(cwid) && q > fl) { q -= 0.5; ctx.font = font(q, c.bold); } cap = Math.min(cap, q); });
+        arr.forEach(w => { const c = cellFn(w, i); if (!c || !c.t) return; const lg = String(c.t).split(/\s*;\s*/).reduce((m, x) => x.length > m.length ? x : m, ''); let q = c.pt; const fl = c.pt * 0.78; ctx.font = font(q, c.bold); while (ctx.measureText(lg).width > px(cwid) && q > fl) { q -= 0.5; ctx.font = font(q, c.bold); } cap = Math.min(cap, q); });
         return cap;
       });
       arr.forEach((w, r) => {
@@ -3539,7 +3539,14 @@ function gnDrawPages(from, to, mode, type, cv, fs, lang) {
         for (let i = 0; i < fr.length; i++) {
           const cx = (xs[i] + xs[i + 1]) / 2, cwid = xs[i + 1] - xs[i] - 2.4;
           if (i === boxCol) { ctx.fillStyle = '#f4f8fd'; rr(cx - 2.2, cy - 2.2, 4.4, 4.4, 1); ctx.fill(); ctx.strokeStyle = '#9db4d6'; ctx.lineWidth = Math.max(1, px(0.35)); rr(cx - 2.2, cy - 2.2, 4.4, 4.4, 1); ctx.stroke(); }
-          else { const c = cellFn(w, i); if (c && c.t) fitText(c.t, cx, cy, cwid, Math.min(c.pt, colCap[i]), c.bold, '#222222', 6.5); }
+          else {
+            const c = cellFn(w, i);
+            if (c && c.t) {
+              const parts = String(c.t).split(/\s*;\s*/).filter(Boolean);          /* 연어는 ; 마다 줄을 바꾼다 */
+              if (parts.length > 1) { const step = Math.min(3.6, (rowH - 1.2) / parts.length), pt0 = Math.min(c.pt, colCap[i], step / 0.42); parts.forEach((t, k) => ctx.fillText && fitText(t, cx, cy + (k - (parts.length - 1) / 2) * step, cwid, pt0, c.bold, '#222222', 5)); }
+              else fitText(c.t, cx, cy, cwid, Math.min(c.pt, colCap[i]), c.bold, '#222222', 6.5);
+            }
+          }
         }
       });
     };
